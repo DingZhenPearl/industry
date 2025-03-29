@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <style>
+    .person { fill: #34495e; }
+    .cloud { fill: #ecf0f1; }
+    .device { fill: #3498db; }
+    .connection { fill: #2ecc71; }
+    .data { fill: #f1c40f; }
+  </style>
+  <circle class="person" cx="100" cy="140" r="20" />
+  <rect class="person" x="90" y="160" width="20" height="30" />
+  <circle class="cloud" cx="100" cy="70" r="30" />
+  <circle class="cloud" cx="70" cy="70" r="20" />
+  <circle class="cloud" cx="130" cy="70" r="20" />
+  <circle class="cloud" cx="85" cy="50" r="15" />
+  <circle class="cloud" cx="115" cy="50" r="15" />
+  <circle class="device" cx="50" cy="100" r="10" />
+  <rect class="device" x="45" cy="110" width="10" height="15" />
+  <circle class="device" cx="150" cy="100" r="10" />
+  <rect class="device" x="145" cy="110" width="10" height="15" />
+  <line x1="60" y1="100" x2="90" y2="80" stroke="#3498db" stroke-width="2" />
+  <line x1="140" y1="100" x2="110" y2="80" stroke="#3498db" stroke-width="2" />
+  <circle class="data" cx="75" cy="90" r="5" />
+  <circle class="data" cx="125" cy="90" r="5" />
+  <circle class="connection" cx="100" cy="100" r="5" />
+</svg>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <style>
+    .screen { fill: #3498db; }
+    .chart { stroke: #2ecc71; stroke-width: 3; fill: none; }
+    .dot { fill: #e74c3c; }
+    .person { fill: #34495e; }
+    .data { fill: #f1c40f; }
+  </style>
+  <rect class="screen" x="40" y="40" width="120" height="80" rx="5" />
+  <polyline class="chart" points="60,90 80,70 100,80 120,60 140,50" />
+  <circle class="dot" cx="60" cy="90" r="4" />
+  <circle class="dot" cx="80" cy="70" r="4" />
+  <circle class="dot" cx="100" cy="80" r="4" />
+  <circle class="dot" cx="120" cy="60" r="4" />
+  <circle class="dot" cx="140" cy="50" r="4" />
+  <rect class="data" x="50" y="100" width="20" height="10" rx="2" />
+  <rect class="data" x="80" y="100" width="20" height="10" rx="2" />
+  <rect class="data" x="110" y="100" width="20" height="10" rx="2" />
+  <circle class="person" cx="160" cy="120" r="15" />
+  <rect class="person" x="150" y="135" width="20" height="25" />
+</svg>
