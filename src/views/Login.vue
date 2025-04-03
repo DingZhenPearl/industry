@@ -58,22 +58,30 @@ export default {
     }
   },
   created() {
-    // 如果已登录就直接跳转到首页
+    // 如果已登录就直接跳转到对应的首页
     if (localStorage.getItem('token')) {
-      this.$router.push('/home');
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+      if (userInfo.role === 'foreman') {
+        this.$router.push('/foreman/workorder')
+      } else if (userInfo.role === 'member') {
+        this.$router.push('/worker/tasks')
+      }
     }
   },
   methods: {
     handleLogin() {
-      // 模拟登录成功，存储登录信息
       localStorage.setItem('userInfo', JSON.stringify({
         username: this.username,
         role: this.role
       }));
       localStorage.setItem('token', 'mock-token-' + Date.now());
       
-      // 跳转到首页
-      this.$router.push('/home');
+      // 根据角色跳转到对应的首页
+      if (this.role === 'foreman') {
+        this.$router.push('/foreman/workorder');
+      } else if (this.role === 'member') {
+        this.$router.push('/worker/tasks');
+      }
     }
   }
 }
