@@ -60,6 +60,62 @@ const workerRoutes = [
   }
 ]
 
+const supervisorRoutes = [
+  {
+    path: '/supervisor/monitor',
+    name: 'MonitorCenter',
+    component: () => import('../views/supervisor/MonitorCenter.vue')
+  },
+  {
+    path: '/supervisor/efficiency',
+    name: 'EfficiencyAnalysis',
+    component: () => import('../views/supervisor/EfficiencyAnalysis.vue')
+  },
+  {
+    path: '/supervisor/report',
+    name: 'DataReport',
+    component: () => import('../views/supervisor/DataReport.vue')
+  },
+  {
+    path: '/supervisor/approval',
+    name: 'TaskApproval',
+    component: () => import('../views/supervisor/TaskApproval.vue')
+  },
+  {
+    path: '/supervisor/settings',
+    name: 'SystemSettings',
+    component: () => import('../views/supervisor/SystemSettings.vue')
+  }
+]
+
+const safetyRoutes = [
+  {
+    path: '/safety/monitor',
+    name: 'SafetyMonitor',
+    component: () => import('../views/safety/Monitor.vue')
+  },
+  {
+    path: '/safety/warning',
+    name: 'SafetyWarning',
+    component: () => import('../views/safety/Warning.vue')
+  },
+  {
+    path: '/safety/inspection',
+    name: 'SafetyInspection',
+    component: () => import('../views/safety/Inspection.vue')
+  },
+  {
+    path: '/safety/statistics',
+    name: 'SafetyStatistics',
+    component: () => import('../views/safety/Statistics.vue')
+  },
+  {
+    path: '/safety/account',
+    name: 'SafetyAccount',
+    component: () => import('../views/safety/Account.vue')
+  }
+]
+
 const routes = [
   {
     path: '/login',
@@ -71,14 +127,16 @@ const routes = [
     redirect: '/login'
   },
   ...foremanRoutes,
-  ...workerRoutes
+  ...workerRoutes,
+  ...supervisorRoutes,
+  ...safetyRoutes
 ]
 
 const router = new VueRouter({
   routes
 })
 
-// 导航守卫
+// 修改导航守卫
 router.beforeEach((to, from, next) => {
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
   
@@ -92,6 +150,19 @@ router.beforeEach((to, from, next) => {
     return
   }
 
+  // 新增厂长路由权限判断
+  if (userInfo.role === 'supervisor' && !to.path.startsWith('/supervisor')) {
+    next('/supervisor/monitor')
+    return
+  }
+
+  // 添加安全员路由判断
+  if (userInfo.role === 'safety_officer' && !to.path.startsWith('/safety')) {
+    next('/safety/monitor')
+    return
+  }
+
+  // 保持原有的工长和工人的路由权限判断
   if (userInfo.role === 'foreman' && to.path.startsWith('/worker')) {
     next('/foreman/workorder')
     return

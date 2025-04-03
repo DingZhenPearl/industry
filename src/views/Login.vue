@@ -61,11 +61,7 @@ export default {
     // 如果已登录就直接跳转到对应的首页
     if (localStorage.getItem('token')) {
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-      if (userInfo.role === 'foreman') {
-        this.$router.push('/foreman/workorder')
-      } else if (userInfo.role === 'member') {
-        this.$router.push('/worker/tasks')
-      }
+      this.redirectByRole(userInfo.role)
     }
   },
   methods: {
@@ -76,11 +72,24 @@ export default {
       }));
       localStorage.setItem('token', 'mock-token-' + Date.now());
       
-      // 根据角色跳转到对应的首页
-      if (this.role === 'foreman') {
-        this.$router.push('/foreman/workorder');
-      } else if (this.role === 'member') {
-        this.$router.push('/worker/tasks');
+      this.redirectByRole(this.role);
+    },
+    redirectByRole(role) {
+      switch(role) {
+        case 'supervisor':
+          this.$router.push('/supervisor/monitor');
+          break;
+        case 'foreman':
+          this.$router.push('/foreman/workorder');
+          break;
+        case 'member':
+          this.$router.push('/worker/tasks');
+          break;
+        case 'safety_officer':
+          this.$router.push('/safety/monitor');
+          break;
+        default:
+          this.$router.push('/login');
       }
     }
   }
