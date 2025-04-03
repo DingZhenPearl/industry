@@ -57,30 +57,18 @@
       </div>
     </div>
     
-    <nav class="bottom-nav">
-      <div class="nav-item" @click="$router.push('/')">
-        <i class="nav-icon home-icon"></i>
-        <span>首页</span>
-      </div>
-      <div class="nav-item active">
-        <i class="nav-icon task-icon"></i>
-        <span>任务</span>
-      </div>
-      <div class="nav-item" @click="$router.push('/notification')">
-        <i class="nav-icon notification-icon"></i>
-        <span>通知</span>
-      </div>
-      <div class="nav-item" @click="$router.push('/profile')">
-        <i class="nav-icon profile-icon"></i>
-        <span>我的</span>
-      </div>
-    </nav>
+    <BottomNav />
   </div>
 </template>
 
 <script>
+import BottomNav from '@/components/BottomNav.vue'
+
 export default {
-  name: 'TaskPage'
+  name: 'TaskPage',
+  components: {
+    BottomNav
+  }
 }
 </script>
 
