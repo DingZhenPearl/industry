@@ -31,10 +31,10 @@
             class="modern-input"
           >
             <option value="" disabled selected>请选择身份</option>
-            <option value="supervisor">主管</option>
+            <option value="supervisor">厂长</option>
             <option value="foreman">工长</option>
-            <option value="team_leader">班组长</option>
-            <option value="member">组员</option>
+            <option value="member">产线工人</option>
+            <option value="safety_officer">安全员</option>
           </select>
         </div>
         <button type="submit" class="login-btn">登 录</button>
@@ -57,10 +57,22 @@ export default {
       role: ''
     }
   },
+  created() {
+    // 如果已登录就直接跳转到首页
+    if (localStorage.getItem('token')) {
+      this.$router.push('/home');
+    }
+  },
   methods: {
     handleLogin() {
-      // 处理登录逻辑
-      console.log('登录信息:', this.username, this.password);
+      // 模拟登录成功，存储登录信息
+      localStorage.setItem('userInfo', JSON.stringify({
+        username: this.username,
+        role: this.role
+      }));
+      localStorage.setItem('token', 'mock-token-' + Date.now());
+      
+      // 跳转到首页
       this.$router.push('/home');
     }
   }

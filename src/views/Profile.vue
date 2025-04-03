@@ -87,8 +87,12 @@ export default {
       console.log('跳转到人员管理页面')
     },
     logout() {
-      // 退出登录
-      console.log('退出登录')
+      // 清除可能存在的用户信息
+      localStorage.removeItem('userInfo');
+      localStorage.removeItem('token');
+      
+      // 导航到登录页
+      this.$router.push('/login');
     }
   }
 }

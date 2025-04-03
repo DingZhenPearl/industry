@@ -27,11 +27,16 @@ export default {
 
 <style scoped>
 .bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: space-around;
   background-color: #f8f8f8;
   padding: 10px 0;
   border-top: 1px solid #e0e0e0;
+  z-index: 100;
 }
 
 .nav-item {

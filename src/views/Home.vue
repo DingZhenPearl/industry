@@ -6,17 +6,17 @@
     
     <div class="content">
       <div class="module" @click="navigateTo('device')">
-        <img src="@/assets/device.png" alt="设备监控">
+        <img src="@/assets/device.svg" alt="设备监控">
         <h2>设备监控</h2>
       </div>
       
       <div class="module" @click="navigateTo('production')">
-        <img src="@/assets/production.png" alt="生产监控">
+        <img src="@/assets/production.svg" alt="生产监控">
         <h2>生产监控</h2>
       </div>
       
       <div class="module" @click="navigateTo('workorder')">
-        <img src="@/assets/workorder.png" alt="工单管理">
+        <img src="@/assets/workorder.svg" alt="工单管理">
         <h2>工单管理</h2>
       </div>
     </div>
