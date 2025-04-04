@@ -72,9 +72,9 @@ const supervisorRoutes = [
     component: () => import('../views/supervisor/EfficiencyAnalysis.vue')
   },
   {
-    path: '/supervisor/report',
-    name: 'DataReport',
-    component: () => import('../views/supervisor/DataReport.vue')
+    path: '/supervisor/team',  // 修改路由路径
+    name: 'TeamManagement',    // 修改路由名称
+    component: () => import('../views/supervisor/TeamManagement.vue')  // 修改组件路径
   },
   {
     path: '/supervisor/approval',

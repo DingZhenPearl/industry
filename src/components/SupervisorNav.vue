@@ -8,9 +8,9 @@
       <i class="nav-icon efficiency-icon"></i>
       <span>效率分析</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/supervisor/report' }" @click="$router.push('/supervisor/report')">
-      <i class="nav-icon report-icon"></i>
-      <span>数据报表</span>
+    <div class="nav-item" :class="{ active: $route.path === '/supervisor/team' }" @click="$router.push('/supervisor/team')">
+      <i class="nav-icon team-icon"></i>
+      <span>团队管理</span>
     </div>
     <div class="nav-item" :class="{ active: $route.path === '/supervisor/approval' }" @click="$router.push('/supervisor/approval')">
       <i class="nav-icon approval-icon"></i>
