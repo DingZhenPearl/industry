@@ -16,9 +16,9 @@
       <i class="nav-icon knowledge-icon"></i>
       <span>知识库</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/worker/account' }" @click="$router.push('/worker/account')">
-      <i class="nav-icon account-icon"></i>
-      <span>账号</span>
+    <div class="nav-item" :class="{ active: $route.path === '/worker/profile' }" @click="$router.push('/worker/profile')">
+      <i class="nav-icon profile-icon"></i>
+      <span>我的</span>
     </div>
   </nav>
 </template>

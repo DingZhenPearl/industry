@@ -26,8 +26,8 @@ const foremanRoutes = [
     component: () => import('../views/foreman/Team.vue')
   },
   {
-    path: '/foreman/account',
-    name: 'ForemanAccount',
+    path: '/foreman/profile',
+    name: 'ForemanProfile',
     component: () => import('../views/foreman/Account.vue')
   }
 ]
@@ -54,8 +54,8 @@ const workerRoutes = [
     component: () => import('../views/worker/Knowledge.vue')
   },
   {
-    path: '/worker/account',
-    name: 'WorkerAccount',
+    path: '/worker/profile',
+    name: 'WorkerProfile', 
     component: () => import('../views/worker/Account.vue')
   }
 ]
@@ -82,8 +82,8 @@ const supervisorRoutes = [
     component: () => import('../views/supervisor/TaskApproval.vue')
   },
   {
-    path: '/supervisor/settings',
-    name: 'SystemSettings',
+    path: '/supervisor/profile',
+    name: 'SupervisorProfile',
     component: () => import('../views/supervisor/SystemSettings.vue')
   }
 ]
@@ -110,8 +110,8 @@ const safetyRoutes = [
     component: () => import('../views/safety/Statistics.vue')
   },
   {
-    path: '/safety/account',
-    name: 'SafetyAccount',
+    path: '/safety/profile',
+    name: 'SafetyProfile',
     component: () => import('../views/safety/Account.vue')
   }
 ]

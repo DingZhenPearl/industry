@@ -16,9 +16,9 @@
       <i class="nav-icon approval-icon"></i>
       <span>任务审批</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/supervisor/settings' }" @click="$router.push('/supervisor/settings')">
-      <i class="nav-icon settings-icon"></i>
-      <span>系统设置</span>
+    <div class="nav-item" :class="{ active: $route.path === '/supervisor/profile' }" @click="$router.push('/supervisor/profile')">
+      <i class="nav-icon profile-icon"></i>
+      <span>我的</span>
     </div>
   </nav>
 </template>

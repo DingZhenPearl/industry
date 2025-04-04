@@ -16,9 +16,9 @@
       <i class="nav-icon team-icon"></i>
       <span>团队管理</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/foreman/account' }" @click="$router.push('/foreman/account')">
-      <i class="nav-icon account-icon"></i>
-      <span>账号</span>
+    <div class="nav-item" :class="{ active: $route.path === '/foreman/profile' }" @click="$router.push('/foreman/profile')">
+      <i class="nav-icon profile-icon"></i>
+      <span>我的</span>
     </div>
   </nav>
 </template>

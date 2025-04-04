@@ -16,9 +16,9 @@
       <i class="nav-icon statistics-icon"></i>
       <span>安全统计</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/safety/account' }" @click="$router.push('/safety/account')">
-      <i class="nav-icon account-icon"></i>
-      <span>个人信息</span>
+    <div class="nav-item" :class="{ active: $route.path === '/safety/profile' }" @click="$router.push('/safety/profile')">
+      <i class="nav-icon profile-icon"></i>
+      <span>我的</span>
     </div>
   </nav>
 </template>

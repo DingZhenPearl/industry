@@ -1,32 +1,44 @@
 <template>
-  <div class="settings">
+  <div class="profile">
     <header class="header">
-      <h1>系统设置</h1>
+      <h1>我的</h1>
     </header>
     
     <div class="content">
-      <div class="settings-section">
-        <h2>基本设置</h2>
-        <div class="setting-item">
-          <span class="setting-label">系统通知</span>
+      <!-- 个人信息卡片 -->
+      <div class="info-card">
+        <div class="info-item">
+          <label>用户名</label>
+          <div class="value">{{ userInfo.username }}</div>
+        </div>
+        <div class="info-item">
+          <label>职位</label>
+          <div class="value">厂长</div>
+        </div>
+        <div class="info-item">
+          <label>手机号</label>
+          <div class="value">{{ userInfo.phone || '未设置' }}</div>
+        </div>
+      </div>
+
+      <!-- 系统设置区域 -->
+      <div class="info-card">
+        <div class="info-item">
+          <label>系统通知</label>
           <label class="switch">
             <input type="checkbox" v-model="settings.notifications">
             <span class="slider"></span>
           </label>
         </div>
-        <div class="setting-item">
-          <span class="setting-label">数据自动同步</span>
+        <div class="info-item">
+          <label>数据自动同步</label>
           <label class="switch">
             <input type="checkbox" v-model="settings.autoSync">
             <span class="slider"></span>
           </label>
         </div>
-      </div>
-
-      <div class="settings-section">
-        <h2>安全设置</h2>
-        <div class="setting-item">
-          <span class="setting-label">双因素认证</span>
+        <div class="info-item">
+          <label>双因素认证</label>
           <label class="switch">
             <input type="checkbox" v-model="settings.twoFactorAuth">
             <span class="slider"></span>
@@ -34,10 +46,12 @@
         </div>
       </div>
 
-      <button class="save-btn" @click="saveSettings">保存设置</button>
-      
-      <!-- 添加退出登录按钮 -->
-      <button class="logout-btn" @click="handleLogout">退出登录</button>
+      <!-- 操作按钮列表 -->
+      <div class="action-list">
+        <button class="action-btn" @click="changePassword">修改密码</button>
+        <button class="action-btn" @click="updatePhone">更新手机号</button>
+        <button class="action-btn logout" @click="handleLogout">退出登录</button>
+      </div>
     </div>
 
     <SupervisorNav />
@@ -48,12 +62,13 @@
 import SupervisorNav from '@/components/SupervisorNav.vue'
 
 export default {
-  name: 'SystemSettings',
+  name: 'SupervisorProfile',
   components: {
     SupervisorNav
   },
   data() {
     return {
+      userInfo: JSON.parse(localStorage.getItem('userInfo') || '{}'),
       settings: {
         notifications: true,
         autoSync: false,
@@ -62,14 +77,15 @@ export default {
     }
   },
   methods: {
-    saveSettings() {
-      console.log('Saving settings:', this.settings)
+    changePassword() {
+      console.log('修改密码')
+    },
+    updatePhone() {
+      console.log('更新手机号')
     },
     handleLogout() {
-      // 清除用户信息和token
       localStorage.removeItem('userInfo')
       localStorage.removeItem('token')
-      // 跳转到登录页
       this.$router.push('/login')
     }
   }
@@ -77,7 +93,7 @@ export default {
 </script>
 
 <style scoped>
-.settings {
+.account {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -96,24 +112,33 @@ export default {
   padding: 15px;
 }
 
-.settings-section {
+.info-card {
   background: white;
   border-radius: 8px;
-  padding: 20px;
+  padding: 15px;
   margin-bottom: 20px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.settings-section h2 {
-  margin: 0 0 20px 0;
-  font-size: 18px;
-}
-
-.setting-item {
+.info-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-item label {
+  color: #666;
+}
+
+.info-item .value {
+  color: #333;
+  font-size: 16px;
 }
 
 .switch {
@@ -161,31 +186,24 @@ input:checked + .slider:before {
   transform: translateX(26px);
 }
 
-.save-btn {
-  width: 100%;
-  padding: 12px;
-  background: #2196F3;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
+.action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-/* 添加退出登录按钮样式 */
-.logout-btn {
-  width: 100%;
+.action-btn {
   padding: 12px;
-  background: #f44336;
-  color: white;
   border: none;
   border-radius: 8px;
+  background: white;
+  color: #2196F3;
   font-size: 16px;
   cursor: pointer;
-  margin-top: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.logout-btn:hover {
-  background: #d32f2f;
+.action-btn.logout {
+  color: #f44336;
 }
 </style>
