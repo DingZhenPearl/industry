@@ -41,7 +41,13 @@
 
       <!-- 增加产线状态列表 -->
       <div class="production-lines">
-        <h3 class="section-title">产线运行状态</h3>
+        <div class="section-header">
+          <h3 class="section-title">产线运行状态</h3>
+          <button class="config-btn" @click="showConfigModal = true">
+            <i class="settings-icon"></i> 产线配置
+          </button>
+        </div>
+        
         <div class="line-list">
           <div class="line-item" v-for="line in productionLines" :key="line.id">
             <div class="line-header">
@@ -62,6 +68,61 @@
                 <span class="value">{{ line.runtime }}h</span>
               </div>
             </div>
+            <div class="line-actions">
+              <button class="action-btn" @click="assignManager(line)">分配管理</button>
+              <button class="action-btn" @click="viewDetails(line)">查看详情</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 产线配置模态框 -->
+      <div class="modal" v-if="showConfigModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>产线配置</h3>
+            <span class="close-btn" @click="showConfigModal = false">&times;</span>
+          </div>
+          <div class="modal-body">
+            <div class="config-list">
+              <div class="config-item" v-for="line in productionLines" :key="line.id">
+                <span class="line-name">{{ line.name }}</span>
+                <div class="config-actions">
+                  <button class="btn" @click="editLine(line)">编辑</button>
+                  <button class="btn danger" @click="deleteLine(line)">停用</button>
+                </div>
+              </div>
+            </div>
+            <button class="btn primary add-line" @click="addNewLine">新增产线</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 分配管理模态框 -->
+      <div class="modal" v-if="showAssignModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>分配产线管理</h3>
+            <span class="close-btn" @click="showAssignModal = false">&times;</span>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>产线名称</label>
+              <div class="value">{{ selectedLine.name }}</div>
+            </div>
+            <div class="form-group">
+              <label>选择管理工长</label>
+              <select v-model="selectedManager" class="form-input">
+                <option value="">请选择工长</option>
+                <option v-for="manager in foremen" :key="manager.id" :value="manager.id">
+                  {{ manager.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn cancel" @click="showAssignModal = false">取消</button>
+            <button class="btn submit" @click="confirmAssign">确定分配</button>
           </div>
         </div>
       </div>
@@ -112,7 +173,45 @@ export default {
           target: 1000,
           runtime: 8.2
         }
+      ],
+      showConfigModal: false,
+      showAssignModal: false,
+      selectedLine: {},
+      selectedManager: '',
+      foremen: [
+        { id: 1, name: '张工长' },
+        { id: 2, name: '李工长' },
+        { id: 3, name: '王工长' }
       ]
+    }
+  },
+  methods: {
+    editLine(line) {
+      console.log('编辑产线:', line);
+      // 这里添加编辑产线的逻辑
+    },
+    deleteLine(line) {
+      if(confirm(`确定要停用${line.name}吗？`)) {
+        console.log('停用产线:', line);
+        // 这里添加停用产线的逻辑
+      }
+    },
+    addNewLine() {
+      console.log('新增产线');
+      // 这里添加新增产线的逻辑
+    },
+    assignManager(line) {
+      this.selectedLine = line;
+      this.showAssignModal = true;
+    },
+    viewDetails(line) {
+      console.log('查看详情:', line);
+      // 查看产线详情的逻辑
+    },
+    confirmAssign() {
+      console.log(`将${this.selectedLine.name}分配给ID为${this.selectedManager}的工长管理`);
+      this.showAssignModal = false;
+      this.selectedManager = '';
     }
   }
 }
@@ -282,5 +381,169 @@ export default {
   font-size: 16px;
   font-weight: 500;
   color: #333;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.config-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.settings-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: white;
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>');
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+.line-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background: #e3f2fd;
+  color: #2196F3;
+  cursor: pointer;
+}
+
+.config-list {
+  margin-bottom: 20px;
+}
+
+.config-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.config-item:last-child {
+  border-bottom: none;
+}
+
+.line-name {
+  font-weight: bold;
+}
+
+.config-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn.primary {
+  background: #2196F3;
+  color: white;
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+.btn.danger {
+  background: #f44336;
+  color: white;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: #666;
+}
+
+.form-group .value {
+  font-weight: bold;
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.btn.cancel {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.btn.submit {
+  background: #4CAF50;
+  color: white;
 }
 </style>

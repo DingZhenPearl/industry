@@ -6,7 +6,7 @@
     </div>
     <div class="nav-item" :class="{ active: $route.path === '/foreman/equipment' }" @click="$router.push('/foreman/equipment')">
       <i class="nav-icon equipment-icon"></i>
-      <span>设备监控</span>
+      <span>设备与产线</span>
     </div>
     <div class="nav-item" :class="{ active: $route.path === '/foreman/statistics' }" @click="$router.push('/foreman/statistics')">
       <i class="nav-icon statistics-icon"></i>

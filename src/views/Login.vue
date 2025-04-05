@@ -181,12 +181,12 @@ export default {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  min-height: 450px; /* 设置最小高度 */
+  min-height: 400px; /* 减小最小高度 */
 }
 
 .form-wrapper {
   flex: 1;
-  margin-bottom: 40px; /* 增加与footer的间距 */
+  margin-bottom: 20px; /* 减少与footer的间距 */
 }
 
 .form-group {
@@ -248,7 +248,7 @@ export default {
 .login-btn {
   width: 100%;
   padding: 14px;
-  margin: 24px 0;
+  margin: 12px 0; /* 减小按钮的上下间距 */
   background: #4b6cb7;
   color: white;
   border: none;

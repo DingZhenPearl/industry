@@ -72,14 +72,14 @@ const supervisorRoutes = [
     component: () => import('../views/supervisor/EfficiencyAnalysis.vue')
   },
   {
-    path: '/supervisor/team',  // 修改路由路径
-    name: 'TeamManagement',    // 修改路由名称
-    component: () => import('../views/supervisor/TeamManagement.vue')  // 修改组件路径
+    path: '/supervisor/team',
+    name: 'TeamManagement',
+    component: () => import('../views/supervisor/TeamManagement.vue')
   },
   {
-    path: '/supervisor/approval',
-    name: 'TaskApproval',
-    component: () => import('../views/supervisor/TaskApproval.vue')
+    path: '/supervisor/workorders',
+    name: 'WorkOrders',
+    component: () => import('../views/supervisor/WorkOrders.vue')
   },
   {
     path: '/supervisor/profile',

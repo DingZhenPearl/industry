@@ -12,9 +12,9 @@
       <i class="nav-icon team-icon"></i>
       <span>团队管理</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/supervisor/approval' }" @click="$router.push('/supervisor/approval')">
-      <i class="nav-icon approval-icon"></i>
-      <span>任务审批</span>
+    <div class="nav-item" :class="{ active: $route.path === '/supervisor/workorders' }" @click="$router.push('/supervisor/workorders')">
+      <i class="nav-icon workorder-icon"></i>
+      <span>工单管理</span>
     </div>
     <div class="nav-item" :class="{ active: $route.path === '/supervisor/profile' }" @click="$router.push('/supervisor/profile')">
       <i class="nav-icon profile-icon"></i>

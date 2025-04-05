@@ -5,21 +5,21 @@
     </header>
     
     <div class="content">
-      <!-- 部门概览卡片 -->
+      <!-- 角色概览卡片 -->
       <div class="department-cards">
-        <div class="dept-card" v-for="dept in departments" :key="dept.id">
+        <div class="dept-card" v-for="role in roles" :key="role.id">
           <div class="dept-header">
-            <h3>{{ dept.name }}</h3>
-            <span class="member-count">{{ dept.memberCount }}人</span>
+            <h3>{{ role.name }}</h3>
+            <span class="member-count">{{ role.memberCount }}人</span>
           </div>
           <div class="dept-stats">
             <div class="stat-item">
-              <span class="label">考勤率</span>
-              <span class="value">{{ dept.attendance }}%</span>
+              <span class="label">在岗率</span>
+              <span class="value">{{ role.activeRate }}%</span>
             </div>
             <div class="stat-item">
               <span class="label">任务完成率</span>
-              <span class="value">{{ dept.completion }}%</span>
+              <span class="value">{{ role.completion }}%</span>
             </div>
           </div>
         </div>
@@ -35,10 +35,10 @@
         </div>
         
         <div class="filter-bar">
-          <select v-model="filterDepartment" class="filter-select">
-            <option value="">全部部门</option>
-            <option v-for="dept in departments" :key="dept.id" :value="dept.id">
-              {{ dept.name }}
+          <select v-model="filterRole" class="filter-select">
+            <option value="">全部角色</option>
+            <option v-for="role in roles" :key="role.id" :value="role.id">
+              {{ role.name }}
             </option>
           </select>
           <input 
@@ -55,8 +55,8 @@
               <tr>
                 <th>工号</th>
                 <th>姓名</th>
-                <th>部门</th>
-                <th>职位</th>
+                <th>角色</th>
+                <th>所属部门</th>
                 <th>联系方式</th>
                 <th>状态</th>
                 <th>操作</th>
@@ -66,8 +66,8 @@
               <tr v-for="emp in filteredEmployees" :key="emp.id">
                 <td>{{ emp.id }}</td>
                 <td>{{ emp.name }}</td>
+                <td>{{ emp.roleName }}</td>
                 <td>{{ emp.department }}</td>
-                <td>{{ emp.position }}</td>
                 <td>{{ emp.phone }}</td>
                 <td>
                   <span :class="['status-tag', emp.status]">
@@ -102,16 +102,17 @@
             <input type="text" v-model="employeeForm.name" class="form-input">
           </div>
           <div class="form-group">
-            <label>部门</label>
-            <select v-model="employeeForm.department" class="form-input">
-              <option v-for="dept in departments" :key="dept.id" :value="dept.name">
-                {{ dept.name }}
+            <label>角色</label>
+            <select v-model="employeeForm.role" class="form-input">
+              <option value="">请选择角色</option>
+              <option v-for="role in roles" :key="role.id" :value="role.id">
+                {{ role.name }}
               </option>
             </select>
           </div>
           <div class="form-group">
-            <label>职位</label>
-            <input type="text" v-model="employeeForm.position" class="form-input">
+            <label>部门</label>
+            <input type="text" v-model="employeeForm.department" class="form-input">
           </div>
           <div class="form-group">
             <label>联系方式</label>
@@ -139,25 +140,87 @@ export default {
   },
   data() {
     return {
-      departments: [
-        { id: 1, name: '生产部', memberCount: 45, attendance: 98, completion: 95 },
-        { id: 2, name: '质检部', memberCount: 20, attendance: 96, completion: 92 },
-        { id: 3, name: '设备部', memberCount: 15, attendance: 97, completion: 94 }
+      roles: [
+        { 
+          id: 'supervisor', 
+          name: '厂长', 
+          memberCount: 1, 
+          activeRate: 100, 
+          completion: 95 
+        },
+        { 
+          id: 'foreman', 
+          name: '工长', 
+          memberCount: 4, 
+          activeRate: 100, 
+          completion: 92 
+        },
+        { 
+          id: 'worker', 
+          name: '产线工人', 
+          memberCount: 45, 
+          activeRate: 95, 
+          completion: 90 
+        },
+        { 
+          id: 'safety', 
+          name: '安全员', 
+          memberCount: 3, 
+          activeRate: 100, 
+          completion: 94 
+        }
       ],
       employees: [
-        { id: 'EMP001', name: '张三', department: '生产部', position: '生产主管', phone: '13800138000', status: 'active', statusText: '在职' },
-        { id: 'EMP002', name: '李四', department: '质检部', position: '质检员', phone: '13800138001', status: 'active', statusText: '在职' },
-        { id: 'EMP003', name: '王五', department: '设备部', position: '设备工程师', phone: '13800138002', status: 'leave', statusText: '请假' }
+        { 
+          id: 'EMP001', 
+          name: '张三', 
+          role: 'supervisor', 
+          roleName: '厂长',
+          department: '管理层', 
+          phone: '13800138000', 
+          status: 'active', 
+          statusText: '在职' 
+        },
+        { 
+          id: 'EMP002', 
+          name: '李四', 
+          role: 'foreman', 
+          roleName: '工长',
+          department: '生产部', 
+          phone: '13800138001', 
+          status: 'active', 
+          statusText: '在职' 
+        },
+        { 
+          id: 'EMP003', 
+          name: '王五', 
+          role: 'worker', 
+          roleName: '产线工人',
+          department: '生产部', 
+          phone: '13800138002', 
+          status: 'leave', 
+          statusText: '请假' 
+        },
+        { 
+          id: 'EMP004', 
+          name: '赵六', 
+          role: 'safety', 
+          roleName: '安全员',
+          department: '安全部', 
+          phone: '13800138003', 
+          status: 'active', 
+          statusText: '在职' 
+        }
       ],
-      filterDepartment: '',
+      filterRole: '',
       searchKeyword: '',
       showAddEmployee: false,
       editingEmployee: null,
       employeeForm: {
         id: '',
         name: '',
+        role: '',
         department: '',
-        position: '',
         phone: ''
       }
     }
@@ -165,11 +228,11 @@ export default {
   computed: {
     filteredEmployees() {
       return this.employees.filter(emp => {
-        const departmentMatch = !this.filterDepartment || emp.department === this.filterDepartment;
+        const roleMatch = !this.filterRole || emp.role === this.filterRole;
         const searchMatch = !this.searchKeyword || 
           emp.name.includes(this.searchKeyword) || 
           emp.id.includes(this.searchKeyword);
-        return departmentMatch && searchMatch;
+        return roleMatch && searchMatch;
       });
     }
   },
@@ -190,8 +253,8 @@ export default {
       this.employeeForm = {
         id: '',
         name: '',
+        role: '',
         department: '',
-        position: '',
         phone: ''
       };
     },
