@@ -8,10 +8,7 @@
       <i class="nav-icon equipment-icon"></i>
       <span>设备与产线</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/foreman/statistics' }" @click="$router.push('/foreman/statistics')">
-      <i class="nav-icon statistics-icon"></i>
-      <span>统计分析</span>
-    </div>
+
     <div class="nav-item" :class="{ active: $route.path === '/foreman/team' }" @click="$router.push('/foreman/team')">
       <i class="nav-icon team-icon"></i>
       <span>团队管理</span>

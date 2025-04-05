@@ -16,14 +16,9 @@ const foremanRoutes = [
     component: () => import('../views/foreman/Equipment.vue')
   },
   {
-    path: '/foreman/statistics',
-    name: 'Statistics',
-    component: () => import('../views/foreman/Statistics.vue')
-  },
-  {
     path: '/foreman/team',
     name: 'Team',
-    component: () => import('../views/foreman/Team.vue')
+    component: () => import('../views/foreman/TeamManagement.vue')
   },
   {
     path: '/foreman/profile',

@@ -91,6 +91,60 @@
           </div>
         </div>
       </div>
+      
+      <!-- 新增设备安全监控模块 -->
+      <div class="equipment-safety">
+        <h3 class="section-title">设备安全状态监控</h3>
+        <div class="filter-bar">
+          <select v-model="equipmentFilter.line" class="filter-select">
+            <option value="">全部产线</option>
+            <option v-for="line in productionLines" :key="line.id" :value="line.id">
+              {{ line.name }}
+            </option>
+          </select>
+          <select v-model="equipmentFilter.risk" class="filter-select">
+            <option value="">全部风险等级</option>
+            <option value="high">高风险</option>
+            <option value="medium">中风险</option>
+            <option value="low">低风险</option>
+          </select>
+        </div>
+        
+        <div class="equipment-table">
+          <table>
+            <thead>
+              <tr>
+                <th>设备名称</th>
+                <th>所属产线</th>
+                <th>风险等级</th>
+                <th>安全参数</th>
+                <th>最后检查</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="device in filteredEquipments" :key="device.id">
+                <td>{{ device.name }}</td>
+                <td>{{ device.productionLine }}</td>
+                <td>
+                  <span :class="['risk-level', device.riskLevel]">{{ device.riskLevelText }}</span>
+                </td>
+                <td>
+                  <div class="safety-params">
+                    <span :class="{ warning: device.temperature > 80 }">温度: {{ device.temperature }}°C</span>
+                    <span :class="{ warning: device.noise > 85 }">噪音: {{ device.noise }}dB</span>
+                  </div>
+                </td>
+                <td>{{ device.lastCheck }}</td>
+                <td>
+                  <button class="action-btn" @click="startInspectionForDevice(device)">开始巡检</button>
+                  <button class="action-btn warning" v-if="device.riskLevel === 'high'" @click="createSafetyAlert(device)">安全预警</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- 巡检任务模态框 -->
@@ -211,7 +265,75 @@ export default {
           checked: false
         }
       ],
-      inspectionNote: ''
+      inspectionNote: '',
+      
+      // 新增设备安全监控相关数据
+      equipmentFilter: {
+        line: '',
+        risk: ''
+      },
+      equipments: [
+        {
+          id: 1,
+          name: '注塑机A-01',
+          productionLine: '一号生产线',
+          riskLevel: 'medium',
+          riskLevelText: '中风险',
+          temperature: 75,
+          noise: 82,
+          safetyStatus: 'normal',
+          lastCheck: '2023-07-05'
+        },
+        {
+          id: 2,
+          name: '压铸机B-02',
+          productionLine: '二号生产线',
+          riskLevel: 'high',
+          riskLevelText: '高风险',
+          temperature: 88,
+          noise: 88,
+          safetyStatus: 'warning',
+          lastCheck: '2023-07-03'
+        },
+        {
+          id: 3,
+          name: '检测仪C-01',
+          productionLine: '一号生产线',
+          riskLevel: 'low',
+          riskLevelText: '低风险',
+          temperature: 65,
+          noise: 72,
+          safetyStatus: 'normal',
+          lastCheck: '2023-07-08'
+        },
+        {
+          id: 4,
+          name: '打包机D-01',
+          productionLine: '三号生产线',
+          riskLevel: 'low',
+          riskLevelText: '低风险',
+          temperature: 60,
+          noise: 75,
+          safetyStatus: 'normal',
+          lastCheck: '2023-07-04'
+        }
+      ]
+    }
+  },
+  computed: {
+    // 根据筛选条件过滤设备
+    filteredEquipments() {
+      return this.equipments.filter(equipment => {
+        // 按产线筛选
+        const lineMatch = !this.equipmentFilter.line || 
+          equipment.productionLine.includes(this.productionLines.find(l => l.id === this.equipmentFilter.line)?.name || '');
+        
+        // 按风险等级筛选
+        const riskMatch = !this.equipmentFilter.risk || 
+          equipment.riskLevel === this.equipmentFilter.risk;
+        
+        return lineMatch && riskMatch;
+      });
     }
   },
   methods: {
@@ -231,6 +353,30 @@ export default {
     submitInspection() {
       console.log('提交巡检结果');
       this.showInspectionModal = false;
+    },
+    
+    // 对特定设备开始巡检
+    startInspectionForDevice(device) {
+      console.log('对设备开始安全巡检:', device);
+      // 这里可以直接打开巡检表单或跳转到巡检页面
+      this.$router.push('/safety/inspection');
+    },
+    
+    // 创建安全预警
+    createSafetyAlert(device) {
+      console.log('为设备创建安全预警:', device);
+      const newHazard = {
+        id: this.hazards.length + 1,
+        type: '设备安全隐患',
+        level: 'high',
+        levelText: '高危',
+        description: `${device.name}在${device.productionLine}的温度异常，存在安全风险`,
+        location: device.productionLine,
+        time: new Date().toLocaleString()
+      };
+      
+      this.hazards.push(newHazard);
+      alert('已创建安全预警并添加到隐患列表');
     }
   }
 }
@@ -521,5 +667,92 @@ export default {
 
 .check-status.pending {
   color: #666;
+}
+
+/* 新增设备安全监控样式 */
+.equipment-safety {
+  margin-top: 20px;
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.equipment-table {
+  overflow-x: auto;
+  margin-top: 15px;
+}
+
+.equipment-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.equipment-table th,
+.equipment-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.equipment-table th {
+  background: #f5f5f5;
+  font-weight: bold;
+  color: #333;
+}
+
+.risk-level {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.risk-level.high {
+  background: #ffebee;
+  color: #f44336;
+}
+
+.risk-level.medium {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.risk-level.low {
+  background: #e8f5e9;
+  color: #4CAF50;
+}
+
+.safety-params {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.safety-params span {
+  font-size: 13px;
+}
+
+.safety-params span.warning {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.filter-select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  flex: 1;
+}
+
+.action-btn.warning {
+  background: #ffebee;
+  color: #f44336;
 }
 </style>

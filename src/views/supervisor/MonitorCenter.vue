@@ -76,6 +76,84 @@
         </div>
       </div>
       
+      <!-- 新增全厂设备监控模块 -->
+      <div class="equipment-monitor">
+        <div class="section-header">
+          <h3 class="section-title">全厂设备状态</h3>
+          <div class="filter-bar">
+            <select v-model="equipmentFilter.line" class="filter-select">
+              <option value="">全部产线</option>
+              <option v-for="line in productionLines" :key="line.id" :value="line.id">
+                {{ line.name }}
+              </option>
+            </select>
+            <select v-model="equipmentFilter.status" class="filter-select">
+              <option value="">全部状态</option>
+              <option value="running">运行中</option>
+              <option value="warning">异常</option>
+              <option value="stopped">已停机</option>
+            </select>
+            <select v-model="equipmentFilter.type" class="filter-select">
+              <option value="">全部类型</option>
+              <option value="production">生产设备</option>
+              <option value="inspection">检测设备</option>
+              <option value="auxiliary">辅助设备</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="equipment-stats">
+          <div class="stat-box">
+            <span class="stat-label">设备总数</span>
+            <span class="stat-value">{{ equipmentStats.total }}</span>
+          </div>
+          <div class="stat-box running">
+            <span class="stat-label">运行中</span>
+            <span class="stat-value">{{ equipmentStats.running }}</span>
+          </div>
+          <div class="stat-box warning">
+            <span class="stat-label">异常</span>
+            <span class="stat-value">{{ equipmentStats.warning }}</span>
+          </div>
+          <div class="stat-box stopped">
+            <span class="stat-label">已停机</span>
+            <span class="stat-value">{{ equipmentStats.stopped }}</span>
+          </div>
+        </div>
+
+        <div class="equipment-table">
+          <table>
+            <thead>
+              <tr>
+                <th>设备名称</th>
+                <th>设备类型</th>
+                <th>所属产线</th>
+                <th>负责人</th>
+                <th>运行状态</th>
+                <th>运行时长(h)</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="device in filteredEquipments" :key="device.id">
+                <td>{{ device.name }}</td>
+                <td>{{ device.typeText }}</td>
+                <td>{{ device.productionLine }}</td>
+                <td>{{ device.manager }}</td>
+                <td>
+                  <span :class="['status-tag', device.status]">{{ device.statusText }}</span>
+                </td>
+                <td>{{ device.runtime }}</td>
+                <td>
+                  <button class="op-btn" @click="viewDeviceDetail(device)">查看</button>
+                  <button class="op-btn warning" v-if="device.status === 'warning'" @click="assignMaintenance(device)">维护</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
       <!-- 产线配置模态框 -->
       <div class="modal" v-if="showConfigModal">
         <div class="modal-content">
@@ -182,7 +260,99 @@ export default {
         { id: 1, name: '张工长' },
         { id: 2, name: '李工长' },
         { id: 3, name: '王工长' }
+      ],
+      // 新增设备监控相关数据
+      equipmentFilter: {
+        line: '',
+        status: '',
+        type: ''
+      },
+      equipments: [
+        {
+          id: 1,
+          name: '注塑机A-01',
+          type: 'production',
+          typeText: '生产设备',
+          productionLine: '一号生产线',
+          status: 'running',
+          statusText: '运行中',
+          runtime: 126.5,
+          manager: '张工',
+          lastMaintenance: '2023-07-01'
+        },
+        {
+          id: 2,
+          name: '压铸机B-02',
+          type: 'production',
+          typeText: '生产设备',
+          productionLine: '二号生产线',
+          status: 'warning',
+          statusText: '异常',
+          runtime: 85.2,
+          manager: '李工',
+          lastMaintenance: '2023-07-05'
+        },
+        {
+          id: 3,
+          name: '检测仪C-01',
+          type: 'inspection',
+          typeText: '检测设备',
+          productionLine: '一号生产线',
+          status: 'running',
+          statusText: '运行中',
+          runtime: 95.5,
+          manager: '王工',
+          lastMaintenance: '2023-07-03'
+        },
+        {
+          id: 4,
+          name: '打包机D-01',
+          type: 'auxiliary',
+          typeText: '辅助设备',
+          productionLine: '三号生产线',
+          status: 'stopped',
+          statusText: '已停机',
+          runtime: 45.5,
+          manager: '刘工',
+          lastMaintenance: '2023-07-02'
+        }
       ]
+    }
+  },
+  computed: {
+    // 根据筛选条件过滤设备
+    filteredEquipments() {
+      return this.equipments.filter(equipment => {
+        // 按产线筛选
+        const lineMatch = !this.equipmentFilter.line || 
+          equipment.productionLine.includes(this.productionLines.find(l => l.id === this.equipmentFilter.line)?.name || '');
+        
+        // 按状态筛选
+        const statusMatch = !this.equipmentFilter.status || 
+          equipment.status === this.equipmentFilter.status;
+        
+        // 按类型筛选
+        const typeMatch = !this.equipmentFilter.type || 
+          equipment.type === this.equipmentFilter.type;
+        
+        return lineMatch && statusMatch && typeMatch;
+      });
+    },
+    
+    // 设备状态统计
+    equipmentStats() {
+      const stats = {
+        total: this.equipments.length,
+        running: 0,
+        warning: 0,
+        stopped: 0
+      };
+      
+      this.equipments.forEach(device => {
+        stats[device.status]++;
+      });
+      
+      return stats;
     }
   },
   methods: {
@@ -212,6 +382,17 @@ export default {
       console.log(`将${this.selectedLine.name}分配给ID为${this.selectedManager}的工长管理`);
       this.showAssignModal = false;
       this.selectedManager = '';
+    },
+    // 查看设备详情
+    viewDeviceDetail(device) {
+      console.log('查看设备详情:', device);
+      // 这里可以增加查看设备详情的逻辑
+    },
+    
+    // 分配维护任务
+    assignMaintenance(device) {
+      console.log('分配设备维护任务:', device);
+      // 这里可以增加设备维护任务分配的逻辑
     }
   }
 }
@@ -545,5 +726,102 @@ export default {
 .btn.submit {
   background: #4CAF50;
   color: white;
+}
+
+/* 设备监控样式 */
+.equipment-monitor {
+  margin-top: 20px;
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.equipment-stats {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.stat-box {
+  flex: 1;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-box.running {
+  background: #e8f5e9;
+  color: #4CAF50;
+}
+
+.stat-box.warning {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.stat-box.stopped {
+  background: #ffebee;
+  color: #f44336;
+}
+
+.stat-label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.equipment-table {
+  overflow-x: auto;
+}
+
+.equipment-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.equipment-table th,
+.equipment-table td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.equipment-table th {
+  background: #f5f5f5;
+  font-weight: bold;
+}
+
+.op-btn {
+  padding: 4px 8px;
+  margin-right: 5px;
+  border: none;
+  border-radius: 4px;
+  background: #e3f2fd;
+  color: #2196F3;
+  cursor: pointer;
+}
+
+.op-btn.warning {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 10px;
+}
+
+.filter-select {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-width: 120px;
 }
 </style>

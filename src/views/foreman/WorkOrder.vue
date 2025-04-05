@@ -44,6 +44,7 @@
             </div>
             <div class="workorder-footer">
               <button class="detail-btn" @click="showWorkOrderDetail(item)">查看详情</button>
+              <button class="action-btn assign" @click="assignTask(item)">安排员工</button>
             </div>
           </div>
         </div>
@@ -67,6 +68,11 @@
               <span v-for="(member, mIndex) in item.members" :key="mIndex">
                 {{ member }}
               </span>
+            </div>
+            <div class="schedule-actions">
+              <button class="action-btn assign" @click="assignEmployeeToSchedule(item)">
+                安排员工
+              </button>
             </div>
           </div>
         </div>
@@ -181,6 +187,9 @@
           <button class="btn submit" @click="updateWorkOrder" v-if="selectedWorkOrder.status === 'pending'">
             开始处理
           </button>
+          <button class="btn assign" @click="assignTask(selectedWorkOrder)" v-if="selectedWorkOrder.status === 'processing'">
+            安排员工
+          </button>
         </div>
       </div>
     </div>
@@ -230,6 +239,65 @@
         </div>
       </div>
     </div>
+    
+    <!-- 安排工作模态框 -->
+    <div class="modal" v-if="showAssignTask">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>安排工作</h3>
+          <span class="close-btn" @click="closeAssignTask">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>工单</label>
+            <input type="text" :value="selectedWorkOrder.number + ' - ' + selectedWorkOrder.description" class="form-input" disabled>
+          </div>
+          <div class="form-group">
+            <label>产线</label>
+            <select v-model="taskForm.lineId" class="form-input" @change="filterEmployeesByLine">
+              <option value="">请选择产线</option>
+              <option v-for="line in assignedLines" :key="line.id" :value="line.id">
+                {{ line.name }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>员工</label>
+            <select v-model="taskForm.employeeId" class="form-input">
+              <option value="">请选择员工</option>
+              <option v-for="emp in filteredEmployeesForTask" :key="emp.id" :value="emp.id">
+                {{ emp.name }} ({{ emp.id }}) - {{ emp.statusText }} - {{ emp.skillLevel }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>工作类型</label>
+            <select v-model="taskForm.type" class="form-input">
+              <option value="">请选择工作类型</option>
+              <option value="production">生产任务</option>
+              <option value="maintenance">设备维护</option>
+              <option value="quality">质量检查</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>任务描述</label>
+            <textarea v-model="taskForm.description" class="form-input" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label>开始时间</label>
+            <input type="datetime-local" v-model="taskForm.startTime" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>结束时间</label>
+            <input type="datetime-local" v-model="taskForm.endTime" class="form-input">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn cancel" @click="closeAssignTask">取消</button>
+          <button class="btn submit" @click="submitTask">确认</button>
+        </div>
+      </div>
+    </div>
 
     <ForemanNav />
   </div>
@@ -246,6 +314,29 @@ export default {
   data() {
     return {
       currentTab: 'workorder',
+      // 工长被分配的产线
+      assignedLines: [
+        {
+          id: 1,
+          name: '一号生产线',
+          status: 'running',
+          statusText: '运行中',
+          runningDevices: 8,
+          totalDevices: 10,
+          utilization: 85,
+          assignedTo: 1 // 分配给当前工长的ID
+        },
+        {
+          id: 2,
+          name: '二号生产线',
+          status: 'warning',
+          statusText: '预警',
+          runningDevices: 6,
+          totalDevices: 8,
+          utilization: 75,
+          assignedTo: 1 // 分配给当前工长的ID
+        }
+      ],
       workorders: [
         {
           number: 'WO2023001',
@@ -285,10 +376,51 @@ export default {
           members: ['吴九', '郑十', '钱十一']
         }
       ],
+      // 员工列表
+      employees: [
+        { 
+          id: 'W001', 
+          name: '张三', 
+          lineId: 1,
+          phone: '13800138001', 
+          status: 'active', 
+          statusText: '在岗',
+          skillLevel: '高级'
+        },
+        { 
+          id: 'W002', 
+          name: '李四', 
+          lineId: 1,
+          phone: '13800138002', 
+          status: 'leave', 
+          statusText: '请假',
+          skillLevel: '中级'
+        },
+        { 
+          id: 'W003', 
+          name: '王五', 
+          lineId: 2,
+          phone: '13800138003', 
+          status: 'task', 
+          statusText: '任务中',
+          skillLevel: '高级'
+        },
+        { 
+          id: 'W004', 
+          name: '赵六', 
+          lineId: 2,
+          phone: '13800138004', 
+          status: 'active', 
+          statusText: '在岗',
+          skillLevel: '初级'
+        }
+      ],
       showNewWorkOrderModal: false,
       showNewScheduleModal: false,
       showWorkOrderDetailModal: false,
+      showAssignTask: false,
       selectedWorkOrder: {},
+      selectedEmployee: {},
       newWorkOrder: {
         type: '',
         description: '',
@@ -302,8 +434,25 @@ export default {
         date: '',
         members: []
       },
+      taskForm: {
+        lineId: '',
+        employeeId: '',
+        type: '',
+        description: '',
+        startTime: '',
+        endTime: ''
+      },
       memberInput: ''
     }
+  },
+  computed: {
+    // 根据选择的产线筛选员工
+    filteredEmployeesForTask() {
+      if (!this.taskForm.lineId) {
+        return this.employees;
+      }
+      return this.employees.filter(emp => emp.lineId === parseInt(this.taskForm.lineId));
+    },
   },
   methods: {
     createWorkOrder() {
@@ -381,6 +530,22 @@ export default {
       };
       return times[shift];
     },
+    
+    // 从排班管理页面安排员工
+    assignEmployeeToSchedule(schedule) {
+      // 创建一个临时工单对象
+      const tempWorkOrder = {
+        number: 'SCH' + Date.now(),
+        status: 'pending',
+        statusText: '待处理',
+        description: `${schedule.title} (${schedule.time}) 排班任务`,
+        owner: '当前工长',
+        deadline: new Date().toISOString().split('T')[0]
+      };
+      
+      // 调用安排员工方法
+      this.assignTask(tempWorkOrder);
+    },
     showWorkOrderDetail(workorder) {
       this.selectedWorkOrder = { ...workorder };
       this.showWorkOrderDetailModal = true;
@@ -397,6 +562,90 @@ export default {
         }
       }
       this.showWorkOrderDetailModal = false;
+    },
+    // 安排工作
+    assignTask(workorder) {
+      this.selectedWorkOrder = { ...workorder };
+      this.showAssignTask = true;
+      
+      // 初始化任务表单，可以预填工单的一些信息
+      this.taskForm = {
+        lineId: '',
+        employeeId: '',
+        type: '',
+        description: workorder.description,
+        startTime: '',
+        endTime: ''
+      };
+    },
+    
+    // 根据产线筛选员工
+    filterEmployeesByLine() {
+      // 重置员工选择
+      this.taskForm.employeeId = '';
+    },
+    
+    // 关闭安排工作
+    closeAssignTask() {
+      this.showAssignTask = false;
+      this.taskForm = {
+        lineId: '',
+        employeeId: '',
+        type: '',
+        description: '',
+        startTime: '',
+        endTime: ''
+      };
+    },
+    
+    // 提交工作安排
+    submitTask() {
+      // 验证表单
+      if (!this.taskForm.lineId) {
+        alert('请选择产线');
+        return;
+      }
+      if (!this.taskForm.employeeId) {
+        alert('请选择员工');
+        return;
+      }
+      if (!this.taskForm.type) {
+        alert('请选择工作类型');
+        return;
+      }
+      if (!this.taskForm.startTime || !this.taskForm.endTime) {
+        alert('请设置开始和结束时间');
+        return;
+      }
+      
+      // 获取选中的员工
+      const employee = this.employees.find(emp => emp.id === this.taskForm.employeeId);
+      if (!employee) {
+        alert('员工不存在');
+        return;
+      }
+      
+      // 更新员工状态
+      const empIndex = this.employees.findIndex(emp => emp.id === this.taskForm.employeeId);
+      if (empIndex !== -1) {
+        this.employees[empIndex].status = 'task';
+        this.employees[empIndex].statusText = '任务中';
+      }
+      
+      // 更新工单信息，可以添加分配的员工信息
+      const workorderIndex = this.workorders.findIndex(w => w.number === this.selectedWorkOrder.number);
+      if (workorderIndex !== -1) {
+        this.workorders[workorderIndex].assignedEmployee = employee.name;
+      }
+      
+      console.log('安排工作:', {
+        workorder: this.selectedWorkOrder,
+        employee: employee,
+        task: this.taskForm
+      });
+      
+      this.closeAssignTask();
+      alert('工作安排已提交');
     }
   }
 }
@@ -488,10 +737,24 @@ export default {
 }
 
 .schedule-members span {
-  background-color: #f5f5f5;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 14px;
+  background-color: #e3f2fd;
+  color: #2196F3;
+  padding: 3px 8px;
+  border-radius: 12px;
+  margin-right: 5px;
+  margin-bottom: 5px;
+  font-size: 0.9em;
+}
+
+.schedule-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.action-btn.assign {
+  background-color: #e8f5e9;
+  color: #4CAF50;
 }
 
 .submit-btn {
@@ -785,5 +1048,29 @@ export default {
   text-align: right;
   color: #666;
   font-size: 13px;
+}
+
+.action-btn {
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  margin-right: 5px;
+  cursor: pointer;
+  font-size: 0.8em;
+}
+
+.action-btn.view {
+  background-color: #e3f2fd;
+  color: #2196F3;
+}
+
+.action-btn.assign {
+  background-color: #e8f5e9;
+  color: #4CAF50;
+}
+
+.btn.assign {
+  background-color: #4CAF50;
+  color: white;
 }
 </style>
