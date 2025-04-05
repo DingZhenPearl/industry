@@ -1,8 +1,8 @@
 <template>
   <nav class="bottom-nav">
-    <div class="nav-item" :class="{ active: $route.path === '/worker/tasks' }" @click="$router.push('/worker/tasks')">
+    <div class="nav-item" :class="{ active: $route.path === '/worker/workorders' }" @click="$router.push('/worker/workorders')">
       <i class="nav-icon tasks-icon"></i>
-      <span>我的任务</span>
+      <span>我的工单</span>
     </div>
     <div class="nav-item" :class="{ active: $route.path === '/worker/issues' }" @click="$router.push('/worker/issues')">
       <i class="nav-icon issues-icon"></i>

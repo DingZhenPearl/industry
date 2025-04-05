@@ -29,9 +29,9 @@ const foremanRoutes = [
 
 const workerRoutes = [
   {
-    path: '/worker/tasks',
-    name: 'MyTasks',
-    component: () => import('../views/worker/MyTasks.vue')
+    path: '/worker/workorders',
+    name: 'MyWorkorders',
+    component: () => import('../views/worker/MyWorkorders.vue')
   },
   {
     path: '/worker/issues',
