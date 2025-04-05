@@ -84,20 +84,21 @@ export default {
   data() {
     return {
       myDevice: {
-        name: '注塑机A-01',
-        code: 'JSJ-001',
-        productionLine: '一号生产线',
+        name: '车身冲压机R-2023',
+        code: 'CSCJ-2023',
+        productionLine: '车身冲压生产线',
         status: 'running',
         statusText: '运行中',
         runtime: 126.5,
-        temperature: 75,
-        speed: 1200,
-        pressure: 2.5
+        temperature: 85,
+        speed: 850,
+        pressure: 18.5
       },
       operationLogs: [
-        { time: '2023-07-10 10:30', content: '完成设备日常检查' },
-        { time: '2023-07-10 09:15', content: '设备启动运行' },
-        { time: '2023-07-10 09:00', content: '更换润滑油' }
+        { time: '2023-07-10 10:30', content: '完成冲压模具检查' },
+        { time: '2023-07-10 09:15', content: '车身冲压机启动运行' },
+        { time: '2023-07-10 09:00', content: '更换液压油' },
+        { time: '2023-07-10 08:30', content: '调整冲压参数适配新批次钢板' }
       ]
     }
   },

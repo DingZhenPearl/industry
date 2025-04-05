@@ -203,22 +203,34 @@ export default {
     return {
       monitorItems: [
         {
-          area: '一号生产线',
+          area: '车身冲压生产线',
           status: 'normal',
           statusText: '正常',
           detail: '设备运行正常，无安全隐患'
         },
         {
-          area: '二号生产线',
+          area: '车身焊接生产线',
           status: 'warning',
           statusText: '预警',
-          detail: '检测到异常振动，建议检查'
+          detail: '检测到焊接机器人异常振动，建议检查'
+        },
+        {
+          area: '底盘装配生产线',
+          status: 'normal',
+          statusText: '正常',
+          detail: '设备运行正常，无安全隐患'
+        },
+        {
+          area: '电池组装生产线',
+          status: 'warning',
+          statusText: '预警',
+          detail: '电池测试区温度偏高，需要检查散热系统'
         }
       ],
       productionLines: [
         {
           id: 1,
-          name: '一号生产线',
+          name: '车身冲压生产线',
           status: 'normal',
           statusText: '正常',
           noise: 82,
@@ -228,13 +240,33 @@ export default {
         },
         {
           id: 2,
-          name: '二号生产线',
+          name: '车身焊接生产线',
           status: 'warning',
           statusText: '预警',
           noise: 88,
           temperature: 37,
           airQuality: 'poor',
           airQualityText: '较差'
+        },
+        {
+          id: 3,
+          name: '底盘装配生产线',
+          status: 'normal',
+          statusText: '正常',
+          noise: 75,
+          temperature: 26,
+          airQuality: 'good',
+          airQualityText: '良好'
+        },
+        {
+          id: 4,
+          name: '电池组装生产线',
+          status: 'warning',
+          statusText: '预警',
+          noise: 72,
+          temperature: 42,
+          airQuality: 'medium',
+          airQualityText: '一般'
         }
       ],
       hazards: [
@@ -243,9 +275,18 @@ export default {
           type: '设备隐患',
           level: 'high',
           levelText: '高危',
-          description: '二号生产线主轴承温度异常，存在安全隐患',
-          location: '二号生产线',
+          description: '车身焊接生产线焊接机器人温度异常，存在安全隐患',
+          location: '车身焊接生产线',
           time: '2023-07-10 10:30'
+        },
+        {
+          id: 2,
+          type: '环境隐患',
+          level: 'medium',
+          levelText: '中危',
+          description: '电池组装生产线通风系统效率下降，可能影响空气质量',
+          location: '电池组装生产线',
+          time: '2023-07-10 11:15'
         }
       ],
       showInspectionModal: false,
@@ -275,30 +316,74 @@ export default {
       equipments: [
         {
           id: 1,
-          name: '注塑机A-01',
-          productionLine: '一号生产线',
+          name: '车身冲压机R-2023',
+          productionLine: '车身冲压生产线',
           riskLevel: 'medium',
           riskLevelText: '中风险',
-          temperature: 75,
+          temperature: 85,
           noise: 82,
           safetyStatus: 'normal',
           lastCheck: '2023-07-05'
         },
         {
           id: 2,
-          name: '压铸机B-02',
-          productionLine: '二号生产线',
+          name: '钢板输送系统S-101',
+          productionLine: '车身冲压生产线',
+          riskLevel: 'low',
+          riskLevelText: '低风险',
+          temperature: 65,
+          noise: 75,
+          safetyStatus: 'normal',
+          lastCheck: '2023-07-06'
+        },
+        {
+          id: 3,
+          name: '焊接机器人W-501',
+          productionLine: '车身焊接生产线',
           riskLevel: 'high',
           riskLevelText: '高风险',
-          temperature: 88,
+          temperature: 92,
           noise: 88,
           safetyStatus: 'warning',
           lastCheck: '2023-07-03'
         },
         {
-          id: 3,
-          name: '检测仪C-01',
-          productionLine: '一号生产线',
+          id: 4,
+          name: '激光焊接系统L-202',
+          productionLine: '车身焊接生产线',
+          riskLevel: 'medium',
+          riskLevelText: '中风险',
+          temperature: 78,
+          noise: 80,
+          safetyStatus: 'normal',
+          lastCheck: '2023-07-04'
+        },
+        {
+          id: 5,
+          name: '底盘组装机A-601',
+          productionLine: '底盘装配生产线',
+          riskLevel: 'low',
+          riskLevelText: '低风险',
+          temperature: 65,
+          noise: 72,
+          safetyStatus: 'normal',
+          lastCheck: '2023-07-07'
+        },
+        {
+          id: 6,
+          name: '电池测试设备B-301',
+          productionLine: '电池组装生产线',
+          riskLevel: 'high',
+          riskLevelText: '高风险',
+          temperature: 90,
+          noise: 70,
+          safetyStatus: 'warning',
+          lastCheck: '2023-07-02'
+        },
+        {
+          id: 7,
+          name: '电芯配对系统C-405',
+          productionLine: '电池组装生产线',
           riskLevel: 'low',
           riskLevelText: '低风险',
           temperature: 65,
@@ -307,9 +392,9 @@ export default {
           lastCheck: '2023-07-08'
         },
         {
-          id: 4,
-          name: '打包机D-01',
-          productionLine: '三号生产线',
+          id: 8,
+          name: '动力总成测试台D-501',
+          productionLine: '动力总成生产线',
           riskLevel: 'low',
           riskLevelText: '低风险',
           temperature: 60,

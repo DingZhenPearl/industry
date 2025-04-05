@@ -154,12 +154,32 @@ export default {
       assignedLines: [
         {
           id: 1,
-          name: '一号生产线',
+          name: '车身冲压生产线',
           status: 'running',
           statusText: '运行中',
+          runningDevices: 12,
+          totalDevices: 15,
+          utilization: 88,
+          assignedTo: 1 // 分配给当前工长的ID
+        },
+        {
+          id: 2,
+          name: '车身焊接生产线',
+          status: 'warning',
+          statusText: '预警',
           runningDevices: 8,
           totalDevices: 10,
-          utilization: 85,
+          utilization: 75,
+          assignedTo: 1 // 分配给当前工长的ID
+        },
+        {
+          id: 3,
+          name: '底盘装配生产线',
+          status: 'running',
+          statusText: '运行中',
+          runningDevices: 9,
+          totalDevices: 12,
+          utilization: 82,
           assignedTo: 1 // 分配给当前工长的ID
         }
       ],
@@ -167,8 +187,8 @@ export default {
       devices: [
         {
           id: 1,
-          name: '注塑机A-01',
-          productionLine: '一号生产线',
+          name: '车身冲压机R-2023',
+          productionLine: '车身冲压生产线',
           status: 'running',
           statusText: '运行中',
           runtime: 126.5,
@@ -177,22 +197,62 @@ export default {
         },
         {
           id: 2,
-          name: '压铸机B-02',
-          productionLine: '一号生产线',
-          status: 'warning',
-          statusText: '预警',
-          runtime: 85.2,
+          name: '钢板输送系统S-101',
+          productionLine: '车身冲压生产线',
+          status: 'running',
+          statusText: '运行中',
+          runtime: 130.2,
           manager: '李工',
-          lastMaintenance: '2023-07-05'
+          lastMaintenance: '2023-07-03'
         },
         {
           id: 3,
-          name: '打包机C-01',
-          productionLine: '二号生产线', // 不是当前工长管理的产线
+          name: '模具更换机械臂M-305',
+          productionLine: '车身冲压生产线',
+          status: 'warning',
+          statusText: '预警',
+          runtime: 85.5,
+          manager: '王工',
+          lastMaintenance: '2023-07-05'
+        },
+        {
+          id: 4,
+          name: '焊接机器人W-501',
+          productionLine: '车身焊接生产线',
+          status: 'warning',
+          statusText: '预警',
+          runtime: 95.2,
+          manager: '赵工',
+          lastMaintenance: '2023-07-02'
+        },
+        {
+          id: 5,
+          name: '激光焊接系统L-202',
+          productionLine: '车身焊接生产线',
+          status: 'running',
+          statusText: '运行中',
+          runtime: 110.5,
+          manager: '钱工',
+          lastMaintenance: '2023-07-04'
+        },
+        {
+          id: 6,
+          name: '底盘组装机A-601',
+          productionLine: '底盘装配生产线',
+          status: 'running',
+          statusText: '运行中',
+          runtime: 78.5,
+          manager: '孙工',
+          lastMaintenance: '2023-07-06'
+        },
+        {
+          id: 7,
+          name: '悬挂系统安装设备S-702',
+          productionLine: '底盘装配生产线',
           status: 'stopped',
           statusText: '已停机',
           runtime: 45.5,
-          manager: '王工',
+          manager: '周工',
           lastMaintenance: '2023-07-03'
         }
       ]
