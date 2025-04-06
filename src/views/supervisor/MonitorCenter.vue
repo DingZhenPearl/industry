@@ -376,7 +376,8 @@ export default {
     },
     viewDetails(line) {
       console.log('查看详情:', line);
-      // 查看产线详情的逻辑
+      // 跳转到产线详情页面
+      this.$router.push(`/supervisor/production-line-detail/${line.id}`);
     },
     confirmAssign() {
       console.log(`将${this.selectedLine.name}分配给ID为${this.selectedManager}的工长管理`);
@@ -386,7 +387,8 @@ export default {
     // 查看设备详情
     viewDeviceDetail(device) {
       console.log('查看设备详情:', device);
-      // 这里可以增加查看设备详情的逻辑
+      // 跳转到设备详情页面
+      this.$router.push(`/supervisor/equipment-detail/${device.id}`);
     },
     
     // 分配维护任务

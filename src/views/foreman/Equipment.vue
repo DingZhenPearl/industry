@@ -3,6 +3,7 @@
     <header class="header">
       <h1>设备与产线</h1>
     </header>
+    <EquipmentGantt class="equipment-gantt-section" />
     
     <div class="content">
       <div class="authority-notice">
@@ -132,12 +133,14 @@
 
 <script>
 import ForemanNav from '@/components/ForemanNav.vue'
+import EquipmentGantt from './EquipmentGantt.vue'
 
 export default {
-  name: 'ForemanEquipment',
   components: {
-    ForemanNav
+    ForemanNav,
+    EquipmentGantt
   },
+  name: 'ForemanEquipment',
   data() {
     return {
       filterLine: '',

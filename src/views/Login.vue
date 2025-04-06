@@ -108,7 +108,7 @@ export default {
           this.$router.push('/foreman/workorder');
           break;
         case 'member':
-          this.$router.push('/worker/tasks');
+          this.$router.push('/worker/workorders');
           break;
         case 'safety_officer':
           this.$router.push('/safety/monitor');

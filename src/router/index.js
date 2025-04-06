@@ -77,6 +77,16 @@ const supervisorRoutes = [
     component: () => import('../views/supervisor/WorkOrders.vue')
   },
   {
+    path: '/supervisor/equipment-detail/:id',
+    name: 'EquipmentDetail',
+    component: () => import('../views/supervisor/EquipmentDetail.vue')
+  },
+  {
+    path: '/supervisor/production-line-detail/:id',
+    name: 'ProductionLineDetail',
+    component: () => import('../views/supervisor/ProductionLineDetail.vue')
+  },
+  {
     path: '/supervisor/profile',
     name: 'SupervisorProfile',
     component: () => import('../views/supervisor/SystemSettings.vue')
@@ -164,7 +174,7 @@ router.beforeEach((to, from, next) => {
   }
 
   if (userInfo.role === 'member' && to.path.startsWith('/foreman')) {
-    next('/worker/tasks')
+    next('/worker/workorders')
     return
   }
 
