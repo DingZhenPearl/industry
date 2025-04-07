@@ -5,12 +5,18 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "server": "node server/index.js",
+    "server:dev": "nodemon server/index.js"
   },
   "dependencies": {
+    "body-parser": "^1.20.2",
     "core-js": "^3.8.3",
+    "cors": "^2.8.5",
     "dhtmlx-gantt": "^9.0.7",
     "echarts": "^5.6.0",
+    "express": "^4.18.2",
+    "express-session": "^1.17.3",
     "v-gantt-chart": "^1.6.3",
     "vue": "^2.6.14",
     "vue-router": "^3.6.5"

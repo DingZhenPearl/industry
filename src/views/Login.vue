@@ -10,6 +10,17 @@
         <h2 class="title">用户登录</h2>
         <p class="subtitle">欢迎回来，请登录您的账号</p>
         
+        <div class="toggle-container">
+          <button 
+            :class="['toggle-btn', { active: !isRegistering }]" 
+            @click="isRegistering = false"
+          >登录</button>
+          <button 
+            :class="['toggle-btn', { active: isRegistering }]" 
+            @click="isRegistering = true"
+          >注册</button>
+        </div>
+
         <form @submit.prevent="handleLogin" class="login-form">
           <div class="form-wrapper">
             <div class="form-group">
@@ -41,9 +52,24 @@
                 />
               </div>
             </div>
+
+            <div v-if="isRegistering" class="form-group">
+              <label for="confirmPassword">确认密码</label>
+              <div class="input-container">
+                <i class="input-icon password-icon"></i>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  v-model="confirmPassword"
+                  required
+                  placeholder="请再次输入密码"
+                  class="modern-input"
+                />
+              </div>
+            </div>
             
             <div class="form-group">
-              <label for="role">登录身份</label>
+              <label for="role">{{ isRegistering ? '注册身份' : '登录身份' }}</label>
               <div class="input-container">
                 <i class="input-icon role-icon"></i>
                 <select 
@@ -62,7 +88,9 @@
             </div>
           </div>
           
-          <button type="submit" class="login-btn">登 录</button>
+          <div v-if="error" class="error-message">{{ error }}</div>
+          
+          <button type="submit" class="login-btn">{{ isRegistering ? '注 册' : '登 录' }}</button>
           
           <div class="footer-note">
           </div>
@@ -79,25 +107,78 @@ export default {
     return {
       username: '',
       password: '',
-      role: ''
+      confirmPassword: '',
+      role: '',
+      error: '',
+      loading: false,
+      isRegistering: false
     }
   },
   created() {
     // 如果已登录就直接跳转到对应的首页
-    if (localStorage.getItem('token')) {
+    const token = localStorage.getItem('token');
+    if (token) {
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
       this.redirectByRole(userInfo.role)
     }
   },
   methods: {
-    handleLogin() {
-      localStorage.setItem('userInfo', JSON.stringify({
-        username: this.username,
-        role: this.role
-      }));
-      localStorage.setItem('token', 'mock-token-' + Date.now());
+    async handleLogin() {
+      if (this.loading) return;
       
-      this.redirectByRole(this.role);
+      // 表单验证
+      if (this.isRegistering && this.password !== this.confirmPassword) {
+        this.error = '两次输入的密码不一致';
+        return;
+      }
+      
+      this.loading = true;
+      this.error = '';
+      
+      try {
+        const endpoint = this.isRegistering ? 'register' : 'login';
+        const response = await fetch(`http://localhost:3000/api/${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username: this.username,
+            password: this.password,
+            role: this.role
+          }),
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+        
+        if (this.isRegistering) {
+          if (data.success) {
+            this.error = '';
+            this.isRegistering = false;
+            this.password = '';
+            this.confirmPassword = '';
+            this.$nextTick(() => {
+              this.error = '注册成功，请登录';
+            });
+          } else {
+            this.error = data.error || '注册失败';
+          }
+        } else {
+          if (response.ok && data.success) {
+            localStorage.setItem('userInfo', JSON.stringify(data.user));
+            localStorage.setItem('token', 'session-' + Date.now());
+            this.redirectByRole(data.user.role);
+          } else {
+            this.error = data.error || '登录失败，请重试';
+          }
+        }
+      } catch (error) {
+        this.error = '服务器连接失败，请稍后重试';
+        console.error('请求错误:', error);
+      } finally {
+        this.loading = false;
+      }
     },
     redirectByRole(role) {
       switch(role) {
@@ -169,10 +250,22 @@ export default {
 
 .login-form-container {
   flex: 1;
-  padding: 60px 40px;
+  padding: 20px 30px;
   display: flex;
   flex-direction: column;
   min-width: 400px;
+}
+
+.title {
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  margin-bottom: 16px;
+}
+
+.form-group {
+  margin-bottom: 10px;
 }
 
 .login-form {
@@ -181,16 +274,16 @@ export default {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  min-height: 400px; /* 减小最小高度 */
+  min-height: 320px;
 }
 
 .form-wrapper {
   flex: 1;
-  margin-bottom: 20px; /* 减少与footer的间距 */
+  margin-bottom: 5px;
 }
 
 .form-group {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .form-group label {
@@ -229,13 +322,18 @@ export default {
 
 .modern-input {
   width: 100%;
-  padding: 14px 14px 14px 40px;
+  padding: 10px 10px 10px 36px;
   border: 1px solid #e1e5e9;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 14px;
   transition: all 0.3s;
   background: #f9fafc;
   color: #333;
+}
+
+.input-container {
+  position: relative;
+  height: 38px;
 }
 
 .modern-input:focus {
@@ -247,8 +345,8 @@ export default {
 
 .login-btn {
   width: 100%;
-  padding: 14px;
-  margin: 12px 0; /* 减小按钮的上下间距 */
+  padding: 12px;
+  margin: 8px 0;
   background: #4b6cb7;
   color: white;
   border: none;
@@ -325,5 +423,38 @@ export default {
     opacity: 1;
     transform: translateY(0);
   }
+}
+.toggle-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+  background: #f5f7fa;
+  padding: 4px;
+  border-radius: 8px;
+  width: 100%;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 10px 24px;
+  border: none;
+  background: transparent;
+  color: #666;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 6px;
+}
+
+.toggle-btn.active {
+  background: #4b6cb7;
+  color: white;
+  box-shadow: 0 2px 8px rgba(75, 108, 183, 0.25);
+}
+
+.toggle-btn:hover:not(.active) {
+  color: #4b6cb7;
+  background: rgba(75, 108, 183, 0.1);
 }
 </style>
