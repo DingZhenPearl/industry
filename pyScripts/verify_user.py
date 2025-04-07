@@ -116,6 +116,37 @@ def update_username(new_username, role, current_username):
             cursor.close()
             connection.close()
 
+def update_password(username, role, new_password):
+    try:
+        # 调试信息输出到stderr
+        print(f"尝试更新密码: 用户={username}, 角色={role}", file=sys.stderr)
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        # 更新密码
+        new_hashed = hashlib.sha256(new_password.encode()).hexdigest()
+        update_query = "UPDATE users SET password = %s WHERE username = %s AND role = %s"
+        cursor.execute(update_query, (new_hashed, username, role))
+        connection.commit()
+        
+        # 只输出JSON到stdout
+        json.dump({
+            'success': True,
+            'message': '密码更新成功'
+        }, sys.stdout, ensure_ascii=False)
+        print()  # 添加换行符
+        
+    except Exception as e:
+        print(json.dumps({
+            'success': False,
+            'error': f'密码更新失败: {str(e)}'
+        }), file=sys.stderr)
+        sys.exit(1)
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
 def verify_user(username, password, role):
     connection = get_db_connection()
     try:
@@ -154,30 +185,39 @@ def verify_user(username, password, role):
             connection.close()
 
 if __name__ == '__main__':
-    if len(sys.argv) < 4:
+    if len(sys.argv) < 5:
         print(json.dumps({
             'success': False,
-            'error': '参数错误'
+            'error': '参数不足'
         }))
         sys.exit(1)
     
     action = sys.argv[1]
-    current_username = sys.argv[2]  # 第一个参数是当前用户名
-    role = sys.argv[3]             # 第二个参数是角色
-    new_username = sys.argv[4] if len(sys.argv) > 4 else ''  # 第三个参数是新用户名
+    username = sys.argv[2]  # 第一个参数是用户名
+    role = sys.argv[3]      # 第二个参数是角色
     
-    if action == 'verify':
-        verify_user(current_username, role, new_username)
+    if action == 'update_password':
+        if len(sys.argv) < 5:
+            print(json.dumps({
+                'success': False,
+                'error': '缺少密码参数'
+            }))
+            sys.exit(1)
+        new_password = sys.argv[4]  # 第四个参数是新密码
+        update_password(username, role, new_password)
+    elif action == 'verify':
+        verify_user(username, role, sys.argv[4])
     elif action == 'register':
-        register_user(current_username, role, new_username)
+        register_user(username, role, sys.argv[4])
     elif action == 'update_username':
+        new_username = sys.argv[4] if len(sys.argv) > 4 else ''
         if not new_username:
             print(json.dumps({
                 'success': False,
                 'error': '缺少新用户名参数'
             }))
             sys.exit(1)
-        update_username(new_username, role, current_username)
+        update_username(new_username, role, username)
     else:
         print(json.dumps({
             'success': False,

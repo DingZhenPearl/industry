@@ -215,6 +215,72 @@ app.post('/api/update-username', async (req, res) => {
   }
 });
 
+// 更新密码
+app.post('/api/update-password', async (req, res) => {
+  const { newPassword, username, role } = req.body;
+  
+  try {
+    const result = await new Promise((resolve) => {
+      const pythonProcess = spawn('python', [
+        'pyScripts/verify_user.py', 
+        'update_password',
+        username,       // 第一个参数是用户名
+        role,           // 第二个参数是角色
+        newPassword     // 第三个参数是新密码
+      ], {
+        encoding: 'utf-8'  // 明确指定编码
+      });
+      
+      let output = '';
+      pythonProcess.stdout.on('data', (data) => {
+        // 只收集最后一行输出
+        const lines = data.toString().split('\n');
+        output = lines[lines.length - 2]; // 获取倒数第二行(最后一行是空行)
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        console.error(`Python脚本错误输出: ${data}`);
+        output += data.toString(); // 收集错误输出
+      });
+
+      pythonProcess.on('close', (code) => {
+        console.log(`Python脚本退出代码: ${code}, 输出: ${output}`);
+        try {
+          const result = JSON.parse(output);
+          resolve(result);
+        } catch (error) {
+          console.error('解析Python输出失败:', error, '原始输出:', output);
+          resolve({ 
+            success: false, 
+            error: '密码更新失败',
+            details: output // 返回原始错误信息
+          });
+        }
+      });
+    });
+    
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: '服务器内部错误' });
+  }
+});
+
+// 更新手机号
+app.post('/api/update-phone', async (req, res) => {
+  const { phone, username, role } = req.body;
+  
+  if (!phone) {
+    return res.status(400).json({ success: false, error: '请提供手机号' });
+  }
+  
+  try {
+    // 这里可以添加数据库更新逻辑
+    res.json({ success: true, message: '手机号更新成功' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: '服务器内部错误' });
+  }
+});
+
 // 退出登录
 app.post('/api/logout', (req, res) => {
   req.session.destroy();

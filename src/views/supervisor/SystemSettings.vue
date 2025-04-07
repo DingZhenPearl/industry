@@ -148,10 +148,65 @@ export default {
   },
   methods: {
     changePassword() {
-      console.log('修改密码')
+      this.$prompt('请输入新密码', '修改密码', {
+        inputType: 'password',
+        confirmButtonText: '确认',
+        cancelButtonText: '取消'
+      }).then(async ({ value: newPassword }) => {
+        try {
+          const data = await fetch('http://localhost:3000/api/update-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              newPassword,
+              role: this.userInfo.role,
+              username: this.userInfo.username
+            }),
+            credentials: 'include'
+          }).then(res => res.json());
+
+          if (data.success) {
+            this.$message.success('密码更新成功');
+          } else {
+            this.$message.error(data.error || '密码更新失败');
+          }
+        } catch (error) {
+          this.$message.error('服务器连接失败');
+        }
+      }).catch(() => {});
     },
+    
     updatePhone() {
-      console.log('更新手机号')
+      this.$prompt('请输入新手机号', '更新手机号', {
+        inputPattern: /^1[3-9]\d{9}$/,
+        inputErrorMessage: '请输入有效的手机号',
+        confirmButtonText: '确认',
+        cancelButtonText: '取消'
+      }).then(async ({ value: phone }) => {
+        try {
+          const response = await fetch('http://localhost:3000/api/update-phone', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone,
+              role: this.userInfo.role,
+              username: this.userInfo.username
+            }),
+            credentials: 'include'
+          });
+          
+          const data = await response.json();
+          if (data.success) {
+            this.userInfo.phone = phone;
+            localStorage.setItem('userInfo', JSON.stringify(this.userInfo));
+            this.$message.success('手机号更新成功');
+          } else {
+            this.$message.error(data.error || '手机号更新失败');
+          }
+        } catch (error) {
+          this.$message.error('服务器连接失败');
+        }
+      }).catch(() => {});
     },
     handleLogout() {
       localStorage.removeItem('userInfo')
