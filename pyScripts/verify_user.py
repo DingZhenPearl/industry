@@ -3,6 +3,11 @@ import json
 import hashlib
 import mysql.connector
 from mysql.connector import Error
+import io
+
+# 在文件开头添加编码设置
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 def get_db_connection():
     try:
@@ -58,6 +63,59 @@ def register_user(username, password, role):
             cursor.close()
             connection.close()
 
+def update_username(new_username, role, current_username):
+    connection = None
+    try:
+        # 调试信息输出到stderr，不影响stdout的JSON输出
+        print(f"尝试更新用户名: {current_username} -> {new_username}, 角色: {role}", file=sys.stderr)
+        
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        # 检查新用户名是否已存在且不是当前用户
+        check_query = "SELECT * FROM users WHERE username = %s AND username != %s"
+        cursor.execute(check_query, (new_username, current_username))
+        if cursor.fetchone():
+            error_msg = f"用户名 {new_username} 已存在"
+            print(json.dumps({
+                'success': False,
+                'error': error_msg
+            }))
+            return
+        
+        # 更新用户名
+        update_query = "UPDATE users SET username = %s WHERE username = %s AND role = %s"
+        cursor.execute(update_query, (new_username, current_username, role))
+        connection.commit()
+        
+        if cursor.rowcount > 0:
+            result = {
+                'success': True,
+                'message': '用户名更新成功'
+            }
+        else:
+            result = {
+                'success': False,
+                'error': f"未找到用户 {current_username} 或角色不匹配"
+            }
+        
+        # 确保输出UTF-8编码的JSON
+        json.dump(result, sys.stdout, ensure_ascii=False)
+        print()  # 添加换行符
+        
+    except Exception as e:
+        error_msg = f"数据库操作异常: {str(e)}"
+        print(error_msg, file=sys.stderr)
+        json.dump({
+            'success': False,
+            'error': error_msg
+        }, sys.stdout, ensure_ascii=False)
+        print()  # 添加换行符
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
 def verify_user(username, password, role):
     connection = get_db_connection()
     try:
@@ -98,22 +156,30 @@ def verify_user(username, password, role):
 if __name__ == '__main__':
     if len(sys.argv) < 4:
         print(json.dumps({
-            'authenticated': False,
+            'success': False,
             'error': '参数错误'
         }))
         sys.exit(1)
     
     action = sys.argv[1]
-    username = sys.argv[2]
-    password = sys.argv[3]
-    role = sys.argv[4] if len(sys.argv) > 4 else ''
+    current_username = sys.argv[2]  # 第一个参数是当前用户名
+    role = sys.argv[3]             # 第二个参数是角色
+    new_username = sys.argv[4] if len(sys.argv) > 4 else ''  # 第三个参数是新用户名
     
     if action == 'verify':
-        verify_user(username, password, role)
+        verify_user(current_username, role, new_username)
     elif action == 'register':
-        register_user(username, password, role)
+        register_user(current_username, role, new_username)
+    elif action == 'update_username':
+        if not new_username:
+            print(json.dumps({
+                'success': False,
+                'error': '缺少新用户名参数'
+            }))
+            sys.exit(1)
+        update_username(new_username, role, current_username)
     else:
         print(json.dumps({
-            'authenticated': False,
+            'success': False,
             'error': '无效的操作'
         }))

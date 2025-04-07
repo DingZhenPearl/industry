@@ -21,7 +21,13 @@
         <h3 class="card-title">个人信息</h3>
         <div class="info-item">
           <label>用户名</label>
-          <div class="value">{{ userInfo.username }}</div>
+          <div class="value">
+            {{ userInfo.username }}
+            <button class="edit-btn" @click="showUpdateUsernameDialog">
+              <i class="icon-edit"></i>
+              编辑
+            </button>
+          </div>
         </div>
         <div class="info-item">
           <label>角色</label>
@@ -70,6 +76,26 @@
     </div>
 
     <WorkerNav />
+
+    <!-- 更新用户名对话框 -->
+    <div v-if="showDialog" class="dialog-overlay">
+      <div class="dialog">
+        <h3>更新用户名</h3>
+        <div class="dialog-content">
+          <input
+            type="text"
+            v-model="newUsername"
+            placeholder="请输入新的用户名"
+            class="input"
+          >
+          <div class="error-message" v-if="updateError">{{ updateError }}</div>
+        </div>
+        <div class="dialog-actions">
+          <button class="cancel-btn" @click="cancelUpdate">取消</button>
+          <button class="confirm-btn" @click="confirmUpdate">确认</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -83,7 +109,10 @@ export default {
   },
   data() {
     return {
-      userInfo: JSON.parse(localStorage.getItem('userInfo') || '{}')
+      userInfo: JSON.parse(localStorage.getItem('userInfo') || '{}'),
+      showDialog: false,
+      newUsername: '',
+      updateError: ''
     }
   },
   methods: {
@@ -99,6 +128,52 @@ export default {
       localStorage.removeItem('userInfo')
       localStorage.removeItem('token')
       this.$router.push('/login')
+    },
+    showUpdateUsernameDialog() {
+      this.showDialog = true;
+      this.newUsername = this.userInfo.username;
+      this.updateError = '';
+    },
+    cancelUpdate() {
+      this.showDialog = false;
+      this.newUsername = '';
+      this.updateError = '';
+    },
+    async confirmUpdate() {
+      if (!this.newUsername.trim()) {
+        this.updateError = '用户名不能为空';
+        return;
+      }
+
+      try {
+        const response = await fetch('http://localhost:3000/api/update-username', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            username: this.newUsername,
+            role: this.userInfo.role,
+            currentUsername: this.userInfo.username
+          }),
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          const updatedUserInfo = { ...this.userInfo, username: this.newUsername };
+          this.userInfo = updatedUserInfo;
+          localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+          this.showDialog = false;
+          this.updateError = '';
+        } else {
+          this.updateError = data.error || '更新失败';
+        }
+      } catch (error) {
+        console.error('更新用户名时出错:', error);
+        this.updateError = '服务器连接失败，请稍后重试';
+      }
     }
   }
 }
@@ -286,5 +361,116 @@ export default {
 
 .action-btn.logout {
   color: #ff4444;
+}
+
+.edit-btn {
+  margin-left: 10px;
+  padding: 2px 8px;
+  border: 1px solid #2196F3;
+  border-radius: 4px;
+  color: #2196F3;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s;
+}
+
+.edit-btn:hover {
+  background: #2196F3;
+  color: white;
+}
+
+.icon-edit:before {
+  content: '✏️';
+  margin-right: 4px;
+}
+
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.dialog h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.dialog-content {
+  margin-bottom: 20px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.input:focus {
+  border-color: #2196F3;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+.error-message {
+  color: #ff4444;
+  font-size: 14px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cancel-btn,
+.confirm-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.cancel-btn {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.cancel-btn:hover {
+  background: #e8e8e8;
+}
+
+.confirm-btn {
+  background: #2196F3;
+  color: white;
+}
+
+.confirm-btn:hover {
+  background: #1976D2;
 }
 </style>
