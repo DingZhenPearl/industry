@@ -166,7 +166,11 @@ export default {
           }
         } else {
           if (response.ok && data.success) {
-            localStorage.setItem('userInfo', JSON.stringify(data.user));
+            localStorage.setItem('userInfo', JSON.stringify({
+              username: data.user.username,
+              role: data.user.role,
+              phone: data.user.phone  // 保存手机号
+            }));
             localStorage.setItem('token', 'session-' + Date.now());
             this.redirectByRole(data.user.role);
           } else {

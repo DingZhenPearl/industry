@@ -56,7 +56,6 @@
                 <th>工号</th>
                 <th>姓名</th>
                 <th>角色</th>
-                <th>所属部门</th>
                 <th>联系方式</th>
                 <th>状态</th>
                 <th>操作</th>
@@ -67,7 +66,6 @@
                 <td>{{ emp.id }}</td>
                 <td>{{ emp.name }}</td>
                 <td>{{ emp.roleName }}</td>
-                <td>{{ emp.department }}</td>
                 <td>{{ emp.phone }}</td>
                 <td>
                   <span :class="['status-tag', emp.status]">
@@ -117,6 +115,14 @@
           <div class="form-group">
             <label>联系方式</label>
             <input type="text" v-model="employeeForm.phone" class="form-input">
+          </div>
+          <div class="form-group">
+            <label>状态</label>
+            <select v-model="employeeForm.status" class="form-input">
+              <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </option>
+            </select>
           </div>
         </div>
         <div class="modal-footer">
@@ -221,8 +227,15 @@ export default {
         name: '',
         role: '',
         department: '',
-        phone: ''
-      }
+        phone: '',
+        status: 'active',
+        statusText: '在职'
+      },
+      statusOptions: [
+        { value: 'active', label: '在岗' },
+        { value: 'leave', label: '请假' },
+        { value: 'off', label: '离岗' }
+      ]
     }
   },
   computed: {
@@ -255,7 +268,9 @@ export default {
         name: '',
         role: '',
         department: '',
-        phone: ''
+        phone: '',
+        status: 'active',
+        statusText: '在职'
       };
     },
     saveEmployee() {

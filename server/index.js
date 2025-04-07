@@ -63,7 +63,8 @@ app.post('/api/login', async (req, res) => {
               success: true,
               user: {
                 username: result.username,
-                role: result.role
+                role: result.role,
+                phone: result.phone  // 添加手机号返回
               }
             });
           } else {
@@ -269,15 +270,75 @@ app.post('/api/update-password', async (req, res) => {
 app.post('/api/update-phone', async (req, res) => {
   const { phone, username, role } = req.body;
   
-  if (!phone) {
-    return res.status(400).json({ success: false, error: '请提供手机号' });
+  if (!phone || phone.length !== 11 || !/^\d+$/.test(phone)) {
+    return res.status(400).json({ 
+      success: false, 
+      error: '请输入有效的11位手机号' 
+    });
   }
-  
+
   try {
-    // 这里可以添加数据库更新逻辑
-    res.json({ success: true, message: '手机号更新成功' });
+    const result = await new Promise((resolve) => {
+      const pythonProcess = spawn('python', [
+        'pyScripts/verify_user.py', 
+        'update_user', 
+        username,
+        role,
+        phone
+      ], {
+        encoding: 'utf-8'
+      });
+      
+      let output = '';
+      pythonProcess.stdout.on('data', (data) => {
+        const lines = data.toString().split('\n');
+        output = lines[lines.length - 2];
+      });
+      
+      pythonProcess.on('close', (code) => {
+        try {
+          resolve(JSON.parse(output));
+        } catch (error) {
+          resolve({ success: false, error: '解析响应失败' });
+        }
+      });
+    });
+    
+    res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
+  }
+});
+
+// 更新用户信息接口
+app.post('/api/update-user', async (req, res) => {
+  const { username, role, phone } = req.body;
+  
+  try {
+    const result = await new Promise((resolve) => {
+      const pythonProcess = spawn('python', [
+        'pyScripts/verify_user.py', 
+        'update_user', 
+        username,
+        role,
+        phone
+      ], {
+        encoding: 'utf-8'
+      });
+      
+      let output = '';
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+      
+      pythonProcess.on('close', (code) => {
+        resolve(JSON.parse(output));
+      });
+    });
+    
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: '服务器错误' });
   }
 });
 

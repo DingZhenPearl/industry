@@ -165,7 +165,8 @@ def verify_user(username, password, role):
                 print(json.dumps({
                     'authenticated': True,
                     'username': user['username'],
-                    'role': user['role']
+                    'role': user['role'],
+                    'phone': user['phone']  # 添加手机号返回
                 }))
                 return
         
@@ -181,6 +182,39 @@ def verify_user(username, password, role):
         }))
     finally:
         if connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def update_user(username, role, phone):
+    connection = None
+    try:
+        # 验证手机号格式
+        if not phone or len(phone) != 11 or not phone.isdigit():
+            print(json.dumps({
+                'success': False,
+                'error': '请输入有效的11位手机号'
+            }))
+            return
+            
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        update_query = "UPDATE users SET phone = %s WHERE username = %s AND role = %s"
+        cursor.execute(update_query, (phone, username, role))
+        connection.commit()
+        
+        print(json.dumps({
+            'success': True,
+            'message': '手机号更新成功'
+        }))
+        
+    except Exception as e:
+        print(json.dumps({
+            'success': False,
+            'error': f'手机号更新失败: {str(e)}'
+        }))
+    finally:
+        if connection and connection.is_connected():
             cursor.close()
             connection.close()
 
@@ -218,6 +252,15 @@ if __name__ == '__main__':
             }))
             sys.exit(1)
         update_username(new_username, role, username)
+    elif action == 'update_user':
+        phone = sys.argv[4] if len(sys.argv) > 4 else ''
+        if not phone:
+            print(json.dumps({
+                'success': False,
+                'error': '缺少电话号码参数'
+            }))
+            sys.exit(1)
+        update_user(username, role, phone)
     else:
         print(json.dumps({
             'success': False,

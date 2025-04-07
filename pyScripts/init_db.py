@@ -25,19 +25,21 @@ def init_database():
                     username VARCHAR(50) NOT NULL UNIQUE,
                     password VARCHAR(64) NOT NULL,
                     role VARCHAR(20) NOT NULL,
+                    phone VARCHAR(20),
+                    status ENUM('在岗', '请假', '离岗') DEFAULT '在岗',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             
             # 插入测试数据
             test_users = [
-                ('admin', 'admin123', 'supervisor'),
-                ('foreman1', 'foreman123', 'foreman'),
-                ('worker1', 'worker123', 'member'),
-                ('safety1', 'safety123', 'safety_officer')
+                ('admin', 'admin123', 'supervisor', '13800138000'),
+                ('foreman1', 'foreman123', 'foreman', '13800138001'),
+                ('worker1', 'worker123', 'member', '13800138002'),
+                ('safety1', 'safety123', 'safety_officer', '13800138003')
             ]
             
-            for username, password, role in test_users:
+            for username, password, role, phone in test_users:
                 # 对密码进行哈希处理
                 hashed_password = hashlib.sha256(password.encode()).hexdigest()
                 
@@ -45,8 +47,8 @@ def init_database():
                 cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
                 if not cursor.fetchone():
                     cursor.execute(
-                        "INSERT INTO users (username, password, role) VALUES (%s, %s, %s)",
-                        (username, hashed_password, role)
+                        "INSERT INTO users (username, password, role, phone) VALUES (%s, %s, %s, %s)",
+                        (username, hashed_password, role, phone)
                     )
             
             connection.commit()
