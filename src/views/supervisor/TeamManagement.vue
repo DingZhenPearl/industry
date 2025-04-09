@@ -41,6 +41,13 @@
               {{ role.name }}
             </option>
           </select>
+          <!-- 添加组号筛选下拉框 -->
+          <select v-model="filterGroup" class="filter-select">
+            <option value="">全部组号</option>
+            <option v-for="group in availableGroups" :key="group" :value="group">
+              {{ group }}
+            </option>
+          </select>
           <input 
             type="text" 
             v-model="searchKeyword"
@@ -185,6 +192,7 @@ export default {
       ],
       employees: [], // 清空本地数据,改为从后端获取
       filterRole: '',
+      filterGroup: '', // 添加组号筛选数据
       searchKeyword: '',
       showAddEmployee: false,
       editingEmployee: null,
@@ -204,14 +212,27 @@ export default {
     this.fetchEmployees()
   },
   computed: {
+    // 获取所有可用的组号
+    availableGroups() {
+      const groups = new Set();
+      this.employees.forEach(emp => {
+        if (emp.group_id) {
+          groups.add(emp.group_id);
+        }
+      });
+      return Array.from(groups).sort();
+    },
+    
     filteredEmployees() {
       return this.employees.filter(emp => {
         const roleMatch = !this.filterRole || emp.role === this.filterRole;
+        const groupMatch = !this.filterGroup || emp.group_id === this.filterGroup;
         const searchMatch = !this.searchKeyword || 
           emp.name.toLowerCase().includes(this.searchKeyword.toLowerCase()) || 
           emp.id.toLowerCase().includes(this.searchKeyword.toLowerCase()) ||
-          (emp.group_id && emp.group_id.toLowerCase().includes(this.searchKeyword.toLowerCase())); // 添加分组号搜索
-        return roleMatch && searchMatch;
+          (emp.group_id && emp.group_id.toLowerCase().includes(this.searchKeyword.toLowerCase()));
+        
+        return roleMatch && groupMatch && searchMatch;
       });
     }
   },
