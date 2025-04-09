@@ -43,9 +43,24 @@ def register_user(username, password, role):
         # 对密码进行哈希处理
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
         
-        # 插入新用户
-        insert_query = "INSERT INTO users (username, password, role) VALUES (%s, %s, %s)"
-        cursor.execute(insert_query, (username, hashed_password, role))
+        # 获取最后一个ID用于生成工号
+        cursor.execute("SELECT MAX(id) as max_id FROM users")
+        result = cursor.fetchone()
+        next_id = (result['max_id'] or 0) + 1
+        
+        # 根据角色生成工号前缀
+        prefix = {
+            'supervisor': 'SP',
+            'foreman': 'FM',
+            'member': 'WK',
+            'safety_officer': 'SF'
+        }.get(role, 'EMP')
+        
+        employee_id = f"{prefix}{next_id:04d}"
+        
+        # 插入新用户时包含工号
+        insert_query = "INSERT INTO users (username, password, role, employee_id) VALUES (%s, %s, %s, %s)"
+        cursor.execute(insert_query, (username, hashed_password, role, employee_id))
         connection.commit()
         
         print(json.dumps({
@@ -166,7 +181,8 @@ def verify_user(username, password, role):
                     'authenticated': True,
                     'username': user['username'],
                     'role': user['role'],
-                    'phone': user['phone']  # 添加手机号返回
+                    'phone': user['phone'],  # 添加手机号返回
+                    'employee_id': user['employee_id']  # 添加工号返回
                 }))
                 return
         
