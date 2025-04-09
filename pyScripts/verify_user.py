@@ -232,6 +232,31 @@ def update_user(username, role, phone):
             cursor.close()
             connection.close()
 
+def update_group_id(username, role, group_id):
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        
+        update_query = "UPDATE users SET group_id = %s WHERE username = %s AND role = %s"
+        cursor.execute(update_query, (group_id, username, role))
+        connection.commit()
+        
+        print(json.dumps({
+            'success': True,
+            'message': '组号更新成功'
+        }))
+        
+    except Exception as e:
+        print(json.dumps({
+            'success': False,
+            'error': f'组号更新失败: {str(e)}'
+        }))
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
 def get_users():
     connection = None
     try:
@@ -323,6 +348,9 @@ if __name__ == '__main__':
                 }))
                 sys.exit(1)
             update_user(username, role, phone)
+        elif action == 'update_group':
+            group_id = sys.argv[4] if len(sys.argv) > 4 else ''
+            update_group_id(username, role, group_id)
         else:
             print(json.dumps({
                 'success': False,

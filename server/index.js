@@ -406,6 +406,40 @@ app.post('/api/update-user', async (req, res) => {
   }
 });
 
+// 更新用户组号
+app.post('/api/update-group', authMiddleware, async (req, res) => {
+  const { username, role, group_id } = req.body;
+  
+  try {
+    const result = await new Promise((resolve) => {
+      const pythonProcess = spawn('python', [
+        'pyScripts/verify_user.py',
+        'update_group',
+        username,
+        role,
+        group_id
+      ]);
+      
+      let output = '';
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+      
+      pythonProcess.on('close', (code) => {
+        try {
+          resolve(JSON.parse(output));
+        } catch (error) {
+          resolve({ success: false, error: '解析响应失败' });
+        }
+      });
+    });
+    
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: '服务器内部错误' });
+  }
+});
+
 // 退出登录
 app.post('/api/logout', (req, res) => {
   req.session.destroy();
