@@ -132,16 +132,71 @@ app.post('/api/register', async (req, res) => {
 
 // 会话验证中间件
 const authMiddleware = (req, res, next) => {
+  // 从请求头获取token
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (token) {
+    // 这里可以添加token验证逻辑
+    next();
+    return;
+  }
+  
+  // 再检查session
   if (req.session && req.session.user) {
     next();
-  } else {
-    res.status(401).json({ error: '未登录' });
+    return;
   }
+
+  res.status(401).json({ 
+    success: false, 
+    error: '未登录' 
+  });
 };
 
 // 获取当前用户信息
 app.get('/api/user', authMiddleware, (req, res) => {
   res.json({ user: req.session.user });
+});
+
+// 获取用户列表
+app.get('/api/users', authMiddleware, async (req, res) => {
+  try {
+    const pythonProcess = spawn('python', ['pyScripts/verify_user.py', 'get_users']);
+    
+    let result = await new Promise((resolve, reject) => {
+      let output = '';
+      
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        console.error(`Python错误: ${data}`);
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code !== 0) {
+          reject(new Error('Python脚本执行失败'));
+          return;
+        }
+        try {
+          resolve(JSON.parse(output));
+        } catch (error) {
+          reject(new Error('解析Python输出失败'));
+        }
+      });
+    });
+
+    res.json(result);
+
+  } catch (error) {
+    console.error('获取用户列表时出错:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || '获取用户列表失败'
+    });
+  }
 });
 
 // 更新用户名

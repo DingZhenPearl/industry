@@ -232,8 +232,46 @@ def update_user(username, role, phone):
             cursor.close()
             connection.close()
 
+def get_users():
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+        SELECT 
+            employee_id as id,  
+            username as name,
+            role,
+            phone,
+            COALESCE(status, 'active') as status,
+            CASE 
+                WHEN status = 'leave' THEN '请假'
+                WHEN status = 'off' THEN '离岗' 
+                ELSE '在岗'
+            END as statusText
+        FROM users
+        """
+        cursor.execute(query)
+        users = cursor.fetchall()
+        
+        print(json.dumps({
+            'success': True,
+            'data': users
+        }, ensure_ascii=False))
+        
+    except Error as e:
+        print(json.dumps({
+            'success': False,
+            'error': str(e)
+        }, ensure_ascii=False), flush=True)
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
 if __name__ == '__main__':
-    if len(sys.argv) < 5:
+    if len(sys.argv) < 2:
         print(json.dumps({
             'success': False,
             'error': '参数不足'
@@ -241,42 +279,51 @@ if __name__ == '__main__':
         sys.exit(1)
     
     action = sys.argv[1]
-    username = sys.argv[2]  # 第一个参数是用户名
-    role = sys.argv[3]      # 第二个参数是角色
     
-    if action == 'update_password':
-        if len(sys.argv) < 5:
-            print(json.dumps({
-                'success': False,
-                'error': '缺少密码参数'
-            }))
-            sys.exit(1)
-        new_password = sys.argv[4]  # 第四个参数是新密码
-        update_password(username, role, new_password)
-    elif action == 'verify':
-        verify_user(username, role, sys.argv[4])
-    elif action == 'register':
-        register_user(username, role, sys.argv[4])
-    elif action == 'update_username':
-        new_username = sys.argv[4] if len(sys.argv) > 4 else ''
-        if not new_username:
-            print(json.dumps({
-                'success': False,
-                'error': '缺少新用户名参数'
-            }))
-            sys.exit(1)
-        update_username(new_username, role, username)
-    elif action == 'update_user':
-        phone = sys.argv[4] if len(sys.argv) > 4 else ''
-        if not phone:
-            print(json.dumps({
-                'success': False,
-                'error': '缺少电话号码参数'
-            }))
-            sys.exit(1)
-        update_user(username, role, phone)
-    else:
+    if action == 'get_users':
+        get_users()
+    elif len(sys.argv) < 4:
         print(json.dumps({
             'success': False,
-            'error': '无效的操作'
+            'error': '参数不足'
         }))
+        sys.exit(1)
+    else:
+        username = sys.argv[2]
+        role = sys.argv[3]
+        if action == 'update_password':
+            if len(sys.argv) < 5:
+                print(json.dumps({
+                    'success': False,
+                    'error': '缺少密码参数'
+                }))
+                sys.exit(1)
+            new_password = sys.argv[4]  # 第四个参数是新密码
+            update_password(username, role, new_password)
+        elif action == 'verify':
+            verify_user(username, role, sys.argv[4])
+        elif action == 'register':
+            register_user(username, role, sys.argv[4])
+        elif action == 'update_username':
+            new_username = sys.argv[4] if len(sys.argv) > 4 else ''
+            if not new_username:
+                print(json.dumps({
+                    'success': False,
+                    'error': '缺少新用户名参数'
+                }))
+                sys.exit(1)
+            update_username(new_username, role, username)
+        elif action == 'update_user':
+            phone = sys.argv[4] if len(sys.argv) > 4 else ''
+            if not phone:
+                print(json.dumps({
+                    'success': False,
+                    'error': '缺少电话号码参数'
+                }))
+                sys.exit(1)
+            update_user(username, role, phone)
+        else:
+            print(json.dumps({
+                'success': False,
+                'error': '无效的操作'
+            }))

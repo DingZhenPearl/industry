@@ -162,94 +162,86 @@ export default {
           completion: 92 
         },
         { 
-          id: 'worker', 
+          id: 'member',  // 修改这里，从 'worker' 改为 'member'
           name: '产线工人', 
           memberCount: 45, 
           activeRate: 95, 
           completion: 90 
         },
         { 
-          id: 'safety', 
+          id: 'safety_officer',  // 修改这里，从 'safety' 改为 'safety_officer'
           name: '安全员', 
           memberCount: 3, 
           activeRate: 100, 
           completion: 94 
         }
       ],
-      employees: [
-        { 
-          id: 'EMP001', 
-          name: '张三', 
-          role: 'supervisor', 
-          roleName: '厂长',
-          department: '管理层', 
-          phone: '13800138000', 
-          status: 'active', 
-          statusText: '在职' 
-        },
-        { 
-          id: 'EMP002', 
-          name: '李四', 
-          role: 'foreman', 
-          roleName: '工长',
-          department: '生产部', 
-          phone: '13800138001', 
-          status: 'active', 
-          statusText: '在职' 
-        },
-        { 
-          id: 'EMP003', 
-          name: '王五', 
-          role: 'worker', 
-          roleName: '产线工人',
-          department: '生产部', 
-          phone: '13800138002', 
-          status: 'leave', 
-          statusText: '请假' 
-        },
-        { 
-          id: 'EMP004', 
-          name: '赵六', 
-          role: 'safety', 
-          roleName: '安全员',
-          department: '安全部', 
-          phone: '13800138003', 
-          status: 'active', 
-          statusText: '在职' 
-        }
-      ],
+      employees: [], // 清空本地数据,改为从后端获取
       filterRole: '',
       searchKeyword: '',
       showAddEmployee: false,
       editingEmployee: null,
       employeeForm: {
         id: '',
-        name: '',
+        name: '', 
         role: '',
-        department: '',
         phone: '',
         status: 'active',
         statusText: '在职'
-      },
-      statusOptions: [
-        { value: 'active', label: '在岗' },
-        { value: 'leave', label: '请假' },
-        { value: 'off', label: '离岗' }
-      ]
+      }
     }
+  },
+  created() {
+    // 组件创建时获取用户列表
+    this.fetchEmployees()
   },
   computed: {
     filteredEmployees() {
       return this.employees.filter(emp => {
         const roleMatch = !this.filterRole || emp.role === this.filterRole;
         const searchMatch = !this.searchKeyword || 
-          emp.name.includes(this.searchKeyword) || 
-          emp.id.includes(this.searchKeyword);
+          emp.name.toLowerCase().includes(this.searchKeyword.toLowerCase()) || 
+          emp.id.toLowerCase().includes(this.searchKeyword.toLowerCase());
         return roleMatch && searchMatch;
       });
     }
   },
   methods: {
+    // 获取用户列表
+    async fetchEmployees() {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/users', {
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          // 处理返回的数据,添加角色名称显示
+          this.employees = data.data.map(user => ({
+            ...user,
+            roleName: this.getRoleName(user.role)
+          }));
+        } else {
+          console.error('获取用户列表失败:', data.error);
+        }
+      } catch (error) {
+        console.error('请求用户列表出错:', error);
+      }
+    },
+    // 获取角色显示名称
+    getRoleName(role) {
+      const roleNames = {
+        'supervisor': '厂长',
+        'foreman': '工长', 
+        'member': '产线工人',
+        'safety_officer': '安全员'
+      };
+      return roleNames[role] || role;
+    },
     editEmployee(employee) {
       this.editingEmployee = employee;
       this.employeeForm = { ...employee };
