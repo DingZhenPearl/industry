@@ -239,32 +239,33 @@ def get_users():
         cursor = connection.cursor(dictionary=True)
         
         query = """
-        SELECT 
-            employee_id as id,  
-            username as name,
-            role,
-            phone,
-            COALESCE(status, 'active') as status,
-            CASE 
-                WHEN status = 'leave' THEN '请假'
-                WHEN status = 'off' THEN '离岗' 
-                ELSE '在岗'
-            END as statusText
-        FROM users
+            SELECT 
+                employee_id as id,
+                username as name,
+                role,
+                phone,
+                group_id,
+                COALESCE(status, 'active') as status,
+                CASE 
+                    WHEN status = 'leave' THEN '请假'
+                    WHEN status = 'off' THEN '离岗' 
+                    ELSE '在岗'
+                END as statusText
+            FROM users
         """
+        
         cursor.execute(query)
         users = cursor.fetchall()
         
-        print(json.dumps({
-            'success': True,
-            'data': users
-        }, ensure_ascii=False))
+        # 确保输出格式正确的JSON
+        print(json.dumps(users, ensure_ascii=False))
         
-    except Error as e:
+    except Exception as e:
         print(json.dumps({
             'success': False,
             'error': str(e)
-        }, ensure_ascii=False), flush=True)
+        }), file=sys.stderr)
+        sys.exit(1)
     finally:
         if connection and connection.is_connected():
             cursor.close()

@@ -27,10 +27,24 @@ def init_database():
                     role VARCHAR(20) NOT NULL,
                     phone VARCHAR(20),
                     status ENUM('在岗', '请假', '离岗') DEFAULT '在岗',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    group_id INT NULL COMMENT '所属分组ID'
                 )
             """)
             
+            # 添加分组字段（如果表已存在且字段不存在）
+            cursor.execute("""
+                SELECT COUNT(*) FROM information_schema.columns 
+                WHERE table_schema = 'industry_db' 
+                AND table_name = 'users' 
+                AND column_name = 'group_id'
+            """)
+            if cursor.fetchone()[0] == 0:
+                cursor.execute("""
+                    ALTER TABLE users 
+                    ADD COLUMN group_id INT NULL COMMENT '所属分组ID'
+                """)
+
             # 插入测试数据
             test_users = [
                 ('admin', 'admin123', 'supervisor', '13800138000'),

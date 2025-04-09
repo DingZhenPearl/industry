@@ -67,6 +67,7 @@
               <tr>
                 <th>工号</th>
                 <th>姓名</th>
+                <th>分组号</th>
                 <th>所属产线</th>
                 <th>联系方式</th>
                 <th>状态</th>
@@ -77,6 +78,7 @@
               <tr v-for="emp in filteredEmployees" :key="emp.id">
                 <td>{{ emp.id }}</td>
                 <td>{{ emp.name }}</td>
+                <td>{{ emp.group_id || '未分组' }}</td>
                 <td>{{ getLineName(emp.lineId) }}</td>
                 <td>{{ emp.phone }}</td>
                 <td>
@@ -220,6 +222,7 @@ export default {
           id: 'W001', 
           name: '张三', 
           lineId: 1,
+          group_id: 'A', // 添加分组号示例
           phone: '13800138001', 
           status: 'active', 
           statusText: '在岗',
@@ -232,6 +235,7 @@ export default {
           id: 'W002', 
           name: '李四', 
           lineId: 1,
+          group_id: 'B', // 添加分组号示例
           phone: '13800138002', 
           status: 'leave', 
           statusText: '请假',
@@ -256,6 +260,7 @@ export default {
           id: 'W004', 
           name: '赵六', 
           lineId: 2,
+          group_id: 'C', // 添加分组号示例
           phone: '13800138004', 
           status: 'active', 
           statusText: '在岗',
@@ -304,7 +309,8 @@ export default {
         const statusMatch = !this.filterStatus || emp.status === this.filterStatus;
         const searchMatch = !this.searchKeyword || 
           emp.name.includes(this.searchKeyword) || 
-          emp.id.includes(this.searchKeyword);
+          emp.id.includes(this.searchKeyword) ||
+          (emp.group_id && emp.group_id.includes(this.searchKeyword)); // 添加分组号搜索
         return lineMatch && statusMatch && searchMatch;
       });
     }

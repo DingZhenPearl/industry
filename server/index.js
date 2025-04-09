@@ -162,9 +162,9 @@ app.get('/api/user', authMiddleware, (req, res) => {
 // 获取用户列表
 app.get('/api/users', authMiddleware, async (req, res) => {
   try {
-    const pythonProcess = spawn('python', ['pyScripts/verify_user.py', 'get_users']);
-    
-    let result = await new Promise((resolve, reject) => {
+    const usersList = await new Promise((resolve, reject) => {
+      const pythonProcess = spawn('python', ['pyScripts/verify_user.py', 'get_users']);
+      
       let output = '';
       
       pythonProcess.stdout.on('data', (data) => {
@@ -181,20 +181,28 @@ app.get('/api/users', authMiddleware, async (req, res) => {
           return;
         }
         try {
-          resolve(JSON.parse(output));
+          const cleanOutput = output.trim();
+          if (!cleanOutput) {
+            throw new Error('Python脚本无输出');
+          }
+          const users = JSON.parse(cleanOutput);
+          resolve({
+            success: true,
+            data: users
+          });
         } catch (error) {
+          console.error('解析Python输出失败:', error, '原始输出:', output);
           reject(new Error('解析Python输出失败'));
         }
       });
     });
 
-    res.json(result);
-
+    res.json(usersList);
   } catch (error) {
     console.error('获取用户列表时出错:', error);
     res.status(500).json({ 
       success: false, 
-      error: error.message || '获取用户列表失败'
+      error: error.message
     });
   }
 });

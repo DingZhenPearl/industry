@@ -55,6 +55,7 @@
               <tr>
                 <th>工号</th>
                 <th>姓名</th>
+                <th>分组号</th>
                 <th>角色</th>
                 <th>联系方式</th>
                 <th>状态</th>
@@ -65,6 +66,7 @@
               <tr v-for="emp in filteredEmployees" :key="emp.id">
                 <td>{{ emp.id }}</td>
                 <td>{{ emp.name }}</td>
+                <td>{{ emp.group_id || '未分组' }}</td>
                 <td>{{ emp.roleName }}</td>
                 <td>{{ emp.phone }}</td>
                 <td>
@@ -201,7 +203,8 @@ export default {
         const roleMatch = !this.filterRole || emp.role === this.filterRole;
         const searchMatch = !this.searchKeyword || 
           emp.name.toLowerCase().includes(this.searchKeyword.toLowerCase()) || 
-          emp.id.toLowerCase().includes(this.searchKeyword.toLowerCase());
+          emp.id.toLowerCase().includes(this.searchKeyword.toLowerCase()) ||
+          (emp.group_id && emp.group_id.toLowerCase().includes(this.searchKeyword.toLowerCase())); // 添加分组号搜索
         return roleMatch && searchMatch;
       });
     }
