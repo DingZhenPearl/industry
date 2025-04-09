@@ -167,21 +167,19 @@ def verify_user(username, password, role):
     try:
         cursor = connection.cursor(dictionary=True)
         
-        # 使用参数化查询防止SQL注入
-        query = "SELECT * FROM users WHERE username = %s AND role = %s"
-        cursor.execute(query, (username, role))
+        # 修改查询语句,添加 employee_id
+        check_query = "SELECT username, password, role, phone, employee_id FROM users WHERE username = %s AND role = %s"
+        cursor.execute(check_query, (username, role))
         user = cursor.fetchone()
         
         if user:
-            # 对输入的密码进行哈希处理
             hashed_password = hashlib.sha256(password.encode()).hexdigest()
-            
             if hashed_password == user['password']:
                 print(json.dumps({
                     'authenticated': True,
                     'username': user['username'],
                     'role': user['role'],
-                    'phone': user['phone'],  # 添加手机号返回
+                    'phone': user['phone'],
                     'employee_id': user['employee_id']  # 添加工号返回
                 }))
                 return
@@ -190,11 +188,11 @@ def verify_user(username, password, role):
             'authenticated': False,
             'error': '用户名或密码错误'
         }))
-        
+            
     except Error as e:
         print(json.dumps({
             'authenticated': False,
-            'error': f'数据库查询错误: {str(e)}'
+            'error': str(e)
         }))
     finally:
         if connection.is_connected():

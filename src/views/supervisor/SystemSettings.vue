@@ -20,6 +20,10 @@
       <div class="info-card">
         <h3 class="card-title">个人信息</h3>
         <div class="info-item">
+          <label>工号</label>
+          <div class="value">{{ userInfo.employee_id || '未分配' }}</div>
+        </div>
+        <div class="info-item">
           <label>用户名</label>
           <div class="value">
             {{ userInfo.username }}

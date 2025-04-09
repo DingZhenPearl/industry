@@ -64,7 +64,8 @@ app.post('/api/login', async (req, res) => {
               user: {
                 username: result.username,
                 role: result.role,
-                phone: result.phone  // 添加手机号返回
+                phone: result.phone,
+                employee_id: result.employee_id // 确保工号被传递
               }
             });
           } else {

@@ -169,7 +169,8 @@ export default {
             localStorage.setItem('userInfo', JSON.stringify({
               username: data.user.username,
               role: data.user.role,
-              phone: data.user.phone  // 保存手机号
+              phone: data.user.phone,
+              employee_id: data.user.employee_id  // 添加工号
             }));
             localStorage.setItem('token', 'session-' + Date.now());
             this.redirectByRole(data.user.role);
