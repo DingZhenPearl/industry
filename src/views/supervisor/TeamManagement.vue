@@ -249,17 +249,19 @@ export default {
         });
         const data = await response.json();
         
-        if (data.success) {
+        if (data.success && Array.isArray(data.data)) {
           // 处理返回的数据,添加角色名称显示
           this.employees = data.data.map(user => ({
             ...user,
             roleName: this.getRoleName(user.role)
           }));
         } else {
-          console.error('获取用户列表失败:', data.error);
+          console.error('获取用户列表失败:', data.error || '未知错误');
+          this.$message.error('获取用户列表失败');
         }
       } catch (error) {
         console.error('请求用户列表出错:', error);
+        this.$message.error('获取用户列表失败');
       }
     },
     // 获取角色显示名称

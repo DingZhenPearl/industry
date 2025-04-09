@@ -166,23 +166,23 @@ def verify_user(username, password, role):
     connection = get_db_connection()
     try:
         cursor = connection.cursor(dictionary=True)
-        
-        # 修改查询语句,添加 employee_id
-        check_query = "SELECT username, password, role, phone, employee_id FROM users WHERE username = %s AND role = %s"
+        check_query = """
+            SELECT username, password, role, phone, employee_id, group_id 
+            FROM users WHERE username = %s AND role = %s
+        """
         cursor.execute(check_query, (username, role))
         user = cursor.fetchone()
         
-        if user:
-            hashed_password = hashlib.sha256(password.encode()).hexdigest()
-            if hashed_password == user['password']:
-                print(json.dumps({
-                    'authenticated': True,
-                    'username': user['username'],
-                    'role': user['role'],
-                    'phone': user['phone'],
-                    'employee_id': user['employee_id']  # 添加工号返回
-                }))
-                return
+        if user and hashlib.sha256(password.encode()).hexdigest() == user['password']:
+            print(json.dumps({
+                'authenticated': True,
+                'username': user['username'],
+                'role': user['role'],
+                'phone': user['phone'],
+                'employee_id': user['employee_id'],
+                'group_id': user['group_id']
+            }))
+            return
         
         print(json.dumps({
             'authenticated': False,
@@ -282,15 +282,74 @@ def get_users():
         cursor.execute(query)
         users = cursor.fetchall()
         
-        # 确保输出格式正确的JSON
-        print(json.dumps(users, ensure_ascii=False))
+        # 包装在success对象中返回
+        print(json.dumps({
+            'success': True,
+            'data': users
+        }, ensure_ascii=False))
         
     except Exception as e:
         print(json.dumps({
             'success': False,
             'error': str(e)
-        }), file=sys.stderr)
-        sys.exit(1)
+        }, ensure_ascii=False))
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def get_team_members(group_id):
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+            SELECT 
+                employee_id as id,
+                username as name,
+                role,
+                phone,
+                group_id,
+                COALESCE(status, 'active') as status,
+                CASE 
+                    WHEN status = 'leave' THEN '请假'
+                    WHEN status = 'task' THEN '任务中'
+                    WHEN status = 'off' THEN '离岗' 
+                    ELSE '在岗'
+                END as statusText
+            FROM users
+            WHERE group_id = %s AND role != 'supervisor' AND role != 'foreman'
+        """
+        
+        cursor.execute(query, (group_id,))
+        members = cursor.fetchall()
+        
+        # 确保所有字段都有值并添加默认的lineId
+        processed_members = []
+        for member in members:
+            # 添加默认lineId值
+            member['lineId'] = '1'  # 默认分配到1号产线
+            processed_member = {}
+            for key, value in member.items():
+                if value is None:
+                    processed_member[key] = ''
+                else:
+                    processed_member[key] = str(value)
+            processed_members.append(processed_member)
+        
+        result = {
+            'success': True,
+            'data': processed_members
+        }
+        
+        print(json.dumps(result, ensure_ascii=False))
+        
+    except Exception as e:
+        print(json.dumps({
+            'success': False,
+            'error': str(e)
+        }, ensure_ascii=False))
     finally:
         if connection and connection.is_connected():
             cursor.close()
@@ -308,6 +367,9 @@ if __name__ == '__main__':
     
     if action == 'get_users':
         get_users()
+    elif action == 'get_team_members':
+        group_id = sys.argv[2]
+        get_team_members(group_id)
     elif len(sys.argv) < 4:
         print(json.dumps({
             'success': False,

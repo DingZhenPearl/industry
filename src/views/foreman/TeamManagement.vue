@@ -83,7 +83,7 @@
                 <td>{{ emp.phone }}</td>
                 <td>
                   <span :class="['status-tag', emp.status]">
-                    {{ emp.statusText }}
+                    {{ getRoleName(emp.role) }} - {{ getStatusText(emp) }}
                   </span>
                 </td>
                 <td>
@@ -216,61 +216,7 @@ export default {
           assignedTo: 1 // 分配给当前工长的ID
         }
       ],
-      // 员工列表
-      employees: [
-        { 
-          id: 'W001', 
-          name: '张三', 
-          lineId: 1,
-          group_id: 'A', // 添加分组号示例
-          phone: '13800138001', 
-          status: 'active', 
-          statusText: '在岗',
-          skillLevel: '高级',
-          joinDate: '2022-05-15',
-          attendance: '24/26',
-          completionRate: 98
-        },
-        { 
-          id: 'W002', 
-          name: '李四', 
-          lineId: 1,
-          group_id: 'B', // 添加分组号示例
-          phone: '13800138002', 
-          status: 'leave', 
-          statusText: '请假',
-          skillLevel: '中级',
-          joinDate: '2022-08-20',
-          attendance: '20/26',
-          completionRate: 92
-        },
-        { 
-          id: 'W003', 
-          name: '王五', 
-          lineId: 2,
-          phone: '13800138003', 
-          status: 'task', 
-          statusText: '任务中',
-          skillLevel: '高级',
-          joinDate: '2022-03-10',
-          attendance: '26/26',
-          completionRate: 95
-        },
-        { 
-          id: 'W004', 
-          name: '赵六', 
-          lineId: 2,
-          group_id: 'C', // 添加分组号示例
-          phone: '13800138004', 
-          status: 'active', 
-          statusText: '在岗',
-          skillLevel: '初级',
-          joinDate: '2023-01-05',
-          attendance: '22/26',
-          completionRate: 88
-        }
-      ],
-      // 请假申请
+      employees: [], // 清空本地数据
       leaveRequests: [
         {
           employeeId: 'W002',
@@ -298,51 +244,164 @@ export default {
       searchKeyword: '',
       showEmployeeDetail: false,
       showLeaveManagement: false,
-      selectedEmployee: {}
+      selectedEmployee: {},
+      currentForeman: null // 存储当前工长信息
     }
+  },
+  async created() {
+    // 获取当前工长信息,并打印完整的用户信息用于调试
+    const userInfoStr = localStorage.getItem('userInfo') || '{}';
+    console.log('localStorage中的userInfo:', userInfoStr);
+    
+    const userInfo = JSON.parse(userInfoStr);
+    console.log('解析后的用户信息:', userInfo);
+    
+    this.currentForeman = {
+      id: userInfo.employee_id,
+      name: userInfo.username,
+      role: userInfo.role,
+      group_id: userInfo.group_id || 99
+    };
+    
+    console.log('当前工长信息:', this.currentForeman);
+
+    await this.fetchEmployees();
   },
   computed: {
     filteredEmployees() {
+      if (!this.currentForeman || !this.currentForeman.group_id) {
+        console.log('当前工长组号未知');
+        return [];
+      }
+      
       return this.employees.filter(emp => {
-        // 工长只能看到自己负责产线上的员工
+        // 首先检查组号是否匹配
+        const groupMatch = Number(emp.group_id) === Number(this.currentForeman.group_id);
+        if (!groupMatch) {
+          console.log(`组号不匹配: ${emp.name}, 组号:${emp.group_id} vs ${this.currentForeman.group_id}`);
+          return false;
+        }
+
+        // 然后应用其他筛选条件
         const lineMatch = !this.filterLine || emp.lineId === parseInt(this.filterLine);
         const statusMatch = !this.filterStatus || emp.status === this.filterStatus;
         const searchMatch = !this.searchKeyword || 
           emp.name.includes(this.searchKeyword) || 
-          emp.id.includes(this.searchKeyword) ||
-          (emp.group_id && emp.group_id.includes(this.searchKeyword)); // 添加分组号搜索
+          emp.id.includes(this.searchKeyword);
+        
         return lineMatch && statusMatch && searchMatch;
       });
+    },
+    
+    // 修改产线员工数量统计方法
+    getLineWorkerCount() {
+      return (lineId) => {
+        return this.employees.filter(emp => 
+          emp.lineId === lineId && 
+          emp.group_id === this.currentForeman.group_id
+        ).length;
+      };
+    },
+    
+    // 修改产线在岗率统计方法
+    getLineActiveRate() {
+      return (lineId) => {
+        const lineWorkers = this.employees.filter(emp => 
+          emp.lineId === lineId && 
+          emp.group_id === this.currentForeman.group_id
+        );
+        if (lineWorkers.length === 0) return 0;
+        
+        const activeWorkers = lineWorkers.filter(emp => 
+          emp.status === 'active' || emp.status === 'task'
+        );
+        return Math.round((activeWorkers.length / lineWorkers.length) * 100);
+      };
+    },
+    
+    // 修改产线任务完成率统计方法
+    getLineCompletionRate() {
+      return (lineId) => {
+        const lineWorkers = this.employees.filter(emp => 
+          emp.lineId === lineId && 
+          emp.group_id === this.currentForeman.group_id
+        );
+        if (lineWorkers.length === 0) return 0;
+        
+        const totalRate = lineWorkers.reduce((sum, worker) => 
+          sum + (worker.completionRate || 0), 0
+        );
+        return Math.round(totalRate / lineWorkers.length);
+      };
     }
   },
   methods: {
+    async fetchEmployees() {
+      try {
+        console.log('开始获取员工数据,工长组号:', this.currentForeman.group_id);
+        const response = await fetch(`/api/foreman/team-members?group_id=${this.currentForeman.group_id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('原始返回数据:', data);
+
+        if (data.success && Array.isArray(data.data)) {
+          // 处理员工数据,确保所有需要的字段都存在
+          this.employees = data.data.map(emp => {
+            return {
+              ...emp,
+              lineId: parseInt(emp.lineId || '1'), // 如果没有lineId,默认设为1
+              status: emp.status || 'active',
+              statusText: emp.statusText || this.getStatusText(emp),
+              skillLevel: emp.skillLevel || '初级', // 添加默认技能等级
+              completionRate: emp.completionRate || Math.floor(Math.random() * 30) + 70 // 添加默认完成率
+            };
+          });
+        } else {
+          throw new Error(data.error || '数据格式错误');
+        }
+      } catch (error) {
+        console.error('获取员工列表出错:', error);
+      }
+    },
+    
+    // 获取角色名称显示
+    getRoleName(role) {
+      const roleMap = {
+        'supervisor': '厂长',
+        'foreman': '工长',
+        'member': '产线工人',
+        'safety_officer': '安全员'
+      };
+      return roleMap[role] || role;
+    },
+    
+    // 获取状态显示文本
+    getStatusText(emp) {
+      if (emp.role === 'safety_officer') {
+        return '安全员';
+      }
+      
+      const statusMap = {
+        'active': '在岗',
+        'leave': '请假',
+        'task': '任务中',
+        'off': '离岗'
+      };
+      return statusMap[emp.status] || '未知';
+    },
+    
     // 获取产线名称
     getLineName(lineId) {
       const line = this.assignedLines.find(line => line.id === lineId);
       return line ? line.name : '未分配';
-    },
-    
-    // 获取产线员工数量
-    getLineWorkerCount(lineId) {
-      return this.employees.filter(emp => emp.lineId === lineId).length;
-    },
-    
-    // 获取产线在岗率
-    getLineActiveRate(lineId) {
-      const lineWorkers = this.employees.filter(emp => emp.lineId === lineId);
-      if (lineWorkers.length === 0) return 0;
-      
-      const activeWorkers = lineWorkers.filter(emp => emp.status === 'active' || emp.status === 'task');
-      return Math.round((activeWorkers.length / lineWorkers.length) * 100);
-    },
-    
-    // 获取产线任务完成率
-    getLineCompletionRate(lineId) {
-      const lineWorkers = this.employees.filter(emp => emp.lineId === lineId);
-      if (lineWorkers.length === 0) return 0;
-      
-      const totalRate = lineWorkers.reduce((sum, worker) => sum + (worker.completionRate || 0), 0);
-      return Math.round(totalRate / lineWorkers.length);
     },
     
     // 查看员工详情
@@ -356,8 +415,6 @@ export default {
       this.showEmployeeDetail = false;
       this.selectedEmployee = {};
     },
-    
-
     
     // 批准请假
     approveLeave(index) {

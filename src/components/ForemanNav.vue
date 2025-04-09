@@ -1,19 +1,23 @@
 <template>
   <nav class="bottom-nav">
-    <div class="nav-item" :class="{ active: $route.path === '/foreman/workorder' }" @click="$router.push('/foreman/workorder')">
+    <div class="nav-item" :class="{ active: $route.path === '/foreman/workorder' }" 
+         @click="navigateTo('/foreman/workorder')">
       <i class="nav-icon workorder-icon"></i>
       <span>工单排班</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/foreman/equipment' }" @click="$router.push('/foreman/equipment')">
+    <div class="nav-item" :class="{ active: $route.path === '/foreman/equipment' }" 
+         @click="navigateTo('/foreman/equipment')">
       <i class="nav-icon equipment-icon"></i>
       <span>设备与产线</span>
     </div>
 
-    <div class="nav-item" :class="{ active: $route.path === '/foreman/team' }" @click="$router.push('/foreman/team')">
+    <div class="nav-item" :class="{ active: $route.path === '/foreman/team' }" 
+         @click="navigateTo('/foreman/team')">
       <i class="nav-icon team-icon"></i>
       <span>团队管理</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/foreman/profile' }" @click="$router.push('/foreman/profile')">
+    <div class="nav-item" :class="{ active: $route.path === '/foreman/profile' }" 
+         @click="navigateTo('/foreman/profile')">
       <i class="nav-icon profile-icon"></i>
       <span>我的</span>
     </div>
@@ -22,7 +26,15 @@
 
 <script>
 export default {
-  name: 'ForemanNav'
+  name: 'ForemanNav',
+  methods: {
+    navigateTo(path) {
+      // 如果不是当前路径才进行跳转
+      if (this.$route.path !== path) {
+        this.$router.push(path)
+      }
+    }
+  }
 }
 </script>
 

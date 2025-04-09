@@ -212,10 +212,20 @@ export default {
         }
       }).catch(() => {});
     },
-    handleLogout() {
-      localStorage.removeItem('userInfo')
-      localStorage.removeItem('token')
-      this.$router.push('/login')
+    async handleLogout() {
+      try {
+        // 调用后端登出接口
+        await fetch('http://localhost:3000/api/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+      } catch (error) {
+        console.error('登出请求失败:', error);
+      } finally {
+        // 清理所有本地存储
+        localStorage.clear();
+        this.$router.push('/login');
+      }
     },
     showUpdateUsernameDialog() {
       this.showDialog = true;

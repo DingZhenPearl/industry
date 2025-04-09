@@ -166,11 +166,13 @@ export default {
           }
         } else {
           if (response.ok && data.success) {
+            // 确保保存完整的用户信息,包括group_id
             localStorage.setItem('userInfo', JSON.stringify({
               username: data.user.username,
               role: data.user.role,
               phone: data.user.phone,
-              employee_id: data.user.employee_id  // 添加工号
+              employee_id: data.user.employee_id,
+              group_id: data.user.group_id  // 确保保存组号
             }));
             localStorage.setItem('token', 'session-' + Date.now());
             this.redirectByRole(data.user.role);

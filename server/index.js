@@ -65,7 +65,8 @@ app.post('/api/login', async (req, res) => {
                 username: result.username,
                 role: result.role,
                 phone: result.phone,
-                employee_id: result.employee_id // 确保工号被传递
+                employee_id: result.employee_id,
+                group_id: result.group_id  // 确保传递组号
               }
             });
           } else {
@@ -159,51 +160,93 @@ app.get('/api/user', authMiddleware, (req, res) => {
   res.json({ user: req.session.user });
 });
 
-// 获取用户列表
+// 厂长获取所有用户列表
 app.get('/api/users', authMiddleware, async (req, res) => {
   try {
-    const usersList = await new Promise((resolve, reject) => {
-      const pythonProcess = spawn('python', ['pyScripts/verify_user.py', 'get_users']);
-      
+    const result = await new Promise((resolve) => {
+      const pythonProcess = spawn('python', [
+        'pyScripts/verify_user.py',
+        'get_users'
+      ]);
+
       let output = '';
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.on('close', (code) => {
+        try {
+          const users = JSON.parse(output);
+          resolve(users);
+        } catch (error) {
+          resolve({ success: false, error: '解析用户数据失败' });
+        }
+      });
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
+// 工长获取分组成员列表
+app.get('/api/foreman/team-members', authMiddleware, async (req, res) => {
+  const group_id = req.query.group_id;
+  console.log('获取工长团队成员,组号:', group_id);
+  
+  if (!group_id) {
+    return res.status(400).json({ 
+      success: false, 
+      error: '缺少组号参数' 
+    });
+  }
+
+  try {
+    const result = await new Promise((resolve) => {
+      const pythonProcess = spawn('python', [
+        'pyScripts/verify_user.py',
+        'get_team_members',
+        group_id
+      ]);
+
+      let output = '';
+      let errorOutput = '';
       
       pythonProcess.stdout.on('data', (data) => {
         output += data.toString();
       });
 
       pythonProcess.stderr.on('data', (data) => {
-        console.error(`Python错误: ${data}`);
+        errorOutput += data.toString();
+        console.error('Python错误:', data.toString());
       });
 
       pythonProcess.on('close', (code) => {
-        if (code !== 0) {
-          reject(new Error('Python脚本执行失败'));
-          return;
-        }
+        console.log('Python进程退出,代码:', code);
+        console.log('原始输出:', output);
+        
         try {
           const cleanOutput = output.trim();
-          if (!cleanOutput) {
-            throw new Error('Python脚本无输出');
-          }
-          const users = JSON.parse(cleanOutput);
-          resolve({
-            success: true,
-            data: users
-          });
+          const result = JSON.parse(cleanOutput);
+          resolve(result);
         } catch (error) {
-          console.error('解析Python输出失败:', error, '原始输出:', output);
-          reject(new Error('解析Python输出失败'));
+          console.error('解析Python输出失败:', error);
+          console.error('原始输出:', output);
+          console.error('错误输出:', errorOutput);
+          resolve({ 
+            success: false, 
+            error: '解析用户数据失败',
+            details: output
+          });
         }
       });
     });
 
-    res.json(usersList);
+    res.json(result);
   } catch (error) {
-    console.error('获取用户列表时出错:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message
-    });
+    console.error('处理请求出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
   }
 });
 

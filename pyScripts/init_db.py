@@ -47,23 +47,26 @@ def init_database():
 
             # 插入测试数据
             test_users = [
-                ('admin', 'admin123', 'supervisor', '13800138000'),
-                ('foreman1', 'foreman123', 'foreman', '13800138001'),
-                ('worker1', 'worker123', 'member', '13800138002'),
-                ('safety1', 'safety123', 'safety_officer', '13800138003')
+                ('admin', 'admin123', 'supervisor', '13800138000', None),  # 厂长无需组号
+                ('foreman1', 'foreman123', 'foreman', '13800138001', 1),   # 1号工长分配组号1
+                ('foreman2', 'foreman123', 'foreman', '13800138005', 2),   # 2号工长分配组号2
+                ('worker1', 'worker123', 'member', '13800138002', 1),      # 工人分配到1号组
+                ('worker2', 'worker123', 'member', '13800138006', 2),      # 工人分配到2号组
+                ('safety1', 'safety123', 'safety_officer', '13800138003', None)  # 安全员无需组号
             ]
             
-            for username, password, role, phone in test_users:
+            for username, password, role, phone, group_id in test_users:
                 # 对密码进行哈希处理
                 hashed_password = hashlib.sha256(password.encode()).hexdigest()
                 
                 # 检查用户是否已存在
-                cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+                cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
                 if not cursor.fetchone():
-                    cursor.execute(
-                        "INSERT INTO users (username, password, role, phone) VALUES (%s, %s, %s, %s)",
-                        (username, hashed_password, role, phone)
-                    )
+                    # 插入新用户
+                    cursor.execute("""
+                        INSERT INTO users (username, password, role, phone, group_id)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (username, hashed_password, role, phone, group_id))
             
             connection.commit()
             print("数据库初始化完成")
