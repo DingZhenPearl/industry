@@ -69,6 +69,7 @@
                 <th>姓名</th>
                 <th>分组号</th>
                 <th>所属产线</th>
+                <th>所属机器</th>
                 <th>联系方式</th>
                 <th>状态</th>
                 <th>操作</th>
@@ -80,6 +81,7 @@
                 <td>{{ emp.name }}</td>
                 <td>{{ emp.group_id || '未分组' }}</td>
                 <td>{{ getLineName(emp.lineId) }}</td>
+                <td>{{ emp.machine_id || '未分配' }}</td>
                 <td>{{ emp.phone }}</td>
                 <td>
                   <span :class="['status-tag', emp.status]">
@@ -115,6 +117,10 @@
           <div class="detail-item">
             <label>所属产线</label>
             <div class="value">{{ getLineName(selectedEmployee.lineId) }}</div>
+          </div>
+          <div class="detail-item">
+            <label>所属机器</label>
+            <div class="value">{{ selectedEmployee.machine_id || '未分配' }}</div>
           </div>
           <div class="detail-item">
             <label>联系方式</label>
@@ -195,49 +201,12 @@ export default {
     return {
       // 工长被分配的产线
       assignedLines: [
-        {
-          id: 1,
-          name: '一号生产线',
-          status: 'running',
-          statusText: '运行中',
-          runningDevices: 8,
-          totalDevices: 10,
-          utilization: 85,
-          assignedTo: 1 // 分配给当前工长的ID
-        },
-        {
-          id: 2,
-          name: '二号生产线',
-          status: 'warning',
-          statusText: '预警',
-          runningDevices: 6,
-          totalDevices: 8,
-          utilization: 75,
-          assignedTo: 1 // 分配给当前工长的ID
-        }
+
+
       ],
       employees: [], // 清空本地数据
       leaveRequests: [
-        {
-          employeeId: 'W002',
-          employeeName: '李四',
-          type: '病假',
-          startDate: '2023-07-15',
-          endDate: '2023-07-18',
-          reason: '感冒发烧，需要休息',
-          status: 'approved',
-          statusText: '已批准'
-        },
-        {
-          employeeId: 'W004',
-          employeeName: '赵六',
-          type: '事假',
-          startDate: '2023-07-20',
-          endDate: '2023-07-21',
-          reason: '家中有事，需要请假处理',
-          status: 'pending',
-          statusText: '待审批'
-        }
+
       ],
       filterLine: '',
       filterStatus: '',
@@ -265,6 +234,7 @@ export default {
     
     console.log('当前工长信息:', this.currentForeman);
 
+    await this.fetchAssignedLines(); // 先获取产线信息
     await this.fetchEmployees();
   },
   computed: {
@@ -336,6 +306,41 @@ export default {
     }
   },
   methods: {
+    // 获取分配给当前工长的产线信息
+    async fetchAssignedLines() {
+      try {
+        if (!this.currentForeman || !this.currentForeman.group_id) {
+          console.log('当前工长组号未知，无法获取产线信息');
+          return;
+        }
+        
+        console.log('开始获取产线数据,工长组号:', this.currentForeman.group_id);
+        const response = await fetch(`/api/foreman/assigned-lines?group_id=${this.currentForeman.group_id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('产线返回数据:', data);
+
+        if (data.success && Array.isArray(data.data)) {
+          this.assignedLines = data.data.map(line => ({
+            ...line,
+            id: parseInt(line.id) // 确保id是数字类型
+          }));
+        } else {
+          throw new Error(data.error || '产线数据格式错误');
+        }
+      } catch (error) {
+        console.error('获取产线列表出错:', error);
+      }
+    },
+    
     async fetchEmployees() {
       try {
         console.log('开始获取员工数据,工长组号:', this.currentForeman.group_id);

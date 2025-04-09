@@ -28,7 +28,9 @@ def init_database():
                     phone VARCHAR(20),
                     status ENUM('在岗', '请假', '离岗') DEFAULT '在岗',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    group_id INT NULL COMMENT '所属分组ID'
+                    group_id INT NULL COMMENT '所属分组ID',
+                    line_id INT NULL COMMENT '所属产线ID',
+                    machine_id INT NULL COMMENT '所属机器ID'
                 )
             """)
             
@@ -43,6 +45,32 @@ def init_database():
                 cursor.execute("""
                     ALTER TABLE users 
                     ADD COLUMN group_id INT NULL COMMENT '所属分组ID'
+                """)
+
+            # 添加产线字段（如果表已存在且字段不存在）
+            cursor.execute("""
+                SELECT COUNT(*) FROM information_schema.columns 
+                WHERE table_schema = 'industry_db' 
+                AND table_name = 'users' 
+                AND column_name = 'line_id'
+            """)
+            if cursor.fetchone()[0] == 0:
+                cursor.execute("""
+                    ALTER TABLE users 
+                    ADD COLUMN line_id INT NULL COMMENT '所属产线ID'
+                """)
+
+            # 添加机器字段（如果表已存在且字段不存在）
+            cursor.execute("""
+                SELECT COUNT(*) FROM information_schema.columns 
+                WHERE table_schema = 'industry_db' 
+                AND table_name = 'users' 
+                AND column_name = 'machine_id'
+            """)
+            if cursor.fetchone()[0] == 0:
+                cursor.execute("""
+                    ALTER TABLE users 
+                    ADD COLUMN machine_id INT NULL COMMENT '所属机器ID'
                 """)
 
             # 插入测试数据

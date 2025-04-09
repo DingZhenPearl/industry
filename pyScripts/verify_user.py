@@ -167,7 +167,7 @@ def verify_user(username, password, role):
     try:
         cursor = connection.cursor(dictionary=True)
         check_query = """
-            SELECT username, password, role, phone, employee_id, group_id 
+            SELECT username, password, role, phone, employee_id, group_id, line_id, machine_id
             FROM users WHERE username = %s AND role = %s
         """
         cursor.execute(check_query, (username, role))
@@ -180,7 +180,9 @@ def verify_user(username, password, role):
                 'role': user['role'],
                 'phone': user['phone'],
                 'employee_id': user['employee_id'],
-                'group_id': user['group_id']
+                'group_id': user['group_id'],
+                'line_id': user['line_id'],
+                'machine_id': user['machine_id']
             }))
             return
         
@@ -270,6 +272,8 @@ def get_users():
                 role,
                 phone,
                 group_id,
+                line_id,
+                machine_id,
                 COALESCE(status, 'active') as status,
                 CASE 
                     WHEN status = 'leave' THEN '请假'
@@ -311,6 +315,8 @@ def get_team_members(group_id):
                 role,
                 phone,
                 group_id,
+                line_id as lineId,
+                machine_id,
                 COALESCE(status, 'active') as status,
                 CASE 
                     WHEN status = 'leave' THEN '请假'
@@ -325,11 +331,9 @@ def get_team_members(group_id):
         cursor.execute(query, (group_id,))
         members = cursor.fetchall()
         
-        # 确保所有字段都有值并添加默认的lineId
+        # 确保所有字段都有值，但不设置默认lineId
         processed_members = []
         for member in members:
-            # 添加默认lineId值
-            member['lineId'] = '1'  # 默认分配到1号产线
             processed_member = {}
             for key, value in member.items():
                 if value is None:

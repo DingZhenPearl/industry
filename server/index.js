@@ -250,6 +250,65 @@ app.get('/api/foreman/team-members', authMiddleware, async (req, res) => {
   }
 });
 
+// 工长获取分配的产线列表
+app.get('/api/foreman/assigned-lines', authMiddleware, async (req, res) => {
+  const group_id = req.query.group_id;
+  console.log('获取工长产线信息,组号:', group_id);
+  
+  if (!group_id) {
+    return res.status(400).json({ 
+      success: false, 
+      error: '缺少组号参数' 
+    });
+  }
+
+  try {
+    const result = await new Promise((resolve) => {
+      const pythonProcess = spawn('python', [
+        'pyScripts/get_lines.py',
+        group_id
+      ]);
+
+      let output = '';
+      let errorOutput = '';
+      
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+        console.error('Python错误:', data.toString());
+      });
+
+      pythonProcess.on('close', (code) => {
+        console.log('Python进程退出,代码:', code);
+        console.log('原始输出:', output);
+        
+        try {
+          const cleanOutput = output.trim();
+          const result = JSON.parse(cleanOutput);
+          resolve(result);
+        } catch (error) {
+          console.error('解析Python输出失败:', error);
+          console.error('原始输出:', output);
+          console.error('错误输出:', errorOutput);
+          resolve({ 
+            success: false, 
+            error: '解析产线数据失败',
+            details: output
+          });
+        }
+      });
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('处理请求出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
 // 更新用户名
 app.post('/api/update-username', async (req, res) => {
   const { username, role, currentUsername } = req.body;
