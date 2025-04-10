@@ -2,26 +2,15 @@
   <div class="workorder">
     <header class="header">
       <div class="tab-header">
-        <div
-          class="tab-item"
-          :class="{ active: currentTab === 'workorder' }"
-          @click="currentTab = 'workorder'"
-        >
+        <div class="tab-item active">
           工单管理
-        </div>
-        <div
-          class="tab-item"
-          :class="{ active: currentTab === 'schedule' }"
-          @click="currentTab = 'schedule'"
-        >
-          排班管理
         </div>
       </div>
     </header>
 
     <div class="content">
       <!-- 工单管理内容 -->
-      <div v-if="currentTab === 'workorder'" class="workorder-content">
+      <div class="workorder-content">
         <!-- 添加工单按钮 -->
         <div class="action-bar">
           <button class="add-btn" @click="showNewWorkOrderModal = true">
@@ -45,34 +34,6 @@
             <div class="workorder-footer">
               <button class="detail-btn" @click="showWorkOrderDetail(item)">查看详情</button>
               <button class="action-btn assign" @click="assignTask(item)">安排员工</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 排班管理内容 -->
-      <div v-else class="schedule-content">
-        <!-- 添加新建排班按钮 -->
-        <div class="action-bar">
-          <button class="add-btn" @click="showNewScheduleModal = true">
-            <i class="plus-icon">+</i> 新建排班
-          </button>
-        </div>
-        <div class="schedule-list">
-          <div class="schedule-item" v-for="(item, index) in schedules" :key="index">
-            <div class="schedule-header">
-              <span class="schedule-title">{{ item.title }}</span>
-              <span class="schedule-time">{{ item.time }}</span>
-            </div>
-            <div class="schedule-members">
-              <span v-for="(member, mIndex) in item.members" :key="mIndex">
-                {{ member }}
-              </span>
-            </div>
-            <div class="schedule-actions">
-              <button class="action-btn assign" @click="assignEmployeeToSchedule(item)">
-                安排员工
-              </button>
             </div>
           </div>
         </div>
@@ -194,51 +155,7 @@
       </div>
     </div>
 
-    <!-- 新建排班模态框 -->
-    <div class="modal" v-if="showNewScheduleModal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>新建排班</h3>
-          <span class="close-btn" @click="showNewScheduleModal = false">&times;</span>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>班次</label>
-            <select v-model="newSchedule.shift" class="form-input">
-              <option value="morning">早班(6:00-14:00)</option>
-              <option value="middle">中班(14:00-22:00)</option>
-              <option value="night">夜班(22:00-6:00)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>日期</label>
-            <input type="date" v-model="newSchedule.date" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>排班人员</label>
-            <div class="member-list">
-              <input
-                type="text"
-                v-model="memberInput"
-                class="form-input"
-                placeholder="输入员工姓名后回车添加"
-                @keyup.enter="addMember"
-              >
-              <div class="member-tags">
-                <span class="member-tag" v-for="(member, index) in newSchedule.members" :key="index">
-                  {{ member }}
-                  <i class="remove-icon" @click="removeMember(index)">×</i>
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn cancel" @click="showNewScheduleModal = false">取消</button>
-          <button class="btn submit" @click="createSchedule">确认</button>
-        </div>
-      </div>
-    </div>
+
 
     <!-- 安排工作模态框 -->
     <div class="modal" v-if="showAssignTask">
@@ -313,7 +230,6 @@ export default {
   },
   data() {
     return {
-      currentTab: 'workorder',
       // 工长被分配的产线
       assignedLines: [
         {
@@ -359,23 +275,7 @@ export default {
           progress: 45
         }
       ],
-      schedules: [
-        {
-          title: '早班',
-          time: '06:00-14:00',
-          members: ['张三', '李四', '王五']
-        },
-        {
-          title: '中班',
-          time: '14:00-22:00',
-          members: ['赵六', '孙七', '周八']
-        },
-        {
-          title: '夜班',
-          time: '22:00-06:00',
-          members: ['吴九', '郑十', '钱十一']
-        }
-      ],
+
       // 员工列表
       employees: [
         {
@@ -416,7 +316,6 @@ export default {
         }
       ],
       showNewWorkOrderModal: false,
-      showNewScheduleModal: false,
       showWorkOrderDetailModal: false,
       showAssignTask: false,
       selectedWorkOrder: {},
@@ -429,11 +328,6 @@ export default {
         productionLine: '',
         owner: ''
       },
-      newSchedule: {
-        shift: 'morning',
-        date: '',
-        members: []
-      },
       taskForm: {
         lineId: '',
         employeeId: '',
@@ -441,8 +335,7 @@ export default {
         description: '',
         startTime: '',
         endTime: ''
-      },
-      memberInput: ''
+      }
     }
   },
   computed: {
@@ -477,16 +370,7 @@ export default {
       alert('任务创建成功');
       this.showNewWorkOrderModal = false;
     },
-    createSchedule() {
-      // 这里添加创建排班的逻辑
-      this.schedules.push({
-        title: this.getShiftTitle(this.newSchedule.shift),
-        time: this.getShiftTime(this.newSchedule.shift),
-        members: [...this.newSchedule.members]
-      });
-      this.showNewScheduleModal = false;
-      this.resetNewSchedule();
-    },
+
     resetNewWorkOrder() {
       this.newWorkOrder = {
         type: '',
@@ -497,55 +381,7 @@ export default {
         owner: ''
       };
     },
-    resetNewSchedule() {
-      this.newSchedule = {
-        shift: 'morning',
-        date: '',
-        members: []
-      };
-      this.memberInput = '';
-    },
-    addMember() {
-      if (this.memberInput.trim() && !this.newSchedule.members.includes(this.memberInput.trim())) {
-        this.newSchedule.members.push(this.memberInput.trim());
-      }
-      this.memberInput = '';
-    },
-    removeMember(index) {
-      this.newSchedule.members.splice(index, 1);
-    },
-    getShiftTitle(shift) {
-      const titles = {
-        morning: '早班',
-        middle: '中班',
-        night: '夜班'
-      };
-      return titles[shift];
-    },
-    getShiftTime(shift) {
-      const times = {
-        morning: '06:00-14:00',
-        middle: '14:00-22:00',
-        night: '22:00-06:00'
-      };
-      return times[shift];
-    },
 
-    // 从排班管理页面安排员工
-    assignEmployeeToSchedule(schedule) {
-      // 创建一个临时工单对象
-      const tempWorkOrder = {
-        number: 'SCH' + Date.now(),
-        status: 'pending',
-        statusText: '待处理',
-        description: `${schedule.title} (${schedule.time}) 排班任务`,
-        owner: '当前工长',
-        deadline: new Date().toISOString().split('T')[0]
-      };
-
-      // 调用安排员工方法
-      this.assignTask(tempWorkOrder);
-    },
     showWorkOrderDetail(workorder) {
       this.selectedWorkOrder = { ...workorder };
       this.showWorkOrderDetailModal = true;
@@ -705,52 +541,7 @@ export default {
   background-color: white;
 }
 
-.schedule-item {
-  background: white;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
 
-.schedule-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
-}
-
-.schedule-title {
-  font-weight: bold;
-  color: #333;
-}
-
-.schedule-time {
-  color: #666;
-}
-
-.schedule-members {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.schedule-members span {
-  background-color: #e3f2fd;
-  color: #2196F3;
-  padding: 3px 8px;
-  border-radius: 12px;
-  margin-right: 5px;
-  margin-bottom: 5px;
-  font-size: 0.9em;
-}
-
-.schedule-actions {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
-}
 
 .action-btn.assign {
   background-color: #e8f5e9;
@@ -959,31 +750,7 @@ export default {
   color: white;
 }
 
-.member-list {
-  margin-top: 10px;
-}
 
-.member-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.member-tag {
-  background: #e3f2fd;
-  color: #2196F3;
-  padding: 4px 8px;
-  border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.remove-icon {
-  cursor: pointer;
-  font-size: 16px;
-}
 
 .detail-item {
   margin-bottom: 15px;
