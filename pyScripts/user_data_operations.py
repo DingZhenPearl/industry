@@ -408,7 +408,7 @@ def get_team_members(group_id):
                     ELSE '在岗'
                 END as statusText
             FROM users
-            WHERE group_id = %s AND role != 'supervisor' AND role != 'foreman'
+            WHERE group_id = %s
         """
 
         cursor.execute(query, (group_id,))

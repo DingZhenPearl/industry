@@ -76,11 +76,11 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="emp in filteredEmployees" :key="emp.id">
+              <tr v-for="emp in filteredEmployees" :key="emp.id" :class="{ 'current-foreman': emp.id === currentForeman.id }">
                 <td>{{ emp.id }}</td>
                 <td>{{ emp.name }}</td>
                 <td>{{ emp.group_id || '未分组' }}</td>
-                <td>{{ getLineName(emp.lineId) }}</td>
+                <td>{{ getLineName(emp.line_id) }}</td>
                 <td>{{ emp.machine_id || '未分配' }}</td>
                 <td>{{ emp.phone }}</td>
                 <td>
@@ -329,9 +329,19 @@ export default {
         console.log('产线返回数据:', data);
 
         if (data.success && Array.isArray(data.data)) {
+          console.log('原始产线数据:');
+          data.data.forEach(line => {
+            console.log(`产线 ID: ${line.id}, 名称: ${line.name}, 类型: ${typeof line.id}`);
+          });
+
           this.assignedLines = data.data.map(line => ({
             ...line // 保持原始数据格式
           }));
+
+          console.log('处理后的产线数据:');
+          this.assignedLines.forEach(line => {
+            console.log(`产线 ID: ${line.id}, 名称: ${line.name}, 类型: ${typeof line.id}`);
+          });
         } else {
           throw new Error(data.error || '产线数据格式错误');
         }
@@ -357,6 +367,12 @@ export default {
         console.log('原始返回数据:', data);
 
         if (data.success && Array.isArray(data.data)) {
+          // 打印原始员工数据中的line_id字段
+          console.log('员工原始数据中的line_id字段:');
+          data.data.forEach(emp => {
+            console.log(`员工 ${emp.name} 的line_id: ${emp.line_id}, 类型: ${typeof emp.line_id}`);
+          });
+
           // 处理员工数据,确保所有需要的字段都存在
           this.employees = data.data.map(emp => {
             return {
@@ -367,6 +383,12 @@ export default {
               skillLevel: emp.skillLevel || '初级', // 添加默认技能等级
               completionRate: emp.completionRate || Math.floor(Math.random() * 30) + 70 // 添加默认完成率
             };
+          });
+
+          // 打印处理后的员工数据
+          console.log('处理后的员工数据:');
+          this.employees.forEach(emp => {
+            console.log(`员工 ${emp.name} 的line_id: ${emp.line_id}, 类型: ${typeof emp.line_id}`);
           });
         } else {
           throw new Error(data.error || '数据格式错误');
@@ -389,8 +411,18 @@ export default {
 
     // 获取状态显示文本
     getStatusText(emp) {
+      // 如果是安全员
       if (emp.role === 'safety_officer') {
         return '安全员';
+      }
+
+      // 如果是工长
+      if (emp.role === 'foreman') {
+        // 如果是当前工长
+        if (emp.id === this.currentForeman.id) {
+          return '当前工长';
+        }
+        return '同组工长';
       }
 
       const statusMap = {
@@ -404,8 +436,18 @@ export default {
 
     // 获取产线名称
     getLineName(lineId) {
+      console.log(`尝试获取产线名称, 产线 ID: ${lineId}, 类型: ${typeof lineId}`);
+      console.log('可用的产线列表:', this.assignedLines);
+
       const line = this.assignedLines.find(line => line.id === lineId);
-      return line ? line.name : '未分配';
+
+      if (line) {
+        console.log(`找到产线: ${line.name}`);
+        return line.name;
+      } else {
+        console.log('未找到产线, 返回默认值: 未分配');
+        return '未分配';
+      }
     },
 
     // 查看员工详情
@@ -803,6 +845,23 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+}
+
+/* 当前工长行样式 */
+.current-foreman {
+  background-color: rgba(33, 150, 243, 0.1);
+  font-weight: bold;
+}
+
+.current-foreman td {
+  position: relative;
+}
+
+.current-foreman td:first-child::before {
+  content: '(您)';
+  color: #2196F3;
+  font-size: 0.8em;
+  margin-right: 5px;
 }
 
 .employee-name {

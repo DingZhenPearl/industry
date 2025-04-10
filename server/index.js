@@ -40,7 +40,7 @@ app.post('/api/login', async (req, res) => {
 
   try {
     const result = await new Promise((resolve) => {
-      const pythonProcess = spawn('python', ['pyScripts/db_operations.py', 'verify-user', username, password, role]);
+      const pythonProcess = spawn('python', ['pyScripts/user_data_operations.py', 'verify-user', username, password, role]);
       let output = '';
 
       pythonProcess.stdout.on('data', (data) => {
@@ -99,7 +99,7 @@ app.post('/api/register', async (req, res) => {
 
   try {
     const result = await new Promise((resolve) => {
-      const pythonProcess = spawn('python', ['pyScripts/db_operations.py', 'register', username, password, role]);
+      const pythonProcess = spawn('python', ['pyScripts/user_data_operations.py', 'register', username, password, role]);
       let output = '';
 
       pythonProcess.stdout.on('data', (data) => {
@@ -165,7 +165,7 @@ app.get('/api/users', authMiddleware, async (_, res) => {
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/db_operations.py',
+        'pyScripts/user_data_operations.py',
         'get-users'
       ]);
 
@@ -205,7 +205,7 @@ app.get('/api/foreman/team-members', authMiddleware, async (req, res) => {
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/db_operations.py',
+        'pyScripts/user_data_operations.py',
         'get-team',
         group_id
       ]);
@@ -261,7 +261,7 @@ app.get('/api/foreman/assigned-lines', authMiddleware, async (req, res) => {
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/db_operations.py',
+        'pyScripts/user_data_operations.py',
         'get-lines',
         group_id
       ]);
@@ -321,7 +321,7 @@ app.post('/api/update-username', async (req, res) => {
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/db_operations.py',
+        'pyScripts/user_data_operations.py',
         'update-username',
         currentUsername,  // 第一个参数应该是当前用户名
         role,             // 第二个参数是角色
@@ -381,7 +381,7 @@ app.post('/api/update-password', async (req, res) => {
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/db_operations.py',
+        'pyScripts/user_data_operations.py',
         'update-password',
         username,       // 第一个参数是用户名
         role,           // 第二个参数是角色
@@ -438,7 +438,7 @@ app.post('/api/update-phone', async (req, res) => {
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/db_operations.py',
+        'pyScripts/user_data_operations.py',
         'update-user',
         username,
         role,
@@ -475,7 +475,7 @@ app.post('/api/update-user', async (req, res) => {
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/db_operations.py',
+        'pyScripts/user_data_operations.py',
         'update-user',
         username,
         role,
@@ -507,7 +507,7 @@ app.post('/api/update-group', authMiddleware, async (req, res) => {
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/db_operations.py',
+        'pyScripts/user_data_operations.py',
         'update-group',
         username,
         role,
