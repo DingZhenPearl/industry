@@ -3,7 +3,7 @@
     <header class="header">
       <h1>监控中心</h1>
     </header>
-    
+
     <div class="content">
       <!-- 增加实时监控卡片 -->
       <div class="status-cards">
@@ -47,7 +47,7 @@
             <i class="settings-icon"></i> 产线配置
           </button>
         </div>
-        
+
         <div class="line-list">
           <div class="line-item" v-for="line in productionLines" :key="line.id">
             <div class="line-header">
@@ -67,6 +67,17 @@
                 <span class="label">运行时长</span>
                 <span class="value">{{ line.runtime }}h</span>
               </div>
+              <div class="detail-item">
+                <span class="label">负责工长</span>
+                <span class="value">
+                  <span v-if="line.foremen && line.foremen.length > 0">
+                    <span v-for="(foreman, index) in line.foremen" :key="foreman.id">
+                      {{ foreman.name }}<span v-if="index < line.foremen.length - 1">, </span>
+                    </span>
+                  </span>
+                  <span v-else>未分配</span>
+                </span>
+              </div>
             </div>
             <div class="line-actions">
               <button class="action-btn" @click="assignManager(line)">分配管理</button>
@@ -75,7 +86,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 新增全厂设备监控模块 -->
       <div class="equipment-monitor">
         <div class="section-header">
@@ -101,7 +112,7 @@
             </select>
           </div>
         </div>
-        
+
         <div class="equipment-stats">
           <div class="stat-box">
             <span class="stat-label">设备总数</span>
@@ -153,7 +164,7 @@
           </table>
         </div>
       </div>
-      
+
       <!-- 产线配置模态框 -->
       <div class="modal" v-if="showConfigModal">
         <div class="modal-content">
@@ -175,7 +186,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 分配管理模态框 -->
       <div class="modal" v-if="showAssignModal">
         <div class="modal-content">
@@ -220,47 +231,12 @@ export default {
   },
   data() {
     return {
-      productionLines: [
-        {
-          id: 1,
-          name: '一号生产线',
-          status: 'running',
-          statusText: '运行中',
-          utilization: 95,
-          output: 850,
-          target: 1000,
-          runtime: 18.5
-        },
-        {
-          id: 2,
-          name: '二号生产线',
-          status: 'warning',
-          statusText: '预警',
-          utilization: 75,
-          output: 620,
-          target: 1000,
-          runtime: 16.8
-        },
-        {
-          id: 3,
-          name: '三号生产线',
-          status: 'stopped',
-          statusText: '已停机',
-          utilization: 0,
-          output: 420,
-          target: 1000,
-          runtime: 8.2
-        }
-      ],
+      productionLines: [],
       showConfigModal: false,
       showAssignModal: false,
       selectedLine: {},
       selectedManager: '',
-      foremen: [
-        { id: 1, name: '张工长' },
-        { id: 2, name: '李工长' },
-        { id: 3, name: '王工长' }
-      ],
+      foremen: [],
       // 新增设备监控相关数据
       equipmentFilter: {
         line: '',
@@ -324,21 +300,21 @@ export default {
     filteredEquipments() {
       return this.equipments.filter(equipment => {
         // 按产线筛选
-        const lineMatch = !this.equipmentFilter.line || 
+        const lineMatch = !this.equipmentFilter.line ||
           equipment.productionLine.includes(this.productionLines.find(l => l.id === this.equipmentFilter.line)?.name || '');
-        
+
         // 按状态筛选
-        const statusMatch = !this.equipmentFilter.status || 
+        const statusMatch = !this.equipmentFilter.status ||
           equipment.status === this.equipmentFilter.status;
-        
+
         // 按类型筛选
-        const typeMatch = !this.equipmentFilter.type || 
+        const typeMatch = !this.equipmentFilter.type ||
           equipment.type === this.equipmentFilter.type;
-        
+
         return lineMatch && statusMatch && typeMatch;
       });
     },
-    
+
     // 设备状态统计
     equipmentStats() {
       const stats = {
@@ -347,15 +323,104 @@ export default {
         warning: 0,
         stopped: 0
       };
-      
+
       this.equipments.forEach(device => {
         stats[device.status]++;
       });
-      
+
       return stats;
     }
   },
+  created() {
+    this.fetchProductionLines();
+    this.fetchEquipments();
+  },
   methods: {
+    // 获取产线数据
+    async fetchProductionLines() {
+      try {
+        const response = await fetch('/api/production-line/with-foremen');
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          // 处理产线数据
+          this.productionLines = result.data.map(line => {
+            // 根据实时产能和理论产能计算利用率
+            const utilization = line.theoretical_capacity ?
+              Math.round((line.real_time_capacity / line.theoretical_capacity) * 100) : 0;
+
+            // 根据产线状态字段确定状态
+            let status = 'running';
+            let statusText = '运行中';
+
+            // 根据数据库中的状态字段设置状态
+            if (line.status === '维修中') {
+              status = 'warning';
+              statusText = '维修中';
+            } else if (line.status === '停机') {
+              status = 'stopped';
+              statusText = '已停机';
+            } else if (line.status === '故障') {
+              status = 'stopped';
+              statusText = '故障';
+            } else if (line.status === '预警') {
+              status = 'warning';
+              statusText = '预警';
+            }
+
+            // 如果产线状态正常，但利用率过低，也显示为预警
+            if (status === 'running' && utilization < 80) {
+              status = 'warning';
+              statusText = '产能过低';
+            }
+
+            // 如果产线状态正常，但利用率为0，显示为停机
+            if (status === 'running' && utilization === 0) {
+              status = 'stopped';
+              statusText = '无产出';
+            }
+
+            return {
+              id: line.id,
+              name: line.line_name,
+              status: status,
+              statusText: statusText,
+              utilization: utilization,
+              output: Math.round(line.real_time_capacity || 0),
+              target: line.theoretical_capacity || 1000,
+              runtime: line.runtime_hours || 0,
+              equipment_list: line.equipment_list || [],
+              foremen: line.foremen || []
+            };
+          });
+
+          // 更新状态卡片的数据
+          this.updateStatusCards();
+        } else {
+          console.error('获取产线数据失败:', result.error);
+        }
+      } catch (error) {
+        console.error('获取产线数据出错:', error);
+      }
+    },
+
+    // 更新状态卡片数据
+    updateStatusCards() {
+      // 计算不同状态的产线数量
+      const runningLines = this.productionLines.filter(line => line.status === 'running').length;
+      const warningLines = this.productionLines.filter(line => line.status === 'warning').length;
+      const stoppedLines = this.productionLines.filter(line => line.status === 'stopped').length;
+
+      // 更新DOM元素
+      const runningCard = document.querySelector('.status-card.running .count');
+      const warningCard = document.querySelector('.status-card.warning .count');
+      const stoppedCard = document.querySelector('.status-card.stopped .count');
+
+      if (runningCard) runningCard.textContent = runningLines;
+      if (warningCard) warningCard.textContent = warningLines;
+      if (stoppedCard) stoppedCard.textContent = stoppedLines;
+    },
+
     editLine(line) {
       console.log('编辑产线:', line);
       // 这里添加编辑产线的逻辑
@@ -390,7 +455,7 @@ export default {
       // 跳转到设备详情页面
       this.$router.push(`/supervisor/equipment-detail/${device.id}`);
     },
-    
+
     // 分配维护任务
     assignMaintenance(device) {
       console.log('分配设备维护任务:', device);
