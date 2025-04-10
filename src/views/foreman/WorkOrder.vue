@@ -50,37 +50,83 @@
         <div class="modal-body">
           <div class="form-group">
             <label>任务类型</label>
-            <select v-model="newWorkOrder.type" class="form-input">
-              <option value="">请选择任务类型</option>
+            <select v-model="newWorkOrder.task_type" class="form-input" required>
               <option value="schedule">排班任务</option>
               <option value="maintenance">设备维护</option>
-              <option value="inspection">产线巡查</option>
+              <option value="inspection">产线巡检</option>
             </select>
           </div>
           <div class="form-group">
             <label>任务详情</label>
-            <textarea v-model="newWorkOrder.description" class="form-input" rows="3" placeholder="请输入任务详细内容"></textarea>
+            <textarea v-model="newWorkOrder.task_details" class="form-input" rows="3" placeholder="请输入任务详细内容" required></textarea>
           </div>
           <div class="form-group">
             <label>开始时间</label>
-            <input type="datetime-local" v-model="newWorkOrder.startTime" class="form-input">
+            <input type="datetime-local" v-model="newWorkOrder.start_time" class="form-input" required>
           </div>
           <div class="form-group">
-            <label>结束时间</label>
-            <input type="datetime-local" v-model="newWorkOrder.endTime" class="form-input">
+            <label>截止时间</label>
+            <input type="datetime-local" v-model="newWorkOrder.deadline" class="form-input" required>
           </div>
           <div class="form-group">
-            <label>巡检产线</label>
-            <select v-model="newWorkOrder.productionLine" class="form-input">
-              <option value="">请选择巡检产线</option>
-              <option value="line1">一号生产线</option>
-              <option value="line2">二号生产线</option>
-              <option value="line3">三号生产线</option>
+            <label>产线信息</label>
+            <select v-model="newWorkOrder.production_line" class="form-input" required>
+              <option value="">请选择产线</option>
+              <option v-for="line in assignedLines" :key="line.id" :value="line.id">
+                {{ line.name }}
+              </option>
             </select>
           </div>
-          <div class="form-group">
-            <label>负责人</label>
-            <input type="text" v-model="newWorkOrder.owner" class="form-input" placeholder="请输入负责人姓名">
+          <!-- 根据任务类型显示不同的扩展字段 -->
+          <!-- 排班任务的字段 -->
+          <div v-if="newWorkOrder.task_type === 'schedule'" class="extension-fields">
+            <div class="form-group">
+              <label>负责组员</label>
+              <select v-model="newWorkOrder.team_members" class="form-input">
+                <option value="">请选择组员</option>
+                <option v-for="emp in employees" :key="emp.id" :value="emp.name">
+                  {{ emp.name }} ({{ emp.skillLevel }})
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>设备编号</label>
+              <input type="text" v-model="newWorkOrder.extension_fields.device_id" class="form-input" placeholder="请输入设备编号">
+            </div>
+          </div>
+
+          <!-- 设备维护的字段 -->
+          <div v-if="newWorkOrder.task_type === 'maintenance'" class="extension-fields">
+            <div class="form-group">
+              <label>负责组员</label>
+              <select v-model="newWorkOrder.team_members" class="form-input">
+                <option value="">请选择组员</option>
+                <option v-for="emp in employees" :key="emp.id" :value="emp.name">
+                  {{ emp.name }} ({{ emp.skillLevel }})
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>设备编号</label>
+              <input type="text" v-model="newWorkOrder.extension_fields.device_id" class="form-input" placeholder="请输入设备编号">
+            </div>
+            <div class="form-group">
+              <label>发现时间</label>
+              <input type="datetime-local" v-model="newWorkOrder.extension_fields.discovery_time" class="form-input">
+            </div>
+          </div>
+
+          <!-- 产线巡检的字段 -->
+          <div v-if="newWorkOrder.task_type === 'inspection'" class="extension-fields">
+            <div class="form-group">
+              <label>负责组员</label>
+              <select v-model="newWorkOrder.team_members" class="form-input">
+                <option value="">请选择组员</option>
+                <option v-for="emp in employees" :key="emp.id" :value="emp.name">
+                  {{ emp.name }} ({{ emp.skillLevel }})
+                </option>
+              </select>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -112,34 +158,60 @@
           </div>
           <div class="detail-item">
             <label>任务类型</label>
-            <div class="value">{{ selectedWorkOrder.type || '维护任务' }}</div>
+            <div class="value">{{ selectedWorkOrder.type }}</div>
           </div>
           <div class="detail-item">
             <label>任务描述</label>
             <div class="value description">{{ selectedWorkOrder.description }}</div>
           </div>
           <div class="detail-item">
-            <label>负责人</label>
-            <div class="value">{{ selectedWorkOrder.owner }}</div>
+            <label>发出人</label>
+            <div class="value">{{ selectedWorkOrder.creator }}</div>
           </div>
           <div class="detail-item">
-            <label>创建时间</label>
-            <div class="value">{{ selectedWorkOrder.createTime || '2023-07-10 10:00' }}</div>
+            <label>负责工长</label>
+            <div class="value">{{ selectedWorkOrder.foreman }}</div>
+          </div>
+          <div class="detail-item">
+            <label>负责班组</label>
+            <div class="value">{{ selectedWorkOrder.team }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkOrder.team_members">
+            <label>负责组员</label>
+            <div class="value">{{ selectedWorkOrder.team_members }}</div>
+          </div>
+          <div class="detail-item">
+            <label>产线信息</label>
+            <div class="value">{{ selectedWorkOrder.production_line }}</div>
+          </div>
+          <div class="detail-item">
+            <label>开始时间</label>
+            <div class="value">{{ formatDateTime(selectedWorkOrder.start_time) }}</div>
           </div>
           <div class="detail-item">
             <label>截止时间</label>
-            <div class="value">{{ selectedWorkOrder.deadline }}</div>
+            <div class="value">{{ formatDateTime(selectedWorkOrder.deadline) }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkOrder.actual_end_time">
+            <label>实际结束时间</label>
+            <div class="value">{{ formatDateTime(selectedWorkOrder.actual_end_time) }}</div>
           </div>
           <div class="detail-item">
-            <label>执行进度</label>
+            <label>创建时间</label>
+            <div class="value">{{ formatDateTime(selectedWorkOrder.created_at) }}</div>
+          </div>
+          <div class="detail-item">
+            <label>更新时间</label>
+            <div class="value">{{ formatDateTime(selectedWorkOrder.updated_at) }}</div>
+          </div>
+          <!-- 扩展字段显示 -->
+          <div class="detail-item" v-if="selectedWorkOrder.extension_fields && Object.keys(selectedWorkOrder.extension_fields).length > 0">
+            <label>扩展信息</label>
             <div class="value">
-              <div class="progress-bar">
-                <div
-                  class="progress"
-                  :style="{ width: (selectedWorkOrder.progress || 0) + '%' }"
-                ></div>
+              <div v-for="(value, key) in selectedWorkOrder.extension_fields" :key="key" class="extension-field">
+                <span class="extension-key">{{ key }}:</span>
+                <span class="extension-value">{{ value }}</span>
               </div>
-              <span class="progress-text">{{ selectedWorkOrder.progress || 0 }}%</span>
             </div>
           </div>
         </div>
@@ -223,6 +295,8 @@
 <script>
 import ForemanNav from '@/components/ForemanNav.vue'
 
+// 使用Vue实例的$message方法，不需要单独导入Message
+
 export default {
   name: 'WorkOrder',
   components: {
@@ -231,50 +305,8 @@ export default {
   data() {
     return {
       // 工长被分配的产线
-      assignedLines: [
-        {
-          id: 1,
-          name: '一号生产线',
-          status: 'running',
-          statusText: '运行中',
-          runningDevices: 8,
-          totalDevices: 10,
-          utilization: 85,
-          assignedTo: 1 // 分配给当前工长的ID
-        },
-        {
-          id: 2,
-          name: '二号生产线',
-          status: 'warning',
-          statusText: '预警',
-          runningDevices: 6,
-          totalDevices: 8,
-          utilization: 75,
-          assignedTo: 1 // 分配给当前工长的ID
-        }
-      ],
-      workorders: [
-        {
-          number: 'WO2023001',
-          status: 'pending',
-          statusText: '待处理',
-          description: '一号生产线设备维护',
-          owner: '张工',
-          deadline: '2023-07-30',
-          type: '设备维护',
-          progress: 0
-        },
-        {
-          number: 'WO2023002',
-          status: 'processing',
-          statusText: '进行中',
-          description: '二号生产线质量检查',
-          owner: '李工',
-          deadline: '2023-07-31',
-          type: '质量检查',
-          progress: 45
-        }
-      ],
+      assignedLines: [],
+      workorders: [],
 
       // 员工列表
       employees: [
@@ -321,12 +353,15 @@ export default {
       selectedWorkOrder: {},
       selectedEmployee: {},
       newWorkOrder: {
-        type: '',
-        description: '',
-        startTime: '',
-        endTime: '',
-        productionLine: '',
-        owner: ''
+        task_type: 'schedule', // 默认选择排班任务
+        task_details: '',
+        start_time: '',
+        deadline: '',
+        production_line: '',
+        team_members: '',
+        extension_fields: {
+          device_id: ''
+        }
       },
       taskForm: {
         lineId: '',
@@ -336,6 +371,40 @@ export default {
         startTime: '',
         endTime: ''
       }
+    }
+  },
+  created() {
+    // 获取当前工长信息
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    this.currentForeman = userInfo;
+
+    // 不需要在这里初始化自动生成的字段，在提交时会自动添加
+
+    // 加载工单数据
+    this.fetchWorkOrders();
+
+    // 加载工长的产线信息
+    this.fetchAssignedLines();
+  },
+  watch: {
+    // 监听任务类型变化，动态更新扩展字段
+    'newWorkOrder.task_type': function(newType) {
+      // 根据任务类型初始化不同的扩展字段
+      if (newType === 'schedule') {
+        this.newWorkOrder.extension_fields = {
+          device_id: ''
+        };
+      } else if (newType === 'maintenance') {
+        this.newWorkOrder.extension_fields = {
+          device_id: '',
+          discovery_time: new Date().toISOString().slice(0, 16) // 格式化为日期时间输入框支持的格式
+        };
+      } else if (newType === 'inspection') {
+        this.newWorkOrder.extension_fields = {};
+      }
+
+      // 重置负责组员
+      this.newWorkOrder.team_members = '';
     }
   },
   computed: {
@@ -348,54 +417,326 @@ export default {
     },
   },
   methods: {
-    createWorkOrder() {
-      // 获取任务类型的显示文本
-      const typeTextMap = {
-        'schedule': '排班任务',
-        'maintenance': '设备维护',
-        'inspection': '产线巡查'
+    // 获取工长的产线信息
+    async fetchAssignedLines() {
+      try {
+        if (!this.currentForeman || !this.currentForeman.group_id) {
+          console.log('当前工长组号未知，无法获取产线信息');
+          return;
+        }
+
+        console.log('开始获取工长产线信息,工长组号:', this.currentForeman.group_id);
+        const response = await fetch(`/api/foreman/assigned-lines?group_id=${this.currentForeman.group_id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('产线数据:', data);
+
+        if (data.success && Array.isArray(data.data)) {
+          this.assignedLines = data.data.map(line => ({
+            id: line.line_id,
+            name: line.line_name
+          }));
+
+          // 如果没有产线数据，添加测试数据
+          if (this.assignedLines.length === 0) {
+            this.assignedLines = [
+              { id: 'line1', name: '一号生产线' },
+              { id: 'line2', name: '二号生产线' },
+              { id: 'line3', name: '三号生产线' }
+            ];
+          }
+        } else {
+          console.error('获取产线列表失败:', data.error || '未知错误');
+          // 添加测试数据
+          this.assignedLines = [
+            { id: 'line1', name: '一号生产线' },
+            { id: 'line2', name: '二号生产线' },
+            { id: 'line3', name: '三号生产线' }
+          ];
+        }
+      } catch (error) {
+        console.error('请求产线列表出错:', error);
+        // 添加测试数据
+        this.assignedLines = [
+          { id: 'line1', name: '一号生产线' },
+          { id: 'line2', name: '二号生产线' },
+          { id: 'line3', name: '三号生产线' }
+        ];
+      }
+    },
+
+    // 获取工长组的工单列表
+    async fetchWorkOrders() {
+      try {
+        if (!this.currentForeman || !this.currentForeman.group_id) {
+          console.log('当前工长组号未知，无法获取工单信息');
+          return;
+        }
+
+        console.log('开始获取工单数据,工长组号:', this.currentForeman.group_id);
+        const response = await fetch(`/api/workorders/foreman-workorders?group_id=${this.currentForeman.group_id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('原始工单数据:', data);
+
+        if (data.success && Array.isArray(data.data)) {
+          // 处理工单数据
+          this.workorders = data.data.map(workorder => {
+            // 将数据库中的字段直接映射到前端对象
+            const wo = {
+              ...workorder,
+              number: workorder.workorder_number,  // 为了兼容前端显示
+              statusText: this.getStatusText(workorder.status),
+              description: workorder.task_details, // 为了兼容前端显示
+              type: workorder.task_type,          // 为了兼容前端显示
+              owner: workorder.creator,           // 为了兼容前端显示
+              progress: 0                         // 默认进度
+            };
+
+            // 如果扩展字段是字符串，尝试解析为JSON对象
+            if (typeof workorder.extension_fields === 'string') {
+              try {
+                wo.extension_fields = JSON.parse(workorder.extension_fields);
+              } catch (e) {
+                console.error('解析扩展字段失败:', e);
+                wo.extension_fields = {};
+              }
+            }
+
+            return wo;
+          });
+        } else {
+          console.error('获取工单列表失败:', data.error || '未知错误');
+          this.$message.error('获取工单列表失败');
+        }
+      } catch (error) {
+        console.error('请求工单列表出错:', error);
+        this.$message.error('获取工单列表失败');
+      }
+    },
+
+    // 格式化日期
+    formatDate(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    },
+
+    // 格式化日期时间
+    formatDateTime(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleString();
+    },
+
+    // 获取状态显示文本
+    getStatusText(status) {
+      const statusMap = {
+        '未接受': '待处理',
+        '进行中': '进行中',
+        '已完成': '已完成',
+        '已取消': '已取消',
+        'pending': '待处理',
+        'processing': '进行中',
+        'completed': '已完成',
+        'cancelled': '已取消'
       };
+      return statusMap[status] || '未知状态';
+    },
 
-      this.workorders.push({
-        number: 'WO' + Date.now(),
-        status: 'pending',
-        statusText: '待处理',
-        description: this.newWorkOrder.description,
-        owner: this.newWorkOrder.owner,
-        deadline: this.newWorkOrder.endTime,
-        type: typeTextMap[this.newWorkOrder.type] || '未知类型'
-      });
+    async createWorkOrder() {
+      try {
+        // 验证表单
+        if (!this.newWorkOrder.task_type) {
+          this.$message.warning('请选择任务类型');
+          return;
+        }
+        if (!this.newWorkOrder.task_details) {
+          this.$message.warning('请输入任务详情');
+          return;
+        }
+        if (!this.newWorkOrder.start_time) {
+          this.$message.warning('请选择开始时间');
+          return;
+        }
+        if (!this.newWorkOrder.deadline) {
+          this.$message.warning('请选择截止时间');
+          return;
+        }
+        if (!this.newWorkOrder.production_line) {
+          this.$message.warning('请选择产线');
+          return;
+        }
 
-      this.resetNewWorkOrder();
-      alert('任务创建成功');
-      this.showNewWorkOrderModal = false;
+        if (!this.newWorkOrder.team_members) {
+          this.$message.warning('请选择负责组员');
+          return;
+        }
+
+        // 根据任务类型验证特定字段
+        if (this.newWorkOrder.task_type === 'maintenance') {
+          if (!this.newWorkOrder.extension_fields.device_id) {
+            this.$message.warning('请输入设备编号');
+            return;
+          }
+          if (!this.newWorkOrder.extension_fields.discovery_time) {
+            this.$message.warning('请选择发现时间');
+            return;
+          }
+        } else if (this.newWorkOrder.task_type === 'schedule') {
+          if (!this.newWorkOrder.extension_fields.device_id) {
+            this.$message.warning('请输入设备编号');
+            return;
+          }
+        }
+
+        // 准备工单数据
+        // 先添加人工输入的字段
+        const workorderData = {
+          task_type: this.newWorkOrder.task_type,
+          task_details: this.newWorkOrder.task_details,
+          start_time: this.newWorkOrder.start_time,
+          deadline: this.newWorkOrder.deadline,
+          production_line: this.newWorkOrder.production_line,
+          team_members: this.newWorkOrder.team_members,
+          extension_fields: {}
+        };
+
+        // 添加自动生成的字段
+        workorderData.creator = this.currentForeman.username;
+        workorderData.foreman = this.currentForeman.username;
+        workorderData.team = this.currentForeman.group_id;
+        workorderData.status = '未接受';
+
+        // 根据任务类型设置扩展字段
+        if (this.newWorkOrder.task_type === 'maintenance') {
+          // 设备维护类型
+          workorderData.extension_fields = {
+            device_id: this.newWorkOrder.extension_fields.device_id || '',
+            discovery_time: this.newWorkOrder.extension_fields.discovery_time || new Date().toISOString()
+          };
+        } else if (this.newWorkOrder.task_type === 'inspection') {
+          // 产线巡检类型
+          workorderData.extension_fields = {};
+        } else if (this.newWorkOrder.task_type === 'schedule') {
+          // 排班任务类型
+          workorderData.extension_fields = {
+            device_id: this.newWorkOrder.extension_fields.device_id || ''
+          };
+        }
+
+        // 发送请求创建工单
+        const response = await fetch('/api/workorders/create-workorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(workorderData)
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // 重新获取工单列表
+          this.fetchWorkOrders();
+          this.resetNewWorkOrder();
+          this.$message.success('工单创建成功');
+          this.showNewWorkOrderModal = false;
+        } else {
+          this.$message.error(data.error || '工单创建失败');
+        }
+      } catch (error) {
+        console.error('创建工单出错:', error);
+        this.$message.error('创建工单失败');
+      }
     },
 
     resetNewWorkOrder() {
+      // 只保留需要人工输入的字段，其他字段在提交时自动生成
       this.newWorkOrder = {
-        type: '',
-        description: '',
-        startTime: '',
-        endTime: '',
-        productionLine: '',
-        owner: ''
+        task_type: 'schedule', // 默认选择排班任务
+        task_details: '',
+        start_time: '',
+        deadline: '',
+        production_line: '',
+        team_members: '',
+        extension_fields: {}
       };
+
+      // 根据任务类型初始化不同的扩展字段
+      if (this.newWorkOrder.task_type === 'schedule') {
+        this.newWorkOrder.extension_fields = {
+          device_id: ''
+        };
+      } else if (this.newWorkOrder.task_type === 'maintenance') {
+        this.newWorkOrder.extension_fields = {
+          device_id: '',
+          discovery_time: new Date().toISOString().slice(0, 16) // 格式化为日期时间输入框支持的格式
+        };
+      } else if (this.newWorkOrder.task_type === 'inspection') {
+        this.newWorkOrder.extension_fields = {};
+      }
     },
 
     showWorkOrderDetail(workorder) {
       this.selectedWorkOrder = { ...workorder };
       this.showWorkOrderDetailModal = true;
     },
-    updateWorkOrder() {
-      if(this.selectedWorkOrder.status === 'pending') {
-        this.selectedWorkOrder.status = 'processing';
-        this.selectedWorkOrder.statusText = '进行中';
+    async updateWorkOrder() {
+      try {
+        // 准备更新数据
+        let newStatus = this.selectedWorkOrder.status;
 
-        // 更新列表中对应的工单状态
-        const index = this.workorders.findIndex(w => w.number === this.selectedWorkOrder.number);
-        if(index !== -1) {
-          this.workorders[index] = { ...this.selectedWorkOrder };
+        if(this.selectedWorkOrder.status === 'pending' || this.selectedWorkOrder.status === '未接受') {
+          newStatus = 'processing';
         }
+
+        const updateData = {
+          status: newStatus
+        };
+
+        // 发送请求更新工单
+        const response = await fetch('/api/workorders/update-workorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            workorder_number: this.selectedWorkOrder.number,
+            update_data: updateData
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // 重新获取工单列表
+          this.fetchWorkOrders();
+          this.$message.success('工单更新成功');
+        } else {
+          this.$message.error(data.error || '工单更新失败');
+        }
+      } catch (error) {
+        console.error('更新工单出错:', error);
+        this.$message.error('更新工单失败');
       }
       this.showWorkOrderDetailModal = false;
     },
@@ -435,53 +776,66 @@ export default {
     },
 
     // 提交工作安排
-    submitTask() {
-      // 验证表单
-      if (!this.taskForm.lineId) {
-        alert('请选择产线');
-        return;
-      }
-      if (!this.taskForm.employeeId) {
-        alert('请选择员工');
-        return;
-      }
-      if (!this.taskForm.type) {
-        alert('请选择工作类型');
-        return;
-      }
-      if (!this.taskForm.startTime || !this.taskForm.endTime) {
-        alert('请设置开始和结束时间');
-        return;
-      }
+    async submitTask() {
+      try {
+        // 验证表单
+        if (!this.taskForm.lineId) {
+          this.$message.warning('请选择产线');
+          return;
+        }
+        if (!this.taskForm.employeeId) {
+          this.$message.warning('请选择员工');
+          return;
+        }
 
-      // 获取选中的员工
-      const employee = this.employees.find(emp => emp.id === this.taskForm.employeeId);
-      if (!employee) {
-        alert('员工不存在');
-        return;
+        // 获取选中的员工
+        const employee = this.employees.find(emp => emp.id === this.taskForm.employeeId);
+        if (!employee) {
+          this.$message.warning('员工不存在');
+          return;
+        }
+
+        // 准备更新数据
+        const updateData = {
+          status: 'processing',
+          team_members: employee.name,
+          production_line: this.taskForm.lineId
+        };
+
+        // 发送请求更新工单
+        const response = await fetch('/api/workorders/update-workorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            workorder_number: this.selectedWorkOrder.number,
+            update_data: updateData
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // 重新获取工单列表
+          this.fetchWorkOrders();
+          this.$message.success('任务分配成功');
+
+          // 记录日志
+          console.log('安排工作成功:', {
+            workorder: this.selectedWorkOrder,
+            employee: employee,
+            task: this.taskForm
+          });
+        } else {
+          this.$message.error(data.error || '任务分配失败');
+        }
+      } catch (error) {
+        console.error('分配任务出错:', error);
+        this.$message.error('任务分配失败');
       }
-
-      // 更新员工状态
-      const empIndex = this.employees.findIndex(emp => emp.id === this.taskForm.employeeId);
-      if (empIndex !== -1) {
-        this.employees[empIndex].status = 'task';
-        this.employees[empIndex].statusText = '任务中';
-      }
-
-      // 更新工单信息，可以添加分配的员工信息
-      const workorderIndex = this.workorders.findIndex(w => w.number === this.selectedWorkOrder.number);
-      if (workorderIndex !== -1) {
-        this.workorders[workorderIndex].assignedEmployee = employee.name;
-      }
-
-      console.log('安排工作:', {
-        workorder: this.selectedWorkOrder,
-        employee: employee,
-        task: this.taskForm
-      });
-
       this.closeAssignTask();
-      alert('工作安排已提交');
     }
   }
 }

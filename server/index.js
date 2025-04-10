@@ -4,6 +4,7 @@ const { setupMiddleware } = require('./middleware');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const foremanRoutes = require('./routes/foreman');
+const workorderRoutes = require('./routes/workorders');
 
 // 创建Express应用
 const app = express();
@@ -16,6 +17,7 @@ setupMiddleware(app);
 app.use('/api', authRoutes);
 app.use('/api', userRoutes);
 app.use('/api/foreman', foremanRoutes);
+app.use('/api/workorders', workorderRoutes);
 
 // 处理Vue路由 - 所有未匹配的路由返回index.html
 app.get('*', (_, res) => {
