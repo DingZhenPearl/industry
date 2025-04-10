@@ -33,14 +33,14 @@ app.post('/api/login', async (req, res) => {
   if (!username) missingFields.push('用户名');
   if (!password) missingFields.push('密码');
   if (!role) missingFields.push('角色');
-  
+
   if (missingFields.length > 0) {
     return res.status(400).json({ success: false, error: `请提供以下必需字段: ${missingFields.join(', ')}` });
   }
 
   try {
     const result = await new Promise((resolve) => {
-      const pythonProcess = spawn('python', ['pyScripts/verify_user.py', 'verify', username, password, role]);
+      const pythonProcess = spawn('python', ['pyScripts/db_operations.py', 'verify-user', username, password, role]);
       let output = '';
 
       pythonProcess.stdout.on('data', (data) => {
@@ -92,14 +92,14 @@ app.post('/api/register', async (req, res) => {
   if (!username) missingFields.push('用户名');
   if (!password) missingFields.push('密码');
   if (!role) missingFields.push('角色');
-  
+
   if (missingFields.length > 0) {
     return res.status(400).json({ success: false, error: `请提供以下必需字段: ${missingFields.join(', ')}` });
   }
 
   try {
     const result = await new Promise((resolve) => {
-      const pythonProcess = spawn('python', ['pyScripts/verify_user.py', 'register', username, password, role]);
+      const pythonProcess = spawn('python', ['pyScripts/db_operations.py', 'register', username, password, role]);
       let output = '';
 
       pythonProcess.stdout.on('data', (data) => {
@@ -136,22 +136,22 @@ const authMiddleware = (req, res, next) => {
   // 从请求头获取token
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  
+
   if (token) {
     // 这里可以添加token验证逻辑
     next();
     return;
   }
-  
+
   // 再检查session
   if (req.session && req.session.user) {
     next();
     return;
   }
 
-  res.status(401).json({ 
-    success: false, 
-    error: '未登录' 
+  res.status(401).json({
+    success: false,
+    error: '未登录'
   });
 };
 
@@ -161,12 +161,12 @@ app.get('/api/user', authMiddleware, (req, res) => {
 });
 
 // 厂长获取所有用户列表
-app.get('/api/users', authMiddleware, async (req, res) => {
+app.get('/api/users', authMiddleware, async (_, res) => {
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/verify_user.py',
-        'get_users'
+        'pyScripts/db_operations.py',
+        'get-users'
       ]);
 
       let output = '';
@@ -174,7 +174,7 @@ app.get('/api/users', authMiddleware, async (req, res) => {
         output += data.toString();
       });
 
-      pythonProcess.on('close', (code) => {
+      pythonProcess.on('close', () => {
         try {
           const users = JSON.parse(output);
           resolve(users);
@@ -194,38 +194,35 @@ app.get('/api/users', authMiddleware, async (req, res) => {
 app.get('/api/foreman/team-members', authMiddleware, async (req, res) => {
   const group_id = req.query.group_id;
   console.log('获取工长团队成员,组号:', group_id);
-  
+
   if (!group_id) {
-    return res.status(400).json({ 
-      success: false, 
-      error: '缺少组号参数' 
+    return res.status(400).json({
+      success: false,
+      error: '缺少组号参数'
     });
   }
 
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/verify_user.py',
-        'get_team_members',
+        'pyScripts/db_operations.py',
+        'get-team',
         group_id
       ]);
 
       let output = '';
-      let errorOutput = '';
-      
       pythonProcess.stdout.on('data', (data) => {
         output += data.toString();
       });
 
       pythonProcess.stderr.on('data', (data) => {
-        errorOutput += data.toString();
         console.error('Python错误:', data.toString());
       });
 
       pythonProcess.on('close', (code) => {
         console.log('Python进程退出,代码:', code);
         console.log('原始输出:', output);
-        
+
         try {
           const cleanOutput = output.trim();
           const result = JSON.parse(cleanOutput);
@@ -233,9 +230,8 @@ app.get('/api/foreman/team-members', authMiddleware, async (req, res) => {
         } catch (error) {
           console.error('解析Python输出失败:', error);
           console.error('原始输出:', output);
-          console.error('错误输出:', errorOutput);
-          resolve({ 
-            success: false, 
+          resolve({
+            success: false,
             error: '解析用户数据失败',
             details: output
           });
@@ -254,37 +250,36 @@ app.get('/api/foreman/team-members', authMiddleware, async (req, res) => {
 app.get('/api/foreman/assigned-lines', authMiddleware, async (req, res) => {
   const group_id = req.query.group_id;
   console.log('获取工长产线信息,组号:', group_id);
-  
+
   if (!group_id) {
-    return res.status(400).json({ 
-      success: false, 
-      error: '缺少组号参数' 
+    return res.status(400).json({
+      success: false,
+      error: '缺少组号参数'
     });
   }
 
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/get_lines.py',
+        'pyScripts/db_operations.py',
+        'get-lines',
         group_id
       ]);
 
       let output = '';
-      let errorOutput = '';
-      
+
       pythonProcess.stdout.on('data', (data) => {
         output += data.toString();
       });
 
       pythonProcess.stderr.on('data', (data) => {
-        errorOutput += data.toString();
         console.error('Python错误:', data.toString());
       });
 
       pythonProcess.on('close', (code) => {
         console.log('Python进程退出,代码:', code);
         console.log('原始输出:', output);
-        
+
         try {
           const cleanOutput = output.trim();
           const result = JSON.parse(cleanOutput);
@@ -292,9 +287,8 @@ app.get('/api/foreman/assigned-lines', authMiddleware, async (req, res) => {
         } catch (error) {
           console.error('解析Python输出失败:', error);
           console.error('原始输出:', output);
-          console.error('错误输出:', errorOutput);
-          resolve({ 
-            success: false, 
+          resolve({
+            success: false,
             error: '解析产线数据失败',
             details: output
           });
@@ -312,14 +306,14 @@ app.get('/api/foreman/assigned-lines', authMiddleware, async (req, res) => {
 // 更新用户名
 app.post('/api/update-username', async (req, res) => {
   const { username, role, currentUsername } = req.body;
-  
+
   console.log('更新用户名请求:', { username, role, currentUsername }); // 添加请求日志
 
   const missingFields = [];
   if (!username) missingFields.push('新用户名');
   if (!role) missingFields.push('角色');
   if (!currentUsername) missingFields.push('当前用户名');
-  
+
   if (missingFields.length > 0) {
     return res.status(400).json({ success: false, error: `请提供以下必需字段: ${missingFields.join(', ')}` });
   }
@@ -327,18 +321,17 @@ app.post('/api/update-username', async (req, res) => {
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/verify_user.py', 
-        'update_username', 
+        'pyScripts/db_operations.py',
+        'update-username',
         currentUsername,  // 第一个参数应该是当前用户名
         role,             // 第二个参数是角色
         username          // 第三个参数是新用户名
       ], {
         encoding: 'utf-8'  // 明确指定编码
       });
-      
+
       let output = '';
-      let errorOutput = '';
-      
+
       pythonProcess.stdout.on('data', (data) => {
         // 只收集最后一行输出，避免调试信息干扰
         const lines = data.toString().split('\n');
@@ -346,7 +339,6 @@ app.post('/api/update-username', async (req, res) => {
       });
 
       pythonProcess.stderr.on('data', (data) => {
-        errorOutput += data.toString();
         console.error(`Python脚本错误输出: ${data}`);
       });
 
@@ -361,8 +353,8 @@ app.post('/api/update-username', async (req, res) => {
           resolve(result);
         } catch (error) {
           console.error('解析Python输出失败:', error);
-          resolve({ 
-            success: false, 
+          resolve({
+            success: false,
             error: '解析Python脚本输出失败',
             details: `原始输出: ${output}\n错误: ${error.message}`
           });
@@ -374,10 +366,10 @@ app.post('/api/update-username', async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('处理更新用户名请求时出错:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: '服务器内部错误',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -385,19 +377,19 @@ app.post('/api/update-username', async (req, res) => {
 // 更新密码
 app.post('/api/update-password', async (req, res) => {
   const { newPassword, username, role } = req.body;
-  
+
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/verify_user.py', 
-        'update_password',
+        'pyScripts/db_operations.py',
+        'update-password',
         username,       // 第一个参数是用户名
         role,           // 第二个参数是角色
         newPassword     // 第三个参数是新密码
       ], {
         encoding: 'utf-8'  // 明确指定编码
       });
-      
+
       let output = '';
       pythonProcess.stdout.on('data', (data) => {
         // 只收集最后一行输出
@@ -417,15 +409,15 @@ app.post('/api/update-password', async (req, res) => {
           resolve(result);
         } catch (error) {
           console.error('解析Python输出失败:', error, '原始输出:', output);
-          resolve({ 
-            success: false, 
+          resolve({
+            success: false,
             error: '密码更新失败',
             details: output // 返回原始错误信息
           });
         }
       });
     });
-    
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
@@ -435,33 +427,33 @@ app.post('/api/update-password', async (req, res) => {
 // 更新手机号
 app.post('/api/update-phone', async (req, res) => {
   const { phone, username, role } = req.body;
-  
+
   if (!phone || phone.length !== 11 || !/^\d+$/.test(phone)) {
-    return res.status(400).json({ 
-      success: false, 
-      error: '请输入有效的11位手机号' 
+    return res.status(400).json({
+      success: false,
+      error: '请输入有效的11位手机号'
     });
   }
 
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/verify_user.py', 
-        'update_user', 
+        'pyScripts/db_operations.py',
+        'update-user',
         username,
         role,
         phone
       ], {
         encoding: 'utf-8'
       });
-      
+
       let output = '';
       pythonProcess.stdout.on('data', (data) => {
         const lines = data.toString().split('\n');
         output = lines[lines.length - 2];
       });
-      
-      pythonProcess.on('close', (code) => {
+
+      pythonProcess.on('close', () => {
         try {
           resolve(JSON.parse(output));
         } catch (error) {
@@ -469,7 +461,7 @@ app.post('/api/update-phone', async (req, res) => {
         }
       });
     });
-    
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
@@ -479,29 +471,29 @@ app.post('/api/update-phone', async (req, res) => {
 // 更新用户信息接口
 app.post('/api/update-user', async (req, res) => {
   const { username, role, phone } = req.body;
-  
+
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/verify_user.py', 
-        'update_user', 
+        'pyScripts/db_operations.py',
+        'update-user',
         username,
         role,
         phone
       ], {
         encoding: 'utf-8'
       });
-      
+
       let output = '';
       pythonProcess.stdout.on('data', (data) => {
         output += data.toString();
       });
-      
-      pythonProcess.on('close', (code) => {
+
+      pythonProcess.on('close', () => {
         resolve(JSON.parse(output));
       });
     });
-    
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: '服务器错误' });
@@ -511,23 +503,23 @@ app.post('/api/update-user', async (req, res) => {
 // 更新用户组号
 app.post('/api/update-group', authMiddleware, async (req, res) => {
   const { username, role, group_id } = req.body;
-  
+
   try {
     const result = await new Promise((resolve) => {
       const pythonProcess = spawn('python', [
-        'pyScripts/verify_user.py',
-        'update_group',
+        'pyScripts/db_operations.py',
+        'update-group',
         username,
         role,
         group_id
       ]);
-      
+
       let output = '';
       pythonProcess.stdout.on('data', (data) => {
         output += data.toString();
       });
-      
-      pythonProcess.on('close', (code) => {
+
+      pythonProcess.on('close', () => {
         try {
           resolve(JSON.parse(output));
         } catch (error) {
@@ -535,7 +527,7 @@ app.post('/api/update-group', authMiddleware, async (req, res) => {
         }
       });
     });
-    
+
     res.json(result);
   } catch (error) {
     res.status(500).json({ success: false, error: '服务器内部错误' });
@@ -552,7 +544,7 @@ app.post('/api/logout', (req, res) => {
 app.use(express.static(path.join(__dirname, '..', 'dist')));
 
 // 处理Vue路由
-app.get('*', (req, res) => {
+app.get('*', (_, res) => {
   res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
 });
 

@@ -2,23 +2,23 @@
   <div class="workorder">
     <header class="header">
       <div class="tab-header">
-        <div 
-          class="tab-item" 
-          :class="{ active: currentTab === 'workorder' }" 
+        <div
+          class="tab-item"
+          :class="{ active: currentTab === 'workorder' }"
           @click="currentTab = 'workorder'"
         >
           工单管理
         </div>
-        <div 
-          class="tab-item" 
-          :class="{ active: currentTab === 'schedule' }" 
+        <div
+          class="tab-item"
+          :class="{ active: currentTab === 'schedule' }"
           @click="currentTab = 'schedule'"
         >
           排班管理
         </div>
       </div>
     </header>
-    
+
     <div class="content">
       <!-- 工单管理内容 -->
       <div v-if="currentTab === 'workorder'" class="workorder-content">
@@ -173,8 +173,8 @@
             <label>执行进度</label>
             <div class="value">
               <div class="progress-bar">
-                <div 
-                  class="progress" 
+                <div
+                  class="progress"
                   :style="{ width: (selectedWorkOrder.progress || 0) + '%' }"
                 ></div>
               </div>
@@ -217,10 +217,10 @@
           <div class="form-group">
             <label>排班人员</label>
             <div class="member-list">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 v-model="memberInput"
-                class="form-input" 
+                class="form-input"
                 placeholder="输入员工姓名后回车添加"
                 @keyup.enter="addMember"
               >
@@ -239,7 +239,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- 安排工作模态框 -->
     <div class="modal" v-if="showAssignTask">
       <div class="modal-content">
@@ -378,39 +378,39 @@ export default {
       ],
       // 员工列表
       employees: [
-        { 
-          id: 'W001', 
-          name: '张三', 
-          lineId: 1,
-          phone: '13800138001', 
-          status: 'active', 
+        {
+          id: 'W001',
+          name: '张三',
+          line_id: '1',
+          phone: '13800138001',
+          status: 'active',
           statusText: '在岗',
           skillLevel: '高级'
         },
-        { 
-          id: 'W002', 
-          name: '李四', 
-          lineId: 1,
-          phone: '13800138002', 
-          status: 'leave', 
+        {
+          id: 'W002',
+          name: '李四',
+          line_id: '1',
+          phone: '13800138002',
+          status: 'leave',
           statusText: '请假',
           skillLevel: '中级'
         },
-        { 
-          id: 'W003', 
-          name: '王五', 
-          lineId: 2,
-          phone: '13800138003', 
-          status: 'task', 
+        {
+          id: 'W003',
+          name: '王五',
+          line_id: '2',
+          phone: '13800138003',
+          status: 'task',
           statusText: '任务中',
           skillLevel: '高级'
         },
-        { 
-          id: 'W004', 
-          name: '赵六', 
-          lineId: 2,
-          phone: '13800138004', 
-          status: 'active', 
+        {
+          id: 'W004',
+          name: '赵六',
+          line_id: '2',
+          phone: '13800138004',
+          status: 'active',
           statusText: '在岗',
           skillLevel: '初级'
         }
@@ -451,7 +451,7 @@ export default {
       if (!this.taskForm.lineId) {
         return this.employees;
       }
-      return this.employees.filter(emp => emp.lineId === parseInt(this.taskForm.lineId));
+      return this.employees.filter(emp => emp.line_id === this.taskForm.lineId);
     },
   },
   methods: {
@@ -462,7 +462,7 @@ export default {
         'maintenance': '设备维护',
         'inspection': '产线巡查'
       };
-      
+
       this.workorders.push({
         number: 'WO' + Date.now(),
         status: 'pending',
@@ -472,7 +472,7 @@ export default {
         deadline: this.newWorkOrder.endTime,
         type: typeTextMap[this.newWorkOrder.type] || '未知类型'
       });
-      
+
       this.resetNewWorkOrder();
       alert('任务创建成功');
       this.showNewWorkOrderModal = false;
@@ -530,7 +530,7 @@ export default {
       };
       return times[shift];
     },
-    
+
     // 从排班管理页面安排员工
     assignEmployeeToSchedule(schedule) {
       // 创建一个临时工单对象
@@ -542,7 +542,7 @@ export default {
         owner: '当前工长',
         deadline: new Date().toISOString().split('T')[0]
       };
-      
+
       // 调用安排员工方法
       this.assignTask(tempWorkOrder);
     },
@@ -554,7 +554,7 @@ export default {
       if(this.selectedWorkOrder.status === 'pending') {
         this.selectedWorkOrder.status = 'processing';
         this.selectedWorkOrder.statusText = '进行中';
-        
+
         // 更新列表中对应的工单状态
         const index = this.workorders.findIndex(w => w.number === this.selectedWorkOrder.number);
         if(index !== -1) {
@@ -567,7 +567,7 @@ export default {
     assignTask(workorder) {
       this.selectedWorkOrder = { ...workorder };
       this.showAssignTask = true;
-      
+
       // 初始化任务表单，可以预填工单的一些信息
       this.taskForm = {
         lineId: '',
@@ -578,13 +578,13 @@ export default {
         endTime: ''
       };
     },
-    
+
     // 根据产线筛选员工
     filterEmployeesByLine() {
       // 重置员工选择
       this.taskForm.employeeId = '';
     },
-    
+
     // 关闭安排工作
     closeAssignTask() {
       this.showAssignTask = false;
@@ -597,7 +597,7 @@ export default {
         endTime: ''
       };
     },
-    
+
     // 提交工作安排
     submitTask() {
       // 验证表单
@@ -617,33 +617,33 @@ export default {
         alert('请设置开始和结束时间');
         return;
       }
-      
+
       // 获取选中的员工
       const employee = this.employees.find(emp => emp.id === this.taskForm.employeeId);
       if (!employee) {
         alert('员工不存在');
         return;
       }
-      
+
       // 更新员工状态
       const empIndex = this.employees.findIndex(emp => emp.id === this.taskForm.employeeId);
       if (empIndex !== -1) {
         this.employees[empIndex].status = 'task';
         this.employees[empIndex].statusText = '任务中';
       }
-      
+
       // 更新工单信息，可以添加分配的员工信息
       const workorderIndex = this.workorders.findIndex(w => w.number === this.selectedWorkOrder.number);
       if (workorderIndex !== -1) {
         this.workorders[workorderIndex].assignedEmployee = employee.name;
       }
-      
+
       console.log('安排工作:', {
         workorder: this.selectedWorkOrder,
         employee: employee,
         task: this.taskForm
       });
-      
+
       this.closeAssignTask();
       alert('工作安排已提交');
     }

@@ -3,7 +3,7 @@
     <header class="header">
       <h1>团队管理</h1>
     </header>
-    
+
     <div class="content">
       <!-- 产线员工概览卡片 -->
       <div class="authority-notice">
@@ -39,7 +39,7 @@
             <i class="calendar-icon"></i> 请假管理
           </button>
         </div>
-        
+
         <div class="filter-bar">
           <select v-model="filterLine" class="filter-select">
             <option value="">全部产线</option>
@@ -53,8 +53,8 @@
             <option value="leave">请假</option>
             <option value="task">任务中</option>
           </select>
-          <input 
-            type="text" 
+          <input
+            type="text"
             v-model="searchKeyword"
             class="search-input"
             placeholder="搜索员工姓名"
@@ -221,17 +221,17 @@ export default {
     // 获取当前工长信息,并打印完整的用户信息用于调试
     const userInfoStr = localStorage.getItem('userInfo') || '{}';
     console.log('localStorage中的userInfo:', userInfoStr);
-    
+
     const userInfo = JSON.parse(userInfoStr);
     console.log('解析后的用户信息:', userInfo);
-    
+
     this.currentForeman = {
       id: userInfo.employee_id,
       name: userInfo.username,
       role: userInfo.role,
       group_id: userInfo.group_id || 99
     };
-    
+
     console.log('当前工长信息:', this.currentForeman);
 
     await this.fetchAssignedLines(); // 先获取产线信息
@@ -243,7 +243,7 @@ export default {
         console.log('当前工长组号未知');
         return [];
       }
-      
+
       return this.employees.filter(emp => {
         // 首先检查组号是否匹配
         const groupMatch = Number(emp.group_id) === Number(this.currentForeman.group_id);
@@ -253,52 +253,52 @@ export default {
         }
 
         // 然后应用其他筛选条件
-        const lineMatch = !this.filterLine || emp.lineId === parseInt(this.filterLine);
+        const lineMatch = !this.filterLine || emp.line_id === this.filterLine;
         const statusMatch = !this.filterStatus || emp.status === this.filterStatus;
-        const searchMatch = !this.searchKeyword || 
-          emp.name.includes(this.searchKeyword) || 
+        const searchMatch = !this.searchKeyword ||
+          emp.name.includes(this.searchKeyword) ||
           emp.id.includes(this.searchKeyword);
-        
+
         return lineMatch && statusMatch && searchMatch;
       });
     },
-    
+
     // 修改产线员工数量统计方法
     getLineWorkerCount() {
       return (lineId) => {
-        return this.employees.filter(emp => 
-          emp.lineId === lineId && 
+        return this.employees.filter(emp =>
+          emp.line_id === lineId &&
           emp.group_id === this.currentForeman.group_id
         ).length;
       };
     },
-    
+
     // 修改产线在岗率统计方法
     getLineActiveRate() {
       return (lineId) => {
-        const lineWorkers = this.employees.filter(emp => 
-          emp.lineId === lineId && 
+        const lineWorkers = this.employees.filter(emp =>
+          emp.line_id === lineId &&
           emp.group_id === this.currentForeman.group_id
         );
         if (lineWorkers.length === 0) return 0;
-        
-        const activeWorkers = lineWorkers.filter(emp => 
+
+        const activeWorkers = lineWorkers.filter(emp =>
           emp.status === 'active' || emp.status === 'task'
         );
         return Math.round((activeWorkers.length / lineWorkers.length) * 100);
       };
     },
-    
+
     // 修改产线任务完成率统计方法
     getLineCompletionRate() {
       return (lineId) => {
-        const lineWorkers = this.employees.filter(emp => 
-          emp.lineId === lineId && 
+        const lineWorkers = this.employees.filter(emp =>
+          emp.line_id === lineId &&
           emp.group_id === this.currentForeman.group_id
         );
         if (lineWorkers.length === 0) return 0;
-        
-        const totalRate = lineWorkers.reduce((sum, worker) => 
+
+        const totalRate = lineWorkers.reduce((sum, worker) =>
           sum + (worker.completionRate || 0), 0
         );
         return Math.round(totalRate / lineWorkers.length);
@@ -313,25 +313,24 @@ export default {
           console.log('当前工长组号未知，无法获取产线信息');
           return;
         }
-        
+
         console.log('开始获取产线数据,工长组号:', this.currentForeman.group_id);
         const response = await fetch(`/api/foreman/assigned-lines?group_id=${this.currentForeman.group_id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log('产线返回数据:', data);
 
         if (data.success && Array.isArray(data.data)) {
           this.assignedLines = data.data.map(line => ({
-            ...line,
-            id: parseInt(line.id) // 确保id是数字类型
+            ...line // 保持原始数据格式
           }));
         } else {
           throw new Error(data.error || '产线数据格式错误');
@@ -340,7 +339,7 @@ export default {
         console.error('获取产线列表出错:', error);
       }
     },
-    
+
     async fetchEmployees() {
       try {
         console.log('开始获取员工数据,工长组号:', this.currentForeman.group_id);
@@ -349,11 +348,11 @@ export default {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log('原始返回数据:', data);
 
@@ -362,7 +361,7 @@ export default {
           this.employees = data.data.map(emp => {
             return {
               ...emp,
-              lineId: parseInt(emp.lineId || '1'), // 如果没有lineId,默认设为1
+              line_id: emp.line_id || '1', // 如果没有line_id,默认设为1
               status: emp.status || 'active',
               statusText: emp.statusText || this.getStatusText(emp),
               skillLevel: emp.skillLevel || '初级', // 添加默认技能等级
@@ -376,7 +375,7 @@ export default {
         console.error('获取员工列表出错:', error);
       }
     },
-    
+
     // 获取角色名称显示
     getRoleName(role) {
       const roleMap = {
@@ -387,13 +386,13 @@ export default {
       };
       return roleMap[role] || role;
     },
-    
+
     // 获取状态显示文本
     getStatusText(emp) {
       if (emp.role === 'safety_officer') {
         return '安全员';
       }
-      
+
       const statusMap = {
         'active': '在岗',
         'leave': '请假',
@@ -402,30 +401,30 @@ export default {
       };
       return statusMap[emp.status] || '未知';
     },
-    
+
     // 获取产线名称
     getLineName(lineId) {
       const line = this.assignedLines.find(line => line.id === lineId);
       return line ? line.name : '未分配';
     },
-    
+
     // 查看员工详情
     viewEmployeeDetail(employee) {
       this.selectedEmployee = { ...employee };
       this.showEmployeeDetail = true;
     },
-    
+
     // 关闭员工详情
     closeEmployeeDetail() {
       this.showEmployeeDetail = false;
       this.selectedEmployee = {};
     },
-    
+
     // 批准请假
     approveLeave(index) {
       this.leaveRequests[index].status = 'approved';
       this.leaveRequests[index].statusText = '已批准';
-      
+
       // 更新员工状态
       const employeeId = this.leaveRequests[index].employeeId;
       const empIndex = this.employees.findIndex(emp => emp.id === employeeId);
@@ -434,7 +433,7 @@ export default {
         this.employees[empIndex].statusText = '请假';
       }
     },
-    
+
     // 拒绝请假
     rejectLeave(index) {
       this.leaveRequests[index].status = 'rejected';
