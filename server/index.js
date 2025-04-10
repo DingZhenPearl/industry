@@ -5,6 +5,8 @@ const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const foremanRoutes = require('./routes/foreman');
 const workorderRoutes = require('./routes/workorders');
+const equipmentRoutes = require('./routes/equipment');
+const productionLineRoutes = require('./routes/production_line');
 
 // 创建Express应用
 const app = express();
@@ -18,6 +20,8 @@ app.use('/api', authRoutes);
 app.use('/api', userRoutes);
 app.use('/api/foreman', foremanRoutes);
 app.use('/api/workorders', workorderRoutes);
+app.use('/api/equipment', equipmentRoutes);
+app.use('/api/production-line', productionLineRoutes);
 
 // 处理Vue路由 - 所有未匹配的路由返回index.html
 app.get('*', (_, res) => {

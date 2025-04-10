@@ -5,6 +5,8 @@ import mysql.connector
 from mysql.connector import Error
 import io
 import argparse
+import time
+import random
 
 # 在文件开头添加编码设置
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -476,7 +478,7 @@ def get_assigned_lines(group_id):
 # 用户验证函数
 # =============================================
 def verify_user(username, password, role):
-    """验证用户登录信息"""
+    """验证用户登录信息（使用用户名）"""
     connection = get_db_connection()
     try:
         cursor = connection.cursor(dictionary=True)
@@ -514,17 +516,50 @@ def verify_user(username, password, role):
             cursor.close()
             connection.close()
 
+def verify_user_by_id(employee_id, password, role):
+    """验证用户登录信息（使用工号）"""
+    connection = get_db_connection()
+    try:
+        cursor = connection.cursor(dictionary=True)
+        check_query = """
+            SELECT username, password, role, phone, employee_id, group_id, line_id, machine_id
+            FROM users WHERE employee_id = %s AND role = %s
+        """
+        cursor.execute(check_query, (employee_id, role))
+        user = cursor.fetchone()
+
+        if user and hashlib.sha256(password.encode()).hexdigest() == user['password']:
+            print(json.dumps({
+                'authenticated': True,
+                'username': user['username'],
+                'role': user['role'],
+                'phone': user['phone'],
+                'employee_id': user['employee_id'],
+                'group_id': user['group_id'],
+                'line_id': user['line_id'],
+                'machine_id': user['machine_id']
+            }, ensure_ascii=False))
+            return
+
+        print(json.dumps({
+            'authenticated': False,
+            'error': '工号或密码错误'
+        }, ensure_ascii=False))
+    except Exception as e:
+        print(json.dumps({
+            'authenticated': False,
+            'error': str(e)
+        }, ensure_ascii=False))
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
 def register(username, password, role):
     """注册新用户"""
     connection = None
     try:
-        # 验证用户名长度
-        if len(username) < 3 or len(username) > 20:
-            print(json.dumps({
-                'success': False,
-                'error': '用户名长度应在3-20个字符之间'
-            }, ensure_ascii=False))
-            return
+        # 用户名现在由系统自动生成，不需要验证长度
 
         # 验证密码长度
         if len(password) < 6:
@@ -546,14 +581,11 @@ def register(username, password, role):
         connection = get_db_connection()
         cursor = connection.cursor()
 
-        # 检查用户名是否已存在
+        # 检查用户名是否已存在，如果存在则修改用户名
         cursor.execute("SELECT COUNT(*) FROM users WHERE username = %s", (username,))
         if cursor.fetchone()[0] > 0:
-            print(json.dumps({
-                'success': False,
-                'error': '用户名已存在'
-            }, ensure_ascii=False))
-            return
+            # 如果用户名已存在，添加随机数字后缀
+            username = f"{username}_{int(time.time())}_{random.randint(1000, 9999)}"
 
         # 对密码进行哈希处理
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
@@ -925,11 +957,17 @@ def main():
     get_lines_parser = subparsers.add_parser('get-lines', help='获取产线')
     get_lines_parser.add_argument('group_id', help='组ID')
 
-    # 验证用户命令
-    verify_user_parser = subparsers.add_parser('verify-user', help='验证用户')
+    # 验证用户命令（使用用户名）
+    verify_user_parser = subparsers.add_parser('verify-user', help='验证用户（使用用户名）')
     verify_user_parser.add_argument('username', help='用户名')
     verify_user_parser.add_argument('password', help='密码')
     verify_user_parser.add_argument('role', help='角色')
+
+    # 验证用户命令（使用工号）
+    verify_user_by_id_parser = subparsers.add_parser('verify-user-by-id', help='验证用户（使用工号）')
+    verify_user_by_id_parser.add_argument('employee_id', help='工号')
+    verify_user_by_id_parser.add_argument('password', help='密码')
+    verify_user_by_id_parser.add_argument('role', help='角色')
 
     # 注册用户命令
     register_parser = subparsers.add_parser('register', help='注册新用户')
@@ -987,6 +1025,8 @@ def main():
         get_assigned_lines(args.group_id)
     elif args.command == 'verify-user':
         verify_user(args.username, args.password, args.role)
+    elif args.command == 'verify-user-by-id':
+        verify_user_by_id(args.employee_id, args.password, args.role)
     elif args.command == 'update-user':
         update_user(args.username, args.role, args.phone)
     elif args.command == 'register':

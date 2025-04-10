@@ -5,47 +5,47 @@
         <div class="logo">工厂智能管理系统</div>
         <div class="illustration"></div>
       </div>
-      
+
       <div class="login-form-container">
-        <h2 class="title">用户登录</h2>
-        <p class="subtitle">欢迎回来，请登录您的账号</p>
-        
+        <h2 class="title">{{ isRegistering ? '用户注册' : '用户登录' }}</h2>
+        <p class="subtitle">{{ isRegistering ? '欢迎注册新账号' : '欢迎回来，请登录您的账号' }}</p>
+
         <div class="toggle-container">
-          <button 
-            :class="['toggle-btn', { active: !isRegistering }]" 
+          <button
+            :class="['toggle-btn', { active: !isRegistering }]"
             @click="isRegistering = false"
           >登录</button>
-          <button 
-            :class="['toggle-btn', { active: isRegistering }]" 
+          <button
+            :class="['toggle-btn', { active: isRegistering }]"
             @click="isRegistering = true"
           >注册</button>
         </div>
 
         <form @submit.prevent="handleLogin" class="login-form">
           <div class="form-wrapper">
-            <div class="form-group">
-              <label for="username">用户名</label>
+            <div class="form-group" v-if="!isRegistering">
+              <label for="employee_id">工号</label>
               <div class="input-container">
                 <i class="input-icon user-icon"></i>
-                <input 
-                  id="username" 
-                  type="text" 
-                  v-model="username" 
-                  placeholder="请输入用户名"
+                <input
+                  id="employee_id"
+                  type="text"
+                  v-model="employee_id"
+                  placeholder="请输入工号"
                   required
                   class="modern-input"
                 />
               </div>
             </div>
-            
+
             <div class="form-group">
               <label for="password">密码</label>
               <div class="input-container">
                 <i class="input-icon password-icon"></i>
-                <input 
-                  id="password" 
-                  type="password" 
-                  v-model="password" 
+                <input
+                  id="password"
+                  type="password"
+                  v-model="password"
                   placeholder="请输入密码"
                   required
                   class="modern-input"
@@ -67,14 +67,14 @@
                 />
               </div>
             </div>
-            
+
             <div class="form-group">
               <label for="role">{{ isRegistering ? '注册身份' : '登录身份' }}</label>
               <div class="input-container">
                 <i class="input-icon role-icon"></i>
-                <select 
-                  id="role" 
-                  v-model="role" 
+                <select
+                  id="role"
+                  v-model="role"
                   required
                   class="modern-input"
                 >
@@ -87,11 +87,11 @@
               </div>
             </div>
           </div>
-          
-          <div v-if="error" class="error-message">{{ error }}</div>
-          
+
+          <div v-if="error" :class="{'error-message': !error.includes('注册成功'), 'success-message': error.includes('注册成功')}">{{ error }}</div>
+
           <button type="submit" class="login-btn">{{ isRegistering ? '注 册' : '登 录' }}</button>
-          
+
           <div class="footer-note">
           </div>
         </form>
@@ -105,7 +105,7 @@ export default {
   name: 'LoginPage',
   data() {
     return {
-      username: '',
+      employee_id: '',
       password: '',
       confirmPassword: '',
       role: '',
@@ -125,33 +125,40 @@ export default {
   methods: {
     async handleLogin() {
       if (this.loading) return;
-      
+
       // 表单验证
       if (this.isRegistering && this.password !== this.confirmPassword) {
         this.error = '两次输入的密码不一致';
         return;
       }
-      
+
       this.loading = true;
       this.error = '';
-      
+
       try {
         const endpoint = this.isRegistering ? 'register' : 'login';
+        const requestBody = this.isRegistering
+          ? {
+              password: this.password,
+              role: this.role
+            }
+          : {
+              employee_id: this.employee_id,
+              password: this.password,
+              role: this.role
+            };
+
         const response = await fetch(`http://localhost:3000/api/${endpoint}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            username: this.username,
-            password: this.password,
-            role: this.role
-          }),
+          body: JSON.stringify(requestBody),
           credentials: 'include'
         });
 
         const data = await response.json();
-        
+
         if (this.isRegistering) {
           if (data.success) {
             this.error = '';
@@ -159,7 +166,13 @@ export default {
             this.password = '';
             this.confirmPassword = '';
             this.$nextTick(() => {
-              this.error = '注册成功，请登录';
+              if (data.employee_id) {
+                this.error = `注册成功，您的工号是: ${data.employee_id}，请使用工号登录`;
+                // 自动填充工号到登录表单
+                this.employee_id = data.employee_id;
+              } else {
+                this.error = '注册成功，请登录';
+              }
             });
           } else {
             this.error = data.error || '注册失败';
@@ -392,16 +405,16 @@ export default {
     flex-direction: column;
     height: auto;
   }
-  
+
   .login-side {
     display: none;
   }
-  
+
   .login-form-container {
     min-width: auto; /* 移动端取消最小宽度限制 */
     padding: 40px 20px; /* 减小内边距 */
   }
-  
+
   .login-form {
     max-width: 100%;
     margin-bottom: 100px; /* 增加底部间距 */
@@ -463,5 +476,26 @@ export default {
 .toggle-btn:hover:not(.active) {
   color: #4b6cb7;
   background: rgba(75, 108, 183, 0.1);
+}
+
+.error-message {
+  color: #e53935;
+  font-size: 14px;
+  margin: 10px 0;
+  padding: 8px 12px;
+  background-color: rgba(229, 57, 53, 0.1);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.success-message {
+  color: #43a047;
+  font-size: 14px;
+  margin: 10px 0;
+  padding: 8px 12px;
+  background-color: rgba(67, 160, 71, 0.1);
+  border-radius: 6px;
+  text-align: center;
+  font-weight: 500;
 }
 </style>

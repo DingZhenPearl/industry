@@ -18,6 +18,21 @@ router.get('/users', authMiddleware, async (_, res) => {
   }
 });
 
+// 获取所有工长信息
+router.get('/foremen', authMiddleware, async (_, res) => {
+  try {
+    const result = await runPythonScript(
+      'pyScripts/get_foremen.py',
+      []
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('获取工长信息失败:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
 // 更新用户名
 router.post('/update-username', authMiddleware, async (req, res) => {
   const { username, role, currentUsername } = req.body;

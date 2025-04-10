@@ -4,10 +4,10 @@ const { runPythonScript } = require('../utils/pythonRunner');
 
 // 登录路由
 router.post('/login', async (req, res) => {
-  const { username, password, role } = req.body;
+  const { employee_id, password, role } = req.body;
 
   const missingFields = [];
-  if (!username) missingFields.push('用户名');
+  if (!employee_id) missingFields.push('工号');
   if (!password) missingFields.push('密码');
   if (!role) missingFields.push('角色');
 
@@ -18,7 +18,7 @@ router.post('/login', async (req, res) => {
   try {
     const result = await runPythonScript(
       'pyScripts/user_data_operations.py',
-      ['verify-user', username, password, role]
+      ['verify-user-by-id', employee_id, password, role]
     );
 
     if (result.authenticated) {
@@ -46,10 +46,9 @@ router.post('/login', async (req, res) => {
 
 // 注册路由
 router.post('/register', async (req, res) => {
-  const { username, password, role } = req.body;
+  const { password, role } = req.body;
 
   const missingFields = [];
-  if (!username) missingFields.push('用户名');
   if (!password) missingFields.push('密码');
   if (!role) missingFields.push('角色');
 
@@ -58,12 +57,24 @@ router.post('/register', async (req, res) => {
   }
 
   try {
+    // 生成一个随机的用户名，因为我们不再要求用户输入用户名
+    const tempUsername = `user_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
     const result = await runPythonScript(
       'pyScripts/user_data_operations.py',
-      ['register', username, password, role]
+      ['register', tempUsername, password, role]
     );
 
-    res.json(result);
+    // 确保在注册成功后返回工号信息
+    if (result.success && result.employee_id) {
+      res.json({
+        success: true,
+        message: result.message,
+        employee_id: result.employee_id
+      });
+    } else {
+      res.json(result);
+    }
   } catch (error) {
     console.error('处理注册请求时出错:', error);
     res.status(500).json({ success: false, error: '服务器内部错误' });

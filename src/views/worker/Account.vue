@@ -3,7 +3,7 @@
     <header class="header">
       <h1>我的</h1>
     </header>
-    
+
     <div class="content">
       <!-- 用户信息卡片 -->
       <div class="user-profile-card">
@@ -15,22 +15,26 @@
           <div class="role-badge">产线工人</div>
         </div>
       </div>
-      
+
       <!-- 个人信息卡片 -->
       <div class="info-card">
         <h3 class="card-title">个人信息</h3>
         <div class="info-item">
-          <label>工号</label>
-          <div class="value">{{ userInfo.employee_id || '未分配' }}</div>
+          <label>工号 (登录账号)</label>
+          <div class="value">
+            {{ userInfo.employee_id || '未分配' }}
+            <span class="note">工号为登录账号，不可修改</span>
+          </div>
         </div>
         <div class="info-item">
-          <label>用户名</label>
+          <label>用户名 (显示名称)</label>
           <div class="value">
             {{ userInfo.username }}
             <button class="edit-btn" @click="showUpdateUsernameDialog">
               <i class="icon-edit"></i>
               编辑
             </button>
+            <span class="note">用户名仅作显示用途，不影响登录</span>
           </div>
         </div>
         <div class="info-item">
@@ -148,7 +152,7 @@ export default {
         }
       }).catch(() => {});
     },
-    
+
     updatePhone() {
       this.$prompt('请输入新手机号', '更新手机号', {
         inputPattern: /^1[3-9]\d{9}$/,
@@ -167,7 +171,7 @@ export default {
             }),
             credentials: 'include'
           });
-          
+
           const data = await response.json();
           if (data.success) {
             this.userInfo.phone = phone;
@@ -356,6 +360,18 @@ export default {
   color: #333;
   font-size: 14px;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.note {
+  font-size: 12px;
+  color: #888;
+  font-weight: normal;
+  font-style: italic;
+  margin-left: 4px;
 }
 
 /* 统计数据样式 */
