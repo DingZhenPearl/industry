@@ -23,11 +23,12 @@
             <div class="workorder-header">
               <span class="workorder-number">{{ item.number }}</span>
               <span class="workorder-status" :class="item.status">{{ item.statusText }}</span>
+              <span class="workorder-type">类型：{{ item.type }}</span>
             </div>
             <div class="workorder-body">
               <p class="workorder-desc">{{ item.description }}</p>
               <div class="workorder-meta">
-                <span>负责人：{{ getUsernameById(item.owner) || item.owner }}</span>
+                <span>负责组员：{{ item.team_members ? (getUsernameById(item.team_members) || item.team_members) : '未分配' }}</span>
                 <span>截止时间：{{ formatDateTime(item.deadline) }}</span>
               </div>
             </div>
@@ -168,7 +169,9 @@
           </div>
           <div class="detail-item">
             <label>任务类型</label>
-            <div class="value">{{ selectedWorkOrder.type }}</div>
+            <div class="value">
+              <span class="type-tag">{{ selectedWorkOrder.type }}</span>
+            </div>
           </div>
           <div class="detail-item">
             <label>任务描述</label>
@@ -215,14 +218,17 @@
             <div class="value">{{ formatDateTime(selectedWorkOrder.updated_at) }}</div>
           </div>
           <!-- 扩展字段显示 -->
-          <div class="detail-item" v-if="selectedWorkOrder.extension_fields && Object.keys(selectedWorkOrder.extension_fields).length > 0">
-            <label>扩展信息</label>
-            <div class="value">
-              <div v-for="(value, key) in selectedWorkOrder.extension_fields" :key="key" class="extension-field">
-                <span class="extension-key">{{ key }}:</span>
-                <span class="extension-value">{{ value }}</span>
-              </div>
-            </div>
+          <div class="detail-item" v-if="selectedWorkOrder.extension_fields && selectedWorkOrder.extension_fields.device_info">
+            <label>设备信息</label>
+            <div class="value">{{ selectedWorkOrder.extension_fields.device_info }}</div>
+          </div>
+          <div class="detail-item" v-else-if="selectedWorkOrder.extension_fields && selectedWorkOrder.extension_fields.device_id">
+            <label>设备编号</label>
+            <div class="value">{{ selectedWorkOrder.extension_fields.device_id }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkOrder.extension_fields && selectedWorkOrder.extension_fields.discovery_time">
+            <label>发现时间</label>
+            <div class="value">{{ formatDateTime(selectedWorkOrder.extension_fields.discovery_time) }}</div>
           </div>
         </div>
         <div class="modal-footer">
@@ -233,11 +239,32 @@
           <button class="btn assign" @click="assignTask(selectedWorkOrder)" v-if="selectedWorkOrder.status === 'processing'">
             安排员工
           </button>
+          <button class="btn delete" @click="confirmDeleteWorkOrder(selectedWorkOrder)">
+            删除工单
+          </button>
         </div>
       </div>
     </div>
 
 
+
+    <!-- 确认删除工单模态框 -->
+    <div class="modal" v-if="showDeleteConfirmModal">
+      <div class="modal-content confirm-modal">
+        <div class="modal-header">
+          <h3>确认删除</h3>
+          <span class="close-btn" @click="showDeleteConfirmModal = false">&times;</span>
+        </div>
+        <div class="modal-body">
+          <p class="confirm-message">您确定要删除工单 <strong>{{ workOrderToDelete.number }}</strong> 吗？</p>
+          <p class="warning-message">此操作不可恢复，请谨慎操作。</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn cancel" @click="showDeleteConfirmModal = false">取消</button>
+          <button class="btn delete confirm" @click="deleteWorkOrder">确认删除</button>
+        </div>
+      </div>
+    </div>
 
     <!-- 安排工作模态框 -->
     <div class="modal" v-if="showAssignTask">
@@ -329,8 +356,10 @@ export default {
       showNewWorkOrderModal: false,
       showWorkOrderDetailModal: false,
       showAssignTask: false,
+      showDeleteConfirmModal: false,
       selectedWorkOrder: {},
       selectedEmployee: {},
+      workOrderToDelete: {},
       newWorkOrder: {
         task_type: 'schedule', // 默认选择排班任务
         task_details: '',
@@ -712,6 +741,36 @@ export default {
       return statusMap[status] || '未知状态';
     },
 
+    // 获取任务类型显示文本
+    getTypeText(type) {
+      const typeMap = {
+        'schedule': '排班任务',
+        'maintenance': '设备维修',
+        'inspection': '产线巡检'
+      };
+      return typeMap[type] || type || '未知类型';
+    },
+
+    // 根据设备ID获取设备信息
+    getDeviceInfo(deviceId) {
+      if (!deviceId) {
+        return { name: '', fullInfo: '' };
+      }
+
+      // 从所有设备中查找匹配的设备
+      const device = this.equipments.find(d => d.code === deviceId);
+
+      if (!device) {
+        return { name: '', fullInfo: deviceId };
+      }
+
+      // 返回设备名称和完整信息
+      return {
+        name: device.name,
+        fullInfo: `${device.name} (${device.code})`
+      };
+    },
+
     // 获取工号对应的用户名
     async fetchUsernames() {
       try {
@@ -919,7 +978,7 @@ export default {
         // 根据任务类型验证特定字段
         if (this.newWorkOrder.task_type === 'maintenance') {
           if (!this.newWorkOrder.extension_fields.device_id) {
-            this.$message.warning('请输入设备编号');
+            this.$message.warning('请选择设备');
             return;
           }
           if (!this.newWorkOrder.extension_fields.discovery_time) {
@@ -928,7 +987,7 @@ export default {
           }
         } else if (this.newWorkOrder.task_type === 'schedule') {
           if (!this.newWorkOrder.extension_fields.device_id) {
-            this.$message.warning('请输入设备编号');
+            this.$message.warning('请选择设备');
             return;
           }
         }
@@ -936,7 +995,7 @@ export default {
         // 准备工单数据
         // 先添加人工输入的字段
         const workorderData = {
-          task_type: this.newWorkOrder.task_type,
+          task_type: this.getTypeText(this.newWorkOrder.task_type), // 存储中文任务类型
           task_details: this.newWorkOrder.task_details,
           start_time: this.newWorkOrder.start_time,
           deadline: this.newWorkOrder.deadline,
@@ -954,8 +1013,12 @@ export default {
         // 根据任务类型设置扩展字段
         if (this.newWorkOrder.task_type === 'maintenance') {
           // 设备维护类型
+          // 获取设备信息
+          const deviceInfo = this.getDeviceInfo(this.newWorkOrder.extension_fields.device_id);
           workorderData.extension_fields = {
             device_id: this.newWorkOrder.extension_fields.device_id || '',
+            device_name: deviceInfo.name || '',  // 存储设备名称
+            device_info: deviceInfo.fullInfo || '', // 存储完整设备信息
             discovery_time: this.newWorkOrder.extension_fields.discovery_time || new Date().toISOString()
           };
         } else if (this.newWorkOrder.task_type === 'inspection') {
@@ -963,8 +1026,12 @@ export default {
           workorderData.extension_fields = {};
         } else if (this.newWorkOrder.task_type === 'schedule') {
           // 排班任务类型
+          // 获取设备信息
+          const deviceInfo = this.getDeviceInfo(this.newWorkOrder.extension_fields.device_id);
           workorderData.extension_fields = {
-            device_id: this.newWorkOrder.extension_fields.device_id || ''
+            device_id: this.newWorkOrder.extension_fields.device_id || '',
+            device_name: deviceInfo.name || '',  // 存储设备名称
+            device_info: deviceInfo.fullInfo || '' // 存储完整设备信息
           };
         }
 
@@ -1116,6 +1183,48 @@ export default {
         startTime: '',
         endTime: ''
       };
+    },
+
+    // 确认删除工单
+    confirmDeleteWorkOrder(workorder) {
+      this.workOrderToDelete = { ...workorder };
+      this.showDeleteConfirmModal = true;
+      this.showWorkOrderDetailModal = false; // 关闭详情模态框
+    },
+
+    // 删除工单
+    async deleteWorkOrder() {
+      try {
+        const workorderNumber = this.workOrderToDelete.number;
+
+        if (!workorderNumber) {
+          this.$message.error('工单编号不能为空');
+          return;
+        }
+
+        const response = await fetch(`/api/workorders/delete-workorder/${workorderNumber}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          this.$message.success('工单删除成功');
+          // 重新获取工单列表
+          this.fetchWorkOrders();
+        } else {
+          this.$message.error(data.error || '删除工单失败');
+        }
+      } catch (error) {
+        console.error('删除工单出错:', error);
+        this.$message.error('删除工单失败');
+      }
+
+      // 关闭确认对话框
+      this.showDeleteConfirmModal = false;
     },
 
     // 提交工作安排
@@ -1307,6 +1416,7 @@ export default {
   margin-bottom: 10px;
   padding-bottom: 10px;
   border-bottom: 1px solid #eee;
+  flex-wrap: wrap;
 }
 
 .workorder-number {
@@ -1328,6 +1438,15 @@ export default {
 .workorder-status.processing {
   background-color: #e3f2fd;
   color: #2196F3;
+}
+
+.workorder-type {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  background-color: #f1f8e9;
+  color: #689f38;
+  margin-left: 10px;
 }
 
 .workorder-body {
@@ -1447,7 +1566,29 @@ export default {
   color: white;
 }
 
+.btn.delete {
+  background-color: #ffebee;
+  color: #f44336;
+}
 
+.btn.delete.confirm {
+  background-color: #f44336;
+  color: white;
+}
+
+.confirm-modal {
+  max-width: 400px;
+}
+
+.confirm-message {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.warning-message {
+  color: #f44336;
+  font-size: 14px;
+}
 
 .detail-item {
   margin-bottom: 15px;
@@ -1470,11 +1611,16 @@ export default {
   white-space: pre-wrap;
 }
 
-.status-tag {
+.status-tag, .type-tag {
   display: inline-block;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 13px;
+}
+
+.type-tag {
+  background-color: #f1f8e9;
+  color: #689f38;
 }
 
 .status-tag.pending {

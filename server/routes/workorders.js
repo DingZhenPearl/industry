@@ -122,4 +122,30 @@ router.get('/all-workorders', authMiddleware, async (req, res) => {
   }
 });
 
+// 删除工单
+router.delete('/delete-workorder/:workorder_number', authMiddleware, async (req, res) => {
+  const { workorder_number } = req.params;
+  console.log('删除工单,工单编号:', workorder_number);
+
+  if (!workorder_number) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少工单编号'
+    });
+  }
+
+  try {
+    const result = await runPythonScript(
+      'pyScripts/workorder_manager.py',
+      ['delete', '--number', workorder_number],
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('删除工单出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
 module.exports = router;
