@@ -4,13 +4,13 @@
       <h1>设备与产线</h1>
     </header>
     <EquipmentGantt class="equipment-gantt-section" />
-    
+
     <div class="content">
       <div class="authority-notice">
         <i class="info-icon"></i>
         <span>您有权管理 <strong>{{ assignedLines.length }}</strong> 条产线</span>
       </div>
-      
+
       <!-- 产线状态卡片 -->
       <div class="line-cards">
         <div class="line-card" v-for="line in assignedLines" :key="line.id">
@@ -79,7 +79,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 维护排程模态框 -->
       <div class="modal" v-if="showMaintenanceModal">
         <div class="modal-content">
@@ -154,124 +154,35 @@ export default {
         notes: ''
       },
       // 工长被分配的产线
-      assignedLines: [
-        {
-          id: 1,
-          name: '车身冲压生产线',
-          status: 'running',
-          statusText: '运行中',
-          runningDevices: 12,
-          totalDevices: 15,
-          utilization: 88,
-          assignedTo: 1 // 分配给当前工长的ID
-        },
-        {
-          id: 2,
-          name: '车身焊接生产线',
-          status: 'warning',
-          statusText: '预警',
-          runningDevices: 8,
-          totalDevices: 10,
-          utilization: 75,
-          assignedTo: 1 // 分配给当前工长的ID
-        },
-        {
-          id: 3,
-          name: '底盘装配生产线',
-          status: 'running',
-          statusText: '运行中',
-          runningDevices: 9,
-          totalDevices: 12,
-          utilization: 82,
-          assignedTo: 1 // 分配给当前工长的ID
-        }
-      ],
+      assignedLines: [],
       // 所有设备列表
-      devices: [
-        {
-          id: 1,
-          name: '车身冲压机R-2023',
-          productionLine: '车身冲压生产线',
-          status: 'running',
-          statusText: '运行中',
-          runtime: 126.5,
-          manager: '张工',
-          lastMaintenance: '2023-07-01'
-        },
-        {
-          id: 2,
-          name: '钢板输送系统S-101',
-          productionLine: '车身冲压生产线',
-          status: 'running',
-          statusText: '运行中',
-          runtime: 130.2,
-          manager: '李工',
-          lastMaintenance: '2023-07-03'
-        },
-        {
-          id: 3,
-          name: '模具更换机械臂M-305',
-          productionLine: '车身冲压生产线',
-          status: 'warning',
-          statusText: '预警',
-          runtime: 85.5,
-          manager: '王工',
-          lastMaintenance: '2023-07-05'
-        },
-        {
-          id: 4,
-          name: '焊接机器人W-501',
-          productionLine: '车身焊接生产线',
-          status: 'warning',
-          statusText: '预警',
-          runtime: 95.2,
-          manager: '赵工',
-          lastMaintenance: '2023-07-02'
-        },
-        {
-          id: 5,
-          name: '激光焊接系统L-202',
-          productionLine: '车身焊接生产线',
-          status: 'running',
-          statusText: '运行中',
-          runtime: 110.5,
-          manager: '钱工',
-          lastMaintenance: '2023-07-04'
-        },
-        {
-          id: 6,
-          name: '底盘组装机A-601',
-          productionLine: '底盘装配生产线',
-          status: 'running',
-          statusText: '运行中',
-          runtime: 78.5,
-          manager: '孙工',
-          lastMaintenance: '2023-07-06'
-        },
-        {
-          id: 7,
-          name: '悬挂系统安装设备S-702',
-          productionLine: '底盘装配生产线',
-          status: 'stopped',
-          statusText: '已停机',
-          runtime: 45.5,
-          manager: '周工',
-          lastMaintenance: '2023-07-03'
-        }
-      ]
+      devices: [],
+      // 当前工长信息
+      currentForeman: null,
+      // 加载状态
+      loading: {
+        lines: false,
+        devices: false
+      },
+      // 产线和设备的映射关系
+      lineNameMap: {}
     }
+  },
+  created() {
+    // 获取当前工长信息
+    this.getCurrentForeman();
   },
   computed: {
     // 工长只能看到自己负责的产线设备
     filteredDevices() {
       // 获取分配给当前工长的产线名称列表
       const assignedLineNames = this.assignedLines.map(line => line.name);
-      
+
       return this.devices.filter(device => {
         // 首先检查设备是否属于工长负责的产线
         const belongsToAssignedLine = assignedLineNames.includes(device.productionLine);
         if (!belongsToAssignedLine) return false;
-        
+
         // 然后应用筛选条件
         const lineMatch = !this.filterLine || device.productionLine === this.filterLine;
         const statusMatch = !this.filterStatus || device.status === this.filterStatus;
@@ -280,23 +191,203 @@ export default {
     }
   },
   methods: {
+    // 获取当前工长信息
+    getCurrentForeman() {
+      const userInfoStr = localStorage.getItem('userInfo');
+      if (userInfoStr) {
+        this.currentForeman = JSON.parse(userInfoStr);
+        console.log('当前工长信息:', this.currentForeman);
+        // 获取工长负责的产线
+        this.fetchAssignedLines();
+      } else {
+        console.error('未找到工长信息');
+      }
+    },
+
+    // 获取工长负责的产线
+    async fetchAssignedLines() {
+      try {
+        this.loading.lines = true;
+        if (!this.currentForeman || !this.currentForeman.employee_id) {
+          console.log('当前工长工号未知，无法获取产线信息');
+          return;
+        }
+
+        console.log('开始获取产线数据,工长工号:', this.currentForeman.employee_id);
+        const response = await fetch(`/api/foreman/assigned-lines?employee_id=${this.currentForeman.employee_id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('产线数据:', data);
+
+        if (data.success && data.data) {
+          // 处理产线数据
+          this.assignedLines = data.data.map(line => {
+            // 创建产线名称映射
+            this.lineNameMap[line.id] = line.line_name;
+
+            return {
+              id: line.id,
+              name: line.line_name,
+              status: this.getStatusFromRunningStatus(line.running_status),
+              statusText: this.getStatusTextFromRunningStatus(line.running_status),
+              totalDevices: 0, // 将在获取设备后更新
+              runningDevices: 0, // 将在获取设备后更新
+              utilization: line.real_time_capacity ?
+                Math.round((line.real_time_capacity / line.theoretical_capacity) * 100) : 0,
+              assignedTo: line.foreman_id
+            };
+          });
+
+          // 获取设备数据
+          this.fetchEquipmentWithStatus();
+        } else {
+          console.error('获取产线数据失败:', data.error || '未知错误');
+        }
+      } catch (error) {
+        console.error('获取产线数据出错:', error);
+      } finally {
+        this.loading.lines = false;
+      }
+    },
+
+    // 获取设备及其状态
+    async fetchEquipmentWithStatus() {
+      try {
+        this.loading.devices = true;
+        console.log('开始获取设备数据');
+
+        const response = await fetch('/api/equipment/with-status', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('设备数据:', data);
+
+        if (data.success && data.data) {
+          // 处理设备数据
+          this.devices = data.data.map(device => {
+            // 获取设备状态
+            const status = this.getDeviceStatus(device);
+
+            // 更新产线的设备统计
+            this.updateLineDeviceStats(device.line_id, status);
+
+            return {
+              id: device.id,
+              name: device.equipment_name,
+              code: device.equipment_code,
+              productionLine: this.lineNameMap[device.line_id] || '未知产线',
+              status: status,
+              statusText: this.getDeviceStatusText(status),
+              runtime: device.runtime_hours || 0,
+              manager: device.worker_id || '未分配',
+              lastMaintenance: this.formatDate(device.updated_at),
+              sensorData: device.sensor_data || {},
+              faultProbability: device.fault_probability || 0
+            };
+          });
+        } else {
+          console.error('获取设备数据失败:', data.error || '未知错误');
+        }
+      } catch (error) {
+        console.error('获取设备数据出错:', error);
+      } finally {
+        this.loading.devices = false;
+      }
+    },
+
+    // 更新产线的设备统计
+    updateLineDeviceStats(lineId, deviceStatus) {
+      const line = this.assignedLines.find(line => line.id === lineId);
+      if (line) {
+        line.totalDevices++;
+        if (deviceStatus === 'running') {
+          line.runningDevices++;
+        }
+      }
+    },
+
+    // 根据设备数据判断状态
+    getDeviceStatus(device) {
+      if (device.status === '故障') return 'stopped';
+      if (device.fault_probability > 0.3) return 'warning';
+      return 'running';
+    },
+
+    // 获取设备状态文本
+    getDeviceStatusText(status) {
+      switch (status) {
+        case 'running': return '运行中';
+        case 'warning': return '预警';
+        case 'stopped': return '已停机';
+        default: return '未知';
+      }
+    },
+
+    // 根据产线运行状态获取状态
+    getStatusFromRunningStatus(runningStatus) {
+      switch (runningStatus) {
+        case '运行中': return 'running';
+        case '故障': return 'stopped';
+        case '维护中': return 'warning';
+        default: return 'running';
+      }
+    },
+
+    // 根据产线运行状态获取状态文本
+    getStatusTextFromRunningStatus(runningStatus) {
+      return runningStatus || '运行中';
+    },
+
+    // 格式化日期
+    formatDate(dateString) {
+      if (!dateString) return '未知';
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    },
+
+    // 管理产线设备
     manageDevices(line) {
       console.log('管理产线设备:', line);
       this.filterLine = line.name;
     },
+
+    // 排程维护
     scheduleMaintenace(line) {
       this.selectedLine = line;
       this.showMaintenanceModal = true;
     },
+
+    // 查看设备详情
     viewDeviceDetail(device) {
       console.log('查看设备详情:', device);
     },
+
+    // 上报故障
     reportIssue(device) {
       console.log('上报设备故障:', device);
     },
+
+    // 开始维护
     startMaintenance(device) {
       console.log('开始维护设备:', device);
     },
+
+    // 提交维护排程
     submitMaintenance() {
       console.log('提交维护排程:', {
         line: this.selectedLine,

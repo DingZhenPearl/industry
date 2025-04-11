@@ -68,8 +68,8 @@
                 <th>工号</th>
                 <th>姓名</th>
                 <th>分组号</th>
-                <th>所属产线</th>
-                <th>所属机器</th>
+                <th>负责产线</th>
+                <th>负责设备</th>
                 <th>联系方式</th>
                 <th>状态</th>
                 <th>操作</th>
@@ -80,8 +80,23 @@
                 <td>{{ emp.id }}</td>
                 <td>{{ emp.name }}</td>
                 <td>{{ emp.group_id || '未分组' }}</td>
-                <td>{{ getLineName(emp.line_id) }}</td>
-                <td>{{ emp.machine_id || '未分配' }}</td>
+                <td>
+                  <!-- 工长显示自己的产线，工人和安全员显示和工长相同的产线 -->
+                  <span v-if="emp.role === 'foreman' && emp.assigned_lines && emp.assigned_lines.length">
+                    {{ emp.assigned_lines.map(line => line.name).join(', ') }}
+                  </span>
+                  <span v-else-if="emp.role === 'member' || emp.role === 'safety_officer'">
+                    {{ getForemanLines() }}
+                  </span>
+                  <span v-else>无</span>
+                </td>
+                <td>
+                  <!-- 工长显示无，工人显示分配的设备 -->
+                  <span v-if="emp.role === 'member' && emp.assigned_equipment && emp.assigned_equipment.length">
+                    {{ emp.assigned_equipment.map(eq => eq.name).join(', ') }}
+                  </span>
+                  <span v-else>无</span>
+                </td>
                 <td>{{ emp.phone }}</td>
                 <td>
                   <span :class="['status-tag', emp.status]">
@@ -115,12 +130,25 @@
             <div class="value">{{ selectedEmployee.name }}</div>
           </div>
           <div class="detail-item">
-            <label>所属产线</label>
-            <div class="value">{{ getLineName(selectedEmployee.lineId) }}</div>
+            <label>负责产线</label>
+            <div class="value">
+              <span v-if="selectedEmployee.role === 'foreman' && selectedEmployee.assigned_lines && selectedEmployee.assigned_lines.length">
+                {{ selectedEmployee.assigned_lines.map(line => line.name).join(', ') }}
+              </span>
+              <span v-else-if="selectedEmployee.role === 'member' || selectedEmployee.role === 'safety_officer'">
+                {{ getForemanLines() }}
+              </span>
+              <span v-else>无</span>
+            </div>
           </div>
           <div class="detail-item">
-            <label>所属机器</label>
-            <div class="value">{{ selectedEmployee.machine_id || '未分配' }}</div>
+            <label>负责设备</label>
+            <div class="value">
+              <span v-if="selectedEmployee.role === 'member' && selectedEmployee.assigned_equipment && selectedEmployee.assigned_equipment.length">
+                {{ selectedEmployee.assigned_equipment.map(eq => eq.name).join(', ') }}
+              </span>
+              <span v-else>无</span>
+            </div>
           </div>
           <div class="detail-item">
             <label>联系方式</label>
@@ -253,7 +281,7 @@ export default {
         }
 
         // 然后应用其他筛选条件
-        const lineMatch = !this.filterLine || emp.line_id === this.filterLine;
+        const lineMatch = !this.filterLine || (emp.assigned_lines && emp.assigned_lines.some(line => line.id === this.filterLine));
         const statusMatch = !this.filterStatus || emp.status === this.filterStatus;
         const searchMatch = !this.searchKeyword ||
           emp.name.includes(this.searchKeyword) ||
@@ -266,20 +294,24 @@ export default {
     // 修改产线员工数量统计方法
     getLineWorkerCount() {
       return (lineId) => {
-        return this.employees.filter(emp =>
-          emp.line_id === lineId &&
-          emp.group_id === this.currentForeman.group_id
-        ).length;
+        return this.employees.filter(emp => {
+          // 检查员工是否负责该产线
+          const isResponsibleForLine = emp.assigned_lines &&
+            emp.assigned_lines.some(line => line.id === lineId);
+          return isResponsibleForLine && emp.group_id === this.currentForeman.group_id;
+        }).length;
       };
     },
 
     // 修改产线在岗率统计方法
     getLineActiveRate() {
       return (lineId) => {
-        const lineWorkers = this.employees.filter(emp =>
-          emp.line_id === lineId &&
-          emp.group_id === this.currentForeman.group_id
-        );
+        const lineWorkers = this.employees.filter(emp => {
+          // 检查员工是否负责该产线
+          const isResponsibleForLine = emp.assigned_lines &&
+            emp.assigned_lines.some(line => line.id === lineId);
+          return isResponsibleForLine && emp.group_id === this.currentForeman.group_id;
+        });
         if (lineWorkers.length === 0) return 0;
 
         const activeWorkers = lineWorkers.filter(emp =>
@@ -292,10 +324,12 @@ export default {
     // 修改产线任务完成率统计方法
     getLineCompletionRate() {
       return (lineId) => {
-        const lineWorkers = this.employees.filter(emp =>
-          emp.line_id === lineId &&
-          emp.group_id === this.currentForeman.group_id
-        );
+        const lineWorkers = this.employees.filter(emp => {
+          // 检查员工是否负责该产线
+          const isResponsibleForLine = emp.assigned_lines &&
+            emp.assigned_lines.some(line => line.id === lineId);
+          return isResponsibleForLine && emp.group_id === this.currentForeman.group_id;
+        });
         if (lineWorkers.length === 0) return 0;
 
         const totalRate = lineWorkers.reduce((sum, worker) =>
@@ -309,13 +343,13 @@ export default {
     // 获取分配给当前工长的产线信息
     async fetchAssignedLines() {
       try {
-        if (!this.currentForeman || !this.currentForeman.group_id) {
-          console.log('当前工长组号未知，无法获取产线信息');
+        if (!this.currentForeman || !this.currentForeman.id) {
+          console.log('当前工长工号未知，无法获取产线信息');
           return;
         }
 
-        console.log('开始获取产线数据,工长组号:', this.currentForeman.group_id);
-        const response = await fetch(`/api/foreman/assigned-lines?group_id=${this.currentForeman.group_id}`, {
+        console.log('开始获取产线数据,工长工号:', this.currentForeman.id);
+        const response = await fetch(`/api/foreman/assigned-lines?employee_id=${this.currentForeman.id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -377,11 +411,12 @@ export default {
           this.employees = data.data.map(emp => {
             return {
               ...emp,
-              line_id: emp.line_id || '1', // 如果没有line_id,默认设为1
               status: emp.status || 'active',
               statusText: emp.statusText || this.getStatusText(emp),
               skillLevel: emp.skillLevel || '初级', // 添加默认技能等级
-              completionRate: emp.completionRate || Math.floor(Math.random() * 30) + 70 // 添加默认完成率
+              completionRate: emp.completionRate || Math.floor(Math.random() * 30) + 70, // 添加默认完成率
+              assigned_lines: emp.assigned_lines || [],
+              assigned_equipment: emp.assigned_equipment || []
             };
           });
 
@@ -434,20 +469,17 @@ export default {
       return statusMap[emp.status] || '未知';
     },
 
-    // 获取产线名称
-    getLineName(lineId) {
-      console.log(`尝试获取产线名称, 产线 ID: ${lineId}, 类型: ${typeof lineId}`);
-      console.log('可用的产线列表:', this.assignedLines);
+    // 获取工长的产线名称列表，用于显示工人的产线
+    getForemanLines() {
+      // 找到当前工长
+      const foreman = this.employees.find(emp =>
+        emp.role === 'foreman' && emp.group_id === this.currentForeman.group_id
+      );
 
-      const line = this.assignedLines.find(line => line.id === lineId);
-
-      if (line) {
-        console.log(`找到产线: ${line.name}`);
-        return line.name;
-      } else {
-        console.log('未找到产线, 返回默认值: 未分配');
-        return '未分配';
+      if (foreman && foreman.assigned_lines && foreman.assigned_lines.length > 0) {
+        return foreman.assigned_lines.map(line => line.name).join(', ');
       }
+      return '无';
     },
 
     // 查看员工详情

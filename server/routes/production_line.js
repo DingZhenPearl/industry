@@ -51,6 +51,31 @@ router.get('/with-foremen', authMiddleware, async (req, res) => {
   }
 });
 
+// 分配工长到产线
+router.post('/assign-foreman', authMiddleware, async (req, res) => {
+  const { line_id, foreman_id } = req.body;
+
+  if (!line_id || !foreman_id) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少产线ID或工长工号'
+    });
+  }
+
+  try {
+    const result = await runPythonScript(
+      'pyScripts/production_line_manager.py',
+      ['assign-foreman', '--line-id', line_id, '--foreman-id', foreman_id],
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('分配工长到产线出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
 // 获取产线状态历史
 router.get('/status-history', authMiddleware, async (req, res) => {
   const line_id = req.query.line_id;

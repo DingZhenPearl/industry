@@ -7,12 +7,12 @@ const { authMiddleware } = require('../middleware');
 router.get('/list', authMiddleware, async (req, res) => {
   const line_id = req.query.line_id;
   const status = req.query.status;
-  
+
   try {
     const args = ['list'];
     if (line_id) args.push('--line-id', line_id);
     if (status) args.push('--status', status);
-    
+
     const result = await runPythonScript(
       'pyScripts/equipment_manager.py',
       args,
@@ -29,11 +29,11 @@ router.get('/list', authMiddleware, async (req, res) => {
 // 获取设备及其最新状态
 router.get('/with-status', authMiddleware, async (req, res) => {
   const line_id = req.query.line_id;
-  
+
   try {
     const args = ['get-with-status'];
     if (line_id) args.push('--line-id', line_id);
-    
+
     const result = await runPythonScript(
       'pyScripts/equipment_manager.py',
       args,
@@ -47,11 +47,32 @@ router.get('/with-status', authMiddleware, async (req, res) => {
   }
 });
 
+// 获取设备及其负责工人信息
+router.get('/with-workers', authMiddleware, async (req, res) => {
+  const line_id = req.query.line_id;
+
+  try {
+    const args = [];
+    if (line_id) args.push(line_id);
+
+    const result = await runPythonScript(
+      'pyScripts/get_equipment_with_workers.py',
+      args,
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('获取设备及工人信息出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
 // 获取设备状态历史
 router.get('/status-history', authMiddleware, async (req, res) => {
   const equipment_id = req.query.equipment_id;
   const limit = req.query.limit || 10;
-  
+
   if (!equipment_id) {
     return res.status(400).json({
       success: false,
@@ -76,7 +97,7 @@ router.get('/status-history', authMiddleware, async (req, res) => {
 // 添加新设备
 router.post('/add', authMiddleware, async (req, res) => {
   const equipmentData = req.body;
-  
+
   if (!equipmentData || !equipmentData.equipment_name || !equipmentData.equipment_code || !equipmentData.line_id) {
     return res.status(400).json({
       success: false,
@@ -101,7 +122,7 @@ router.post('/add', authMiddleware, async (req, res) => {
 // 更新设备状态
 router.post('/update-status', authMiddleware, async (req, res) => {
   const { equipment_id, status_data } = req.body;
-  
+
   if (!equipment_id || !status_data) {
     return res.status(400).json({
       success: false,
@@ -119,6 +140,31 @@ router.post('/update-status', authMiddleware, async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('更新设备状态出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
+// 分配工人到设备
+router.post('/assign-worker', authMiddleware, async (req, res) => {
+  const { equipment_id, worker_id } = req.body;
+
+  if (!equipment_id || !worker_id) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少设备ID或工人工号'
+    });
+  }
+
+  try {
+    const result = await runPythonScript(
+      'pyScripts/equipment_manager.py',
+      ['assign-worker', '--equipment-id', equipment_id, '--worker-id', worker_id],
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('分配工人到设备出错:', error);
     res.status(500).json({ success: false, error: '服务器错误' });
   }
 });

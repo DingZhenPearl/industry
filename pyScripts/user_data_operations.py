@@ -30,7 +30,7 @@ def get_db_connection():
         return None
 
 # =============================================
-# 字段添加函数
+# 字段添加和删除函数
 # =============================================
 def add_line_id_field():
     """添加line_id字段到users表"""
@@ -110,6 +110,53 @@ def add_machine_id_field():
 
     except Error as e:
         print(f"执行错误: {e}")
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def remove_line_machine_fields():
+    """从users表中删除line_id和machine_id字段"""
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # 检查line_id字段是否存在
+        cursor.execute("""
+            SELECT COUNT(*) FROM information_schema.columns
+            WHERE table_schema = 'industry_db'
+            AND table_name = 'users'
+            AND column_name = 'line_id'
+        """)
+        if cursor.fetchone()[0] > 0:
+            # 删除line_id字段
+            cursor.execute("ALTER TABLE users DROP COLUMN line_id")
+            print("成功删除line_id字段")
+        else:
+            print("line_id字段不存在，无需删除")
+
+        # 检查machine_id字段是否存在
+        cursor.execute("""
+            SELECT COUNT(*) FROM information_schema.columns
+            WHERE table_schema = 'industry_db'
+            AND table_name = 'users'
+            AND column_name = 'machine_id'
+        """)
+        if cursor.fetchone()[0] > 0:
+            # 删除machine_id字段
+            cursor.execute("ALTER TABLE users DROP COLUMN machine_id")
+            print("成功删除machine_id字段")
+        else:
+            print("machine_id字段不存在，无需删除")
+
+        connection.commit()
+        print("已从users表中删除line_id和machine_id字段")
+
+    except Error as e:
+        print(f"执行错误: {e}")
+        if connection:
+            connection.rollback()
     finally:
         if connection and connection.is_connected():
             cursor.close()
@@ -356,8 +403,6 @@ def get_users():
                 role,
                 phone,
                 group_id,
-                line_id,
-                machine_id,
                 COALESCE(status, 'active') as status,
                 CASE
                     WHEN status = 'leave' THEN '请假'
@@ -387,12 +432,13 @@ def get_users():
             connection.close()
 
 def get_team_members(group_id):
-    """获取指定组的团队成员"""
+    """获取指定组的团队成员及其负责的产线和设备信息"""
     connection = None
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
 
+        # 获取团队成员基本信息
         query = """
             SELECT
                 employee_id as id,
@@ -400,8 +446,6 @@ def get_team_members(group_id):
                 role,
                 phone,
                 group_id,
-                line_id,
-                machine_id,
                 COALESCE(status, 'active') as status,
                 CASE
                     WHEN status = 'leave' THEN '请假'
@@ -415,6 +459,57 @@ def get_team_members(group_id):
 
         cursor.execute(query, (group_id,))
         members = cursor.fetchall()
+
+        # 获取该组负责的产线信息
+        query_lines = """
+            SELECT id, line_name, foreman_id
+            FROM production_line
+            WHERE foreman_id IN (
+                SELECT employee_id FROM users WHERE group_id = %s
+            )
+        """
+        cursor.execute(query_lines, (group_id,))
+        production_lines = cursor.fetchall()
+
+        # 创建产线映射表，以工长工号为键
+        line_map = {}
+        for line in production_lines:
+            if line['foreman_id'] not in line_map:
+                line_map[line['foreman_id']] = []
+            line_map[line['foreman_id']].append({
+                'id': line['id'],
+                'name': line['line_name']
+            })
+
+        # 获取该组负责的设备信息
+        query_equipment = """
+            SELECT id, equipment_name, equipment_code, worker_id
+            FROM equipment
+            WHERE worker_id IN (
+                SELECT employee_id FROM users WHERE group_id = %s
+            )
+        """
+        cursor.execute(query_equipment, (group_id,))
+        equipment = cursor.fetchall()
+
+        # 创建设备映射表，以工人工号为键
+        equipment_map = {}
+        for equip in equipment:
+            if equip['worker_id'] not in equipment_map:
+                equipment_map[equip['worker_id']] = []
+            equipment_map[equip['worker_id']].append({
+                'id': equip['id'],
+                'name': equip['equipment_name'],
+                'code': equip['equipment_code']
+            })
+
+        # 将产线和设备信息添加到成员数据中
+        for member in members:
+            # 添加负责的产线信息
+            member['assigned_lines'] = line_map.get(member['id'], [])
+
+            # 添加负责的设备信息
+            member['assigned_equipment'] = equipment_map.get(member['id'], [])
 
         result = {
             'success': True,
@@ -441,10 +536,10 @@ def get_assigned_lines(group_id):
 
         # 查询该组号对应的产线
         query = """
-            SELECT DISTINCT line_id as id, line_id as name
-            FROM users
-            WHERE group_id = %s AND line_id IS NOT NULL
-            ORDER BY line_id
+            SELECT id, line_name as name
+            FROM production_line
+            WHERE foreman_id = %s
+            ORDER BY id
         """
 
         cursor.execute(query, (group_id,))
@@ -453,9 +548,9 @@ def get_assigned_lines(group_id):
         # 如果没有找到产线，添加默认产线
         if not lines:
             lines = [
-                {'id': '1', 'name': '1'},
-                {'id': '2', 'name': '2'},
-                {'id': '3', 'name': '3'}
+                {'id': 1, 'name': '一号生产线'},
+                {'id': 2, 'name': '二号生产线'},
+                {'id': 3, 'name': '三号生产线'}
             ]
 
         result = {
@@ -483,7 +578,7 @@ def verify_user(username, password, role):
     try:
         cursor = connection.cursor(dictionary=True)
         check_query = """
-            SELECT username, password, role, phone, employee_id, group_id, line_id, machine_id
+            SELECT username, password, role, phone, employee_id, group_id
             FROM users WHERE username = %s AND role = %s
         """
         cursor.execute(check_query, (username, role))
@@ -496,9 +591,7 @@ def verify_user(username, password, role):
                 'role': user['role'],
                 'phone': user['phone'],
                 'employee_id': user['employee_id'],
-                'group_id': user['group_id'],
-                'line_id': user['line_id'],
-                'machine_id': user['machine_id']
+                'group_id': user['group_id']
             }, ensure_ascii=False))
             return
 
@@ -522,7 +615,7 @@ def verify_user_by_id(employee_id, password, role):
     try:
         cursor = connection.cursor(dictionary=True)
         check_query = """
-            SELECT username, password, role, phone, employee_id, group_id, line_id, machine_id
+            SELECT username, password, role, phone, employee_id, group_id
             FROM users WHERE employee_id = %s AND role = %s
         """
         cursor.execute(check_query, (employee_id, role))
@@ -535,9 +628,7 @@ def verify_user_by_id(employee_id, password, role):
                 'role': user['role'],
                 'phone': user['phone'],
                 'employee_id': user['employee_id'],
-                'group_id': user['group_id'],
-                'line_id': user['line_id'],
-                'machine_id': user['machine_id']
+                'group_id': user['group_id']
             }, ensure_ascii=False))
             return
 
@@ -847,9 +938,7 @@ def init_database():
                     phone VARCHAR(20),
                     status ENUM('在岗', '请假', '离岗') DEFAULT '在岗',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    group_id INT NULL COMMENT '所属分组ID',
-                    line_id VARCHAR(50) NULL COMMENT '所属产线ID',
-                    machine_id VARCHAR(50) NULL COMMENT '所属机器ID'
+                    group_id INT NULL COMMENT '所属分组ID'
                 )
             """)
 
@@ -866,31 +955,7 @@ def init_database():
                     ADD COLUMN group_id INT NULL COMMENT '所属分组ID'
                 """)
 
-            # 添加产线字段（如果表已存在且字段不存在）
-            cursor.execute("""
-                SELECT COUNT(*) FROM information_schema.columns
-                WHERE table_schema = 'industry_db'
-                AND table_name = 'users'
-                AND column_name = 'line_id'
-            """)
-            if cursor.fetchone()[0] == 0:
-                cursor.execute("""
-                    ALTER TABLE users
-                    ADD COLUMN line_id VARCHAR(50) NULL COMMENT '所属产线ID'
-                """)
-
-            # 添加机器字段（如果表已存在且字段不存在）
-            cursor.execute("""
-                SELECT COUNT(*) FROM information_schema.columns
-                WHERE table_schema = 'industry_db'
-                AND table_name = 'users'
-                AND column_name = 'machine_id'
-            """)
-            if cursor.fetchone()[0] == 0:
-                cursor.execute("""
-                    ALTER TABLE users
-                    ADD COLUMN machine_id VARCHAR(50) NULL COMMENT '所属机器ID'
-                """)
+            # 产线和机器字段已从users表中移除
 
             # 插入测试数据
             test_users = [
@@ -937,8 +1002,11 @@ def main():
 
     # 添加字段命令
     add_field_parser = subparsers.add_parser('add-field', help='添加字段')
-    add_field_parser.add_argument('field', choices=['line_id', 'machine_id', 'employee_id', 'group_id'],
+    add_field_parser.add_argument('field', choices=['employee_id', 'group_id'],
                                  help='要添加的字段名')
+
+    # 删除字段命令
+    remove_fields_parser = subparsers.add_parser('remove-fields', help='删除line_id和machine_id字段')
 
     # 迁移命令
     migrate_parser = subparsers.add_parser('migrate', help='迁移数据类型')
@@ -1005,14 +1073,12 @@ def main():
     if args.command == 'init':
         init_database()
     elif args.command == 'add-field':
-        if args.field == 'line_id':
-            add_line_id_field()
-        elif args.field == 'machine_id':
-            add_machine_id_field()
-        elif args.field == 'employee_id':
+        if args.field == 'employee_id':
             add_employee_id_field()
         elif args.field == 'group_id':
             add_group_id_field()
+    elif args.command == 'remove-fields':
+        remove_line_machine_fields()
     elif args.command == 'migrate':
         migrate_id_columns()
     elif args.command == 'verify':

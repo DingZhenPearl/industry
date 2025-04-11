@@ -64,12 +64,14 @@ def create_equipment_tables(drop_existing=False):
                 line_id VARCHAR(50) NOT NULL COMMENT '所属产线ID',
                 equipment_type VARCHAR(50) COMMENT '设备类型',
                 status VARCHAR(20) DEFAULT '正常' COMMENT '运行状态',
+                worker_id VARCHAR(20) NULL COMMENT '负责工人的工号',
                 description TEXT COMMENT '设备描述',
                 location VARCHAR(100) COMMENT '设备位置',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
                 INDEX idx_line_id (line_id),
-                INDEX idx_status (status)
+                INDEX idx_status (status),
+                INDEX idx_worker_id (worker_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='设备静态信息表'
         """)
 
@@ -189,6 +191,35 @@ def update_equipment_status(equipment_id, status_data):
             'success': False,
             'error': f'更新设备状态时出错: {str(e)}'
         }, ensure_ascii=False))
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def assign_worker_to_equipment(equipment_id, worker_id):
+    """分配工人到设备"""
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # 更新设备的负责工人
+        query = "UPDATE equipment SET worker_id = %s WHERE id = %s"
+        cursor.execute(query, (worker_id, equipment_id))
+        connection.commit()
+
+        print(json.dumps({
+            'success': True,
+            'message': f'已成功将工人 {worker_id} 分配给设备 {equipment_id}'
+        }, ensure_ascii=False))
+
+    except Error as e:
+        print(json.dumps({
+            'success': False,
+            'error': f'分配工人到设备时出错: {str(e)}'
+        }, ensure_ascii=False))
+        if connection:
+            connection.rollback()
     finally:
         if connection and connection.is_connected():
             cursor.close()
@@ -348,6 +379,11 @@ def main():
     update_parser.add_argument('--equipment-id', required=True, type=int, help='设备ID')
     update_parser.add_argument('--data', required=True, help='状态数据(JSON格式)')
 
+    # 分配工人到设备命令
+    assign_worker_parser = subparsers.add_parser('assign-worker', help='分配工人到设备')
+    assign_worker_parser.add_argument('--equipment-id', required=True, type=int, help='设备ID')
+    assign_worker_parser.add_argument('--worker-id', required=True, help='工人工号')
+
     # 获取设备列表命令
     list_parser = subparsers.add_parser('list', help='获取设备列表')
     list_parser.add_argument('--line-id', help='按产线ID筛选')
@@ -384,6 +420,8 @@ def main():
                 'success': False,
                 'error': 'JSON解析错误，请检查数据格式'
             }, ensure_ascii=False))
+    elif args.command == 'assign-worker':
+        assign_worker_to_equipment(args.equipment_id, args.worker_id)
     elif args.command == 'list':
         get_equipment_list(args.line_id, args.status)
     elif args.command == 'get-status':

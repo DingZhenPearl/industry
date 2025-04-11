@@ -420,13 +420,13 @@ export default {
     // 获取工长的产线信息
     async fetchAssignedLines() {
       try {
-        if (!this.currentForeman || !this.currentForeman.group_id) {
-          console.log('当前工长组号未知，无法获取产线信息');
+        if (!this.currentForeman || !this.currentForeman.employee_id) {
+          console.log('当前工长工号未知，无法获取产线信息');
           return;
         }
 
-        console.log('开始获取工长产线信息,工长组号:', this.currentForeman.group_id);
-        const response = await fetch(`/api/foreman/assigned-lines?group_id=${this.currentForeman.group_id}`, {
+        console.log('开始获取工长产线信息,工长工号:', this.currentForeman.employee_id);
+        const response = await fetch(`/api/foreman/assigned-lines?employee_id=${this.currentForeman.employee_id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -441,7 +441,7 @@ export default {
 
         if (data.success && Array.isArray(data.data)) {
           this.assignedLines = data.data.map(line => ({
-            id: line.line_id,
+            id: line.id,
             name: line.line_name
           }));
 

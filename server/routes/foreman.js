@@ -31,20 +31,21 @@ router.get('/team-members', authMiddleware, async (req, res) => {
 
 // 工长获取分配的产线列表
 router.get('/assigned-lines', authMiddleware, async (req, res) => {
-  const group_id = req.query.group_id;
-  console.log('获取工长产线信息,组号:', group_id);
+  const employee_id = req.query.employee_id;
+  console.log('获取工长产线信息,工号:', employee_id);
 
-  if (!group_id) {
+  if (!employee_id) {
     return res.status(400).json({
       success: false,
-      error: '缺少组号参数'
+      error: '缺少工长工号参数'
     });
   }
 
   try {
+    // 使用新的脚本获取产线信息
     const result = await runPythonScript(
-      'pyScripts/user_data_operations.py',
-      ['get-lines', group_id],
+      'pyScripts/production_line_manager.py',
+      ['list-by-foreman', '--foreman-id', employee_id],
       { debug: true }
     );
 

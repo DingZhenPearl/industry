@@ -63,10 +63,12 @@ def create_production_line_tables(drop_existing=False):
                 equipment_list JSON COMMENT '包括的设备',
                 theoretical_capacity FLOAT COMMENT '理论产能',
                 status VARCHAR(20) DEFAULT '正常' COMMENT '运行状态',
+                foreman_id VARCHAR(20) NULL COMMENT '负责工长工号',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
                 INDEX idx_line_name (line_name),
-                INDEX idx_status (status)
+                INDEX idx_status (status),
+                INDEX idx_foreman_id (foreman_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='产线静态信息表'
         """)
 
@@ -308,6 +310,87 @@ def get_production_line_with_status():
             cursor.close()
             connection.close()
 
+def get_production_lines_by_foreman(foreman_id):
+    """获取指定工长负责的产线列表"""
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        query = """
+            SELECT pl.*,
+                   pls.runtime_hours,
+                   pls.real_time_capacity,
+                   pls.collection_time
+            FROM production_line pl
+            LEFT JOIN (
+                SELECT pls1.*
+                FROM production_line_status pls1
+                INNER JOIN (
+                    SELECT line_id, MAX(collection_time) as max_time
+                    FROM production_line_status
+                    GROUP BY line_id
+                ) pls2 ON pls1.line_id = pls2.line_id AND pls1.collection_time = pls2.max_time
+            ) pls ON pl.id = pls.line_id
+            WHERE pl.foreman_id = %s
+        """
+
+        cursor.execute(query, (foreman_id,))
+        line_data = cursor.fetchall()
+
+        # 处理JSON字段
+        for line in line_data:
+            if 'equipment_list' in line and line['equipment_list']:
+                try:
+                    if isinstance(line['equipment_list'], str):
+                        line['equipment_list'] = json.loads(line['equipment_list'])
+                except:
+                    pass  # 如果解析失败，保持原样
+
+        print(json.dumps({
+            'success': True,
+            'data': line_data
+        }, ensure_ascii=False, cls=DateTimeEncoder))
+
+    except Error as e:
+        print(json.dumps({
+            'success': False,
+            'error': f'获取工长负责产线时出错: {str(e)}'
+        }, ensure_ascii=False))
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def assign_foreman_to_line(line_id, foreman_id):
+    """分配工长到产线"""
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # 更新产线的负责工长
+        query = "UPDATE production_line SET foreman_id = %s WHERE id = %s"
+        cursor.execute(query, (foreman_id, line_id))
+        connection.commit()
+
+        print(json.dumps({
+            'success': True,
+            'message': f'已成功将工长 {foreman_id} 分配给产线 {line_id}'
+        }, ensure_ascii=False))
+
+    except Error as e:
+        print(json.dumps({
+            'success': False,
+            'error': f'分配工长到产线时出错: {str(e)}'
+        }, ensure_ascii=False))
+        if connection:
+            connection.rollback()
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
 # =============================================
 # 主函数
 # =============================================
@@ -330,6 +413,15 @@ def main():
 
     # 获取产线列表命令
     list_parser = subparsers.add_parser('list', help='获取产线列表')
+
+    # 获取工长负责的产线列表命令
+    list_by_foreman_parser = subparsers.add_parser('list-by-foreman', help='获取工长负责的产线列表')
+    list_by_foreman_parser.add_argument('--foreman-id', required=True, help='工长工号')
+
+    # 分配工长到产线命令
+    assign_foreman_parser = subparsers.add_parser('assign-foreman', help='分配工长到产线')
+    assign_foreman_parser.add_argument('--line-id', required=True, type=int, help='产线ID')
+    assign_foreman_parser.add_argument('--foreman-id', required=True, help='工长工号')
 
     # 获取产线状态命令
     status_parser = subparsers.add_parser('get-status', help='获取产线状态')
@@ -363,6 +455,10 @@ def main():
             }, ensure_ascii=False))
     elif args.command == 'list':
         get_production_line_list()
+    elif args.command == 'list-by-foreman':
+        get_production_lines_by_foreman(args.foreman_id)
+    elif args.command == 'assign-foreman':
+        assign_foreman_to_line(args.line_id, args.foreman_id)
     elif args.command == 'get-status':
         get_production_line_status(args.line_id, args.limit)
     elif args.command == 'get-with-status':

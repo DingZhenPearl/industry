@@ -34,47 +34,57 @@ def get_db_connection():
         print(f"数据库连接错误: {e}")
         return None
 
-def get_production_lines_with_foremen():
-    """获取产线信息及其负责的工长信息"""
+def get_equipment_with_workers(line_id=None):
+    """获取设备信息及其负责的工人信息"""
     connection = None
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
 
-        # 查询产线信息及其最新状态
-        query = """
-            SELECT pl.*,
-                   pls.runtime_hours,
-                   pls.real_time_capacity,
-                   pls.collection_time
-            FROM production_line pl
+        # 构建查询条件
+        where_clause = ""
+        params = []
+        if line_id:
+            where_clause = "WHERE e.line_id = %s"
+            params.append(line_id)
+
+        # 查询设备信息及其最新状态
+        query = f"""
+            SELECT e.*,
+                   es.runtime_hours,
+                   es.collection_time,
+                   es.sensor_data,
+                   es.fault_probability
+            FROM equipment e
             LEFT JOIN (
-                SELECT pls1.*
-                FROM production_line_status pls1
+                SELECT es1.*
+                FROM equipment_status es1
                 INNER JOIN (
-                    SELECT line_id, MAX(collection_time) as max_time
-                    FROM production_line_status
-                    GROUP BY line_id
-                ) pls2 ON pls1.line_id = pls2.line_id AND pls1.collection_time = pls2.max_time
-            ) pls ON pl.id = pls.line_id
+                    SELECT equipment_id, MAX(collection_time) as max_time
+                    FROM equipment_status
+                    GROUP BY equipment_id
+                ) es2 ON es1.equipment_id = es2.equipment_id AND es1.collection_time = es2.max_time
+            ) es ON e.id = es.equipment_id
+            {where_clause}
         """
 
-        cursor.execute(query)
-        production_lines = cursor.fetchall()
+        cursor.execute(query, params)
+        equipment_list = cursor.fetchall()
 
         # 处理JSON字段
-        for line in production_lines:
-            if 'equipment_list' in line and line['equipment_list']:
+        for equip in equipment_list:
+            if 'sensor_data' in equip and equip['sensor_data']:
                 try:
-                    if isinstance(line['equipment_list'], str):
-                        line['equipment_list'] = json.loads(line['equipment_list'])
+                    if isinstance(equip['sensor_data'], str):
+                        equip['sensor_data'] = json.loads(equip['sensor_data'])
                 except:
                     pass  # 如果解析失败，保持原样
 
-        # 查询所有工长信息
+        # 查询所有工人信息
         query = """
             SELECT
-                employee_id as id,
+                id,
+                employee_id,
                 username as name,
                 phone,
                 group_id,
@@ -85,32 +95,32 @@ def get_production_lines_with_foremen():
                     ELSE '在岗'
                 END as statusText
             FROM users
-            WHERE role = 'foreman'
+            WHERE role = 'member'
         """
 
         cursor.execute(query)
-        foremen = cursor.fetchall()
+        workers = cursor.fetchall()
 
-        # 将工长信息添加到产线数据中
-        for line in production_lines:
-            line['foreman'] = None
-            foreman_id = line['foreman_id']
+        # 将工人信息添加到设备数据中
+        for equip in equipment_list:
+            equip['worker'] = None
+            worker_id = equip['worker_id']
 
-            if foreman_id:
-                for foreman in foremen:
-                    if foreman['id'] == foreman_id:
-                        line['foreman'] = foreman
+            if worker_id:
+                for worker in workers:
+                    if worker['employee_id'] == worker_id:
+                        equip['worker'] = worker
                         break
 
         print(json.dumps({
             'success': True,
-            'data': production_lines
+            'data': equipment_list
         }, ensure_ascii=False, cls=DateTimeEncoder))
 
     except Error as e:
         print(json.dumps({
             'success': False,
-            'error': f'获取产线及工长信息时出错: {str(e)}'
+            'error': f'获取设备及工人信息时出错: {str(e)}'
         }, ensure_ascii=False))
     finally:
         if connection and connection.is_connected():
@@ -118,4 +128,9 @@ def get_production_lines_with_foremen():
             connection.close()
 
 if __name__ == "__main__":
-    get_production_lines_with_foremen()
+    # 检查是否有命令行参数
+    if len(sys.argv) > 1:
+        line_id = sys.argv[1]
+        get_equipment_with_workers(line_id)
+    else:
+        get_equipment_with_workers()

@@ -38,7 +38,6 @@ def get_foremen():
                 username as name,
                 phone,
                 group_id,
-                line_id,
                 COALESCE(status, 'active') as status,
                 CASE
                     WHEN status = 'leave' THEN '请假'
