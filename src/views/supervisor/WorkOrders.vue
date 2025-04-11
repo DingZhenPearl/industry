@@ -70,11 +70,11 @@
               <span>位置：{{ item.location }}</span>
             </div>
             <div class="workorder-meta">
-              <span>提交人：{{ item.submitter }}</span>
+              <span>提交人：{{ getUsernameById(item.submitter) || item.submitter }} ({{ item.submitter }})</span>
               <span>提交时间：{{ item.submitTime }}</span>
             </div>
             <div class="workorder-handler" v-if="item.handler">
-              <span>处理人：{{ item.handler }}</span>
+              <span>处理人：{{ getUsernameById(item.handler) || item.handler }} ({{ item.handler }})</span>
               <span>更新时间：{{ item.updateTime }}</span>
             </div>
             <div class="workorder-actions">
@@ -128,11 +128,11 @@
           </div>
           <div class="detail-item">
             <label>发出人</label>
-            <div class="value">{{ selectedWorkOrder.submitter }}</div>
+            <div class="value">{{ getUsernameById(selectedWorkOrder.submitter) || selectedWorkOrder.submitter }} ({{ selectedWorkOrder.submitter }})</div>
           </div>
           <div class="detail-item">
             <label>负责工长</label>
-            <div class="value">{{ selectedWorkOrder.foreman || '未指定' }}</div>
+            <div class="value">{{ selectedWorkOrder.foreman ? (getUsernameById(selectedWorkOrder.foreman) || selectedWorkOrder.foreman) + ' (' + selectedWorkOrder.foreman + ')' : '未指定' }}</div>
           </div>
           <div class="detail-item">
             <label>负责班组</label>
@@ -140,7 +140,7 @@
           </div>
           <div class="detail-item" v-if="selectedWorkOrder.handler">
             <label>负责组员</label>
-            <div class="value">{{ selectedWorkOrder.handler }}</div>
+            <div class="value">{{ getUsernameById(selectedWorkOrder.handler) || selectedWorkOrder.handler }} ({{ selectedWorkOrder.handler }})</div>
           </div>
           <div class="detail-item">
             <label>创建时间</label>
@@ -195,12 +195,18 @@ export default {
       loading: false,
       showDetailModal: false,
       selectedWorkOrder: null,
-      detailLoading: false
+      detailLoading: false,
+      // 用户名缓存
+      usernameCache: {}
     }
   },
   created() {
     // 获取所有工单数据
     this.fetchAllWorkorders();
+  },
+  mounted() {
+    // 获取用户名缓存
+    this.fetchUsernames();
   },
   methods: {
     // 获取所有工单
@@ -232,14 +238,17 @@ export default {
               title: this.getWorkOrderTitle(workorder),
               description: workorder.task_details,
               location: workorder.production_line,
-              submitter: workorder.creator,
+              submitter: workorder.creator, // 这里已经是工号
               submitTime: this.formatDateTime(workorder.created_at),
               status: workorder.status,
-              handler: workorder.team_members,
+              handler: workorder.team_members, // 这里已经是工号
               updateTime: this.formatDateTime(workorder.updated_at),
               extension_fields: workorder.extension_fields
             };
           });
+
+          // 获取工单中的所有工号对应的用户名
+          this.fetchUsernames();
         } else {
           console.error('获取工单列表失败:', data.error || '未知错误');
           Message.error('获取工单列表失败');
@@ -257,6 +266,147 @@ export default {
       if (!dateString) return '';
       const date = new Date(dateString);
       return date.toLocaleString();
+    },
+
+    // 获取工号对应的用户名
+    async fetchUsernames() {
+      try {
+        // 收集所有需要查询的工号
+        const employeeIds = new Set();
+
+        console.log('当前工单数据:', this.workorders);
+
+        this.workorders.forEach(workorder => {
+          if (workorder.submitter) {
+            employeeIds.add(workorder.submitter);
+            console.log('添加submitter:', workorder.submitter);
+          }
+          if (workorder.handler) {
+            // 如果是多个组员，可能是逗号分隔的字符串
+            const members = workorder.handler.split(',');
+            members.forEach(member => {
+              if (member.trim()) {
+                employeeIds.add(member.trim());
+                console.log('添加handler:', member.trim());
+              }
+            });
+          }
+          if (workorder.foreman) {
+            employeeIds.add(workorder.foreman);
+            console.log('添加foreman:', workorder.foreman);
+          }
+        });
+
+        console.log('收集到的所有工号:', Array.from(employeeIds));
+
+        // 过滤掉已经缓存的工号
+        const idsToFetch = Array.from(employeeIds).filter(id => !this.usernameCache[id]);
+
+        if (idsToFetch.length === 0) {
+          console.log('所有用户名已缓存');
+          return;
+        }
+
+        console.log('需要查询的工号:', idsToFetch);
+
+        // 批量查询用户名
+        // 改为使用单个查询的方式，避免批量查询的问题
+        console.log('开始逐个查询用户名');
+
+        // 逐个查询工号
+        for (const id of idsToFetch) {
+          await this.fetchSingleUsername(id);
+        }
+
+        // 打印最终结果
+        console.log('所有用户名查询完成，缓存:', this.usernameCache);
+
+        // 模拟数据作为返回结果
+        const data = {
+          success: true,
+          data: this.usernameCache
+        };
+        console.log('用户名数据:', data);
+
+        if (data.success && data.data) {
+          // 逐个更新缓存，使用Vue的$set确保响应式更新
+          Object.keys(data.data).forEach(id => {
+            if (data.data[id]) {
+              this.$set(this.usernameCache, id, data.data[id]);
+            }
+          });
+
+          console.log('更新后的用户名缓存:', this.usernameCache);
+        } else {
+          console.error('获取用户名失败:', data.error || '未知错误');
+        }
+      } catch (error) {
+        console.error('请求用户名出错:', error);
+      }
+    },
+
+    // 根据工号获取用户名
+    getUsernameById(employeeId) {
+      if (!employeeId) return '未知';
+
+      // 打印调试信息
+      console.log(`获取工号 ${employeeId} 的用户名, 缓存中的值:`, this.usernameCache[employeeId]);
+
+      // 如果缓存中有该工号对应的用户名且不为null，则返回用户名
+      if (this.usernameCache[employeeId]) {
+        return this.usernameCache[employeeId];
+      }
+
+      // 如果缓存中没有该工号对应的用户名，则尝试获取
+      this.fetchSingleUsername(employeeId);
+
+      // 返回工号作为默认值
+      return employeeId;
+    },
+
+    // 获取单个工号的用户名
+    async fetchSingleUsername(employeeId) {
+      if (!employeeId || this.usernameCache[employeeId]) return;
+
+      try {
+        console.log(`开始获取工号 ${employeeId} 的用户名`);
+
+        // 如果员工列表中没有，则调用API
+        const response = await fetch(`/api/users/username/${employeeId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        // 打印原始响应信息以便调试
+        const responseText = await response.text();
+        console.log(`工号 ${employeeId} 的API原始响应:`, responseText);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
+        }
+
+        // 尝试解析JSON
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          console.error(`解析响应JSON失败:`, e);
+          throw new Error(`解析响应JSON失败: ${e.message}`);
+        }
+
+        console.log(`工号 ${employeeId} 的用户名数据:`, data);
+
+        if (data.success && data.username) {
+          // 更新缓存
+          this.$set(this.usernameCache, employeeId, data.username);
+          console.log('更新后的用户名缓存:', this.usernameCache);
+        }
+      } catch (error) {
+        console.error(`获取工号 ${employeeId} 的用户名失败:`, error);
+        // 如果失败，使用工号作为用户名
+        this.$set(this.usernameCache, employeeId, employeeId);
+      }
     },
 
 
@@ -328,6 +478,11 @@ export default {
           this.selectedWorkOrder.startTime = this.formatDateTime(detailData.start_time);
           this.selectedWorkOrder.deadline = this.formatDateTime(detailData.deadline);
           this.selectedWorkOrder.actualEndTime = this.formatDateTime(detailData.actual_end_time);
+
+          // 获取新添加的工号对应的用户名
+          if (detailData.foreman && !this.usernameCache[detailData.foreman]) {
+            this.fetchSingleUsername(detailData.foreman);
+          }
 
           // 如果有扩展字段，确保它是对象形式
           if (typeof detailData.extension_fields === 'string') {

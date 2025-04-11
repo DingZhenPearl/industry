@@ -158,4 +158,63 @@ router.post('/update-group', authMiddleware, async (req, res) => {
   }
 });
 
+// 根据工号查询用户名
+router.get('/username/:employee_id', authMiddleware, async (req, res) => {
+  try {
+    const { employee_id } = req.params;
+
+    const result = await runPythonScript(
+      'pyScripts/user_data_operations.py',
+      ['get-username', employee_id]
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('根据工号查询用户名失败:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
+// 批量查询用户名
+router.post('/usernames', authMiddleware, async (req, res) => {
+  try {
+    const { employee_ids } = req.body;
+
+    if (!Array.isArray(employee_ids)) {
+      return res.status(400).json({ success: false, error: '请提供工号数组' });
+    }
+
+    // 并行查询所有工号对应的用户名
+    const promises = employee_ids.map(async (id) => {
+      try {
+        const result = await runPythonScript(
+          'pyScripts/user_data_operations.py',
+          ['get-username', id]
+        );
+        return { employee_id: id, ...result };
+      } catch (error) {
+        console.error(`查询工号 ${id} 的用户名失败:`, error);
+        return { employee_id: id, success: false, error: '查询失败' };
+      }
+    });
+
+    const results = await Promise.all(promises);
+
+    // 将结果转换为工号-用户名的映射
+    const usernameMap = {};
+    results.forEach(result => {
+      if (result.success) {
+        usernameMap[result.employee_id] = result.username;
+      } else {
+        usernameMap[result.employee_id] = null;
+      }
+    });
+
+    res.json({ success: true, data: usernameMap });
+  } catch (error) {
+    console.error('批量查询用户名失败:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
 module.exports = router;

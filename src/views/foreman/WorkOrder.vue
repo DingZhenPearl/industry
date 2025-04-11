@@ -27,8 +27,8 @@
             <div class="workorder-body">
               <p class="workorder-desc">{{ item.description }}</p>
               <div class="workorder-meta">
-                <span>负责人：{{ item.owner }}</span>
-                <span>截止时间：{{ item.deadline }}</span>
+                <span>负责人：{{ getUsernameById(item.owner) || item.owner }}</span>
+                <span>截止时间：{{ formatDateTime(item.deadline) }}</span>
               </div>
             </div>
             <div class="workorder-footer">
@@ -84,14 +84,19 @@
               <label>负责组员</label>
               <select v-model="newWorkOrder.team_members" class="form-input">
                 <option value="">请选择组员</option>
-                <option v-for="emp in employees" :key="emp.id" :value="emp.name">
-                  {{ emp.name }} ({{ emp.skillLevel }})
+                <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+                  {{ emp.name }} ({{ emp.id }}) - {{ emp.skillLevel }}
                 </option>
               </select>
             </div>
             <div class="form-group">
-              <label>设备编号</label>
-              <input type="text" v-model="newWorkOrder.extension_fields.device_id" class="form-input" placeholder="请输入设备编号">
+              <label>设备选择</label>
+              <select v-model="newWorkOrder.extension_fields.device_id" class="form-input">
+                <option value="">请选择设备</option>
+                <option v-for="device in filteredEquipments" :key="device.id" :value="device.code">
+                  {{ device.name }} ({{ device.code }})
+                </option>
+              </select>
             </div>
           </div>
 
@@ -101,14 +106,19 @@
               <label>负责组员</label>
               <select v-model="newWorkOrder.team_members" class="form-input">
                 <option value="">请选择组员</option>
-                <option v-for="emp in employees" :key="emp.id" :value="emp.name">
-                  {{ emp.name }} ({{ emp.skillLevel }})
+                <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+                  {{ emp.name }} ({{ emp.id }}) - {{ emp.skillLevel }}
                 </option>
               </select>
             </div>
             <div class="form-group">
-              <label>设备编号</label>
-              <input type="text" v-model="newWorkOrder.extension_fields.device_id" class="form-input" placeholder="请输入设备编号">
+              <label>设备选择</label>
+              <select v-model="newWorkOrder.extension_fields.device_id" class="form-input">
+                <option value="">请选择设备</option>
+                <option v-for="device in filteredEquipments" :key="device.id" :value="device.code">
+                  {{ device.name }} ({{ device.code }})
+                </option>
+              </select>
             </div>
             <div class="form-group">
               <label>发现时间</label>
@@ -122,8 +132,8 @@
               <label>负责组员</label>
               <select v-model="newWorkOrder.team_members" class="form-input">
                 <option value="">请选择组员</option>
-                <option v-for="emp in employees" :key="emp.id" :value="emp.name">
-                  {{ emp.name }} ({{ emp.skillLevel }})
+                <option v-for="emp in employees" :key="emp.id" :value="emp.id">
+                  {{ emp.name }} ({{ emp.id }}) - {{ emp.skillLevel }}
                 </option>
               </select>
             </div>
@@ -166,11 +176,11 @@
           </div>
           <div class="detail-item">
             <label>发出人</label>
-            <div class="value">{{ selectedWorkOrder.creator }}</div>
+            <div class="value">{{ getUsernameById(selectedWorkOrder.creator) || selectedWorkOrder.creator }} ({{ selectedWorkOrder.creator }})</div>
           </div>
           <div class="detail-item">
             <label>负责工长</label>
-            <div class="value">{{ selectedWorkOrder.foreman }}</div>
+            <div class="value">{{ getUsernameById(selectedWorkOrder.foreman) || selectedWorkOrder.foreman }} ({{ selectedWorkOrder.foreman }})</div>
           </div>
           <div class="detail-item">
             <label>负责班组</label>
@@ -178,7 +188,7 @@
           </div>
           <div class="detail-item" v-if="selectedWorkOrder.team_members">
             <label>负责组员</label>
-            <div class="value">{{ selectedWorkOrder.team_members }}</div>
+            <div class="value">{{ getUsernameById(selectedWorkOrder.team_members) || selectedWorkOrder.team_members }} ({{ selectedWorkOrder.team_members }})</div>
           </div>
           <div class="detail-item">
             <label>产线信息</label>
@@ -309,44 +319,13 @@ export default {
       workorders: [],
 
       // 员工列表
-      employees: [
-        {
-          id: 'W001',
-          name: '张三',
-          line_id: '1',
-          phone: '13800138001',
-          status: 'active',
-          statusText: '在岗',
-          skillLevel: '高级'
-        },
-        {
-          id: 'W002',
-          name: '李四',
-          line_id: '1',
-          phone: '13800138002',
-          status: 'leave',
-          statusText: '请假',
-          skillLevel: '中级'
-        },
-        {
-          id: 'W003',
-          name: '王五',
-          line_id: '2',
-          phone: '13800138003',
-          status: 'task',
-          statusText: '任务中',
-          skillLevel: '高级'
-        },
-        {
-          id: 'W004',
-          name: '赵六',
-          line_id: '2',
-          phone: '13800138004',
-          status: 'active',
-          statusText: '在岗',
-          skillLevel: '初级'
-        }
-      ],
+      employees: [],
+      // 设备列表
+      equipments: [],
+      // 按产线分组的设备列表
+      equipmentsByLine: {},
+      // 用户名缓存
+      usernameCache: {},
       showNewWorkOrderModal: false,
       showWorkOrderDetailModal: false,
       showAssignTask: false,
@@ -385,6 +364,15 @@ export default {
 
     // 加载工长的产线信息
     this.fetchAssignedLines();
+
+    // 加载团队成员信息
+    this.fetchTeamMembers();
+
+    // 加载设备信息
+    this.fetchEquipments();
+
+    // 加载用户名缓存
+    this.fetchUsernames();
   },
   watch: {
     // 监听任务类型变化，动态更新扩展字段
@@ -405,6 +393,17 @@ export default {
 
       // 重置负责组员
       this.newWorkOrder.team_members = '';
+    },
+
+    // 监听产线变化，重置设备选择
+    'newWorkOrder.production_line': function(newLineId) {
+      // 重置设备选择
+      if (this.newWorkOrder.extension_fields) {
+        this.newWorkOrder.extension_fields.device_id = '';
+      }
+
+      console.log('产线已更改为:', newLineId);
+      console.log('可用设备:', this.filteredEquipments);
     }
   },
   computed: {
@@ -414,6 +413,14 @@ export default {
         return this.employees;
       }
       return this.employees.filter(emp => emp.line_id === this.taskForm.lineId);
+    },
+
+    // 根据选择的产线筛选设备
+    filteredEquipments() {
+      if (!this.newWorkOrder.production_line) {
+        return [];
+      }
+      return this.equipmentsByLine[this.newWorkOrder.production_line] || [];
     },
   },
   methods: {
@@ -470,6 +477,151 @@ export default {
           { id: 'line2', name: '二号生产线' },
           { id: 'line3', name: '三号生产线' }
         ];
+      }
+    },
+
+    // 获取团队成员信息
+    async fetchTeamMembers() {
+      try {
+        if (!this.currentForeman || !this.currentForeman.group_id) {
+          console.log('当前工长组号未知，无法获取团队成员信息');
+          return;
+        }
+
+        console.log('开始获取团队成员数据,工长组号:', this.currentForeman.group_id);
+        const response = await fetch(`/api/foreman/team-members?group_id=${this.currentForeman.group_id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('团队成员数据:', data);
+
+        if (data.success && Array.isArray(data.data)) {
+          // 处理团队成员数据
+          this.employees = data.data.map(emp => ({
+            id: emp.id, // 工号
+            name: emp.name,
+            line_id: emp.line_id || '',
+            status: emp.status || 'active',
+            statusText: emp.statusText || '在岗',
+            skillLevel: emp.skillLevel || '初级'
+          }));
+        } else {
+          console.error('获取团队成员失败:', data.error || '未知错误');
+          // 添加测试数据
+          this.employees = [
+            { id: 'WK0001', name: '张三', line_id: 'line1', status: 'active', statusText: '在岗', skillLevel: '高级' },
+            { id: 'WK0002', name: '李四', line_id: 'line1', status: 'active', statusText: '在岗', skillLevel: '中级' },
+            { id: 'WK0003', name: '王五', line_id: 'line2', status: 'active', statusText: '在岗', skillLevel: '高级' },
+            { id: 'WK0004', name: '赵六', line_id: 'line2', status: 'active', statusText: '在岗', skillLevel: '初级' }
+          ];
+        }
+      } catch (error) {
+        console.error('请求团队成员出错:', error);
+        // 添加测试数据
+        this.employees = [
+          { id: 'WK0001', name: '张三', line_id: 'line1', status: 'active', statusText: '在岗', skillLevel: '高级' },
+          { id: 'WK0002', name: '李四', line_id: 'line1', status: 'active', statusText: '在岗', skillLevel: '中级' },
+          { id: 'WK0003', name: '王五', line_id: 'line2', status: 'active', statusText: '在岗', skillLevel: '高级' },
+          { id: 'WK0004', name: '赵六', line_id: 'line2', status: 'active', statusText: '在岗', skillLevel: '初级' }
+        ];
+      }
+    },
+
+    // 获取设备信息
+    async fetchEquipments() {
+      try {
+        console.log('开始获取设备数据');
+        const response = await fetch('/api/equipment/list', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('设备数据:', data);
+
+        if (data.success && Array.isArray(data.data)) {
+          // 处理设备数据
+          this.equipments = data.data.map(device => ({
+            id: device.id,
+            name: device.equipment_name,
+            code: device.equipment_code,
+            line_id: device.line_id,
+            status: device.status || '正常'
+          }));
+
+          // 按产线分组设备
+          this.equipmentsByLine = {};
+          this.equipments.forEach(device => {
+            if (!this.equipmentsByLine[device.line_id]) {
+              this.equipmentsByLine[device.line_id] = [];
+            }
+            this.equipmentsByLine[device.line_id].push(device);
+          });
+
+          console.log('按产线分组的设备:', this.equipmentsByLine);
+        } else {
+          console.error('获取设备列表失败:', data.error || '未知错误');
+          // 添加测试数据
+          this.equipments = [
+            { id: 1, name: '数控车床1', code: 'EQ001', line_id: 'line1', status: '正常' },
+            { id: 2, name: '数控车床2', code: 'EQ002', line_id: 'line1', status: '正常' },
+            { id: 3, name: '机械臂', code: 'EQ003', line_id: 'line2', status: '正常' },
+            { id: 4, name: '自动包装机', code: 'EQ004', line_id: 'line2', status: '正常' },
+            { id: 5, name: '检测设备', code: 'EQ005', line_id: 'line3', status: '正常' }
+          ];
+
+          // 按产线分组设备
+          this.equipmentsByLine = {
+            'line1': [
+              { id: 1, name: '数控车床1', code: 'EQ001', line_id: 'line1', status: '正常' },
+              { id: 2, name: '数控车床2', code: 'EQ002', line_id: 'line1', status: '正常' }
+            ],
+            'line2': [
+              { id: 3, name: '机械臂', code: 'EQ003', line_id: 'line2', status: '正常' },
+              { id: 4, name: '自动包装机', code: 'EQ004', line_id: 'line2', status: '正常' }
+            ],
+            'line3': [
+              { id: 5, name: '检测设备', code: 'EQ005', line_id: 'line3', status: '正常' }
+            ]
+          };
+        }
+      } catch (error) {
+        console.error('请求设备列表出错:', error);
+        // 添加测试数据
+        this.equipments = [
+          { id: 1, name: '数控车床1', code: 'EQ001', line_id: 'line1', status: '正常' },
+          { id: 2, name: '数控车床2', code: 'EQ002', line_id: 'line1', status: '正常' },
+          { id: 3, name: '机械臂', code: 'EQ003', line_id: 'line2', status: '正常' },
+          { id: 4, name: '自动包装机', code: 'EQ004', line_id: 'line2', status: '正常' },
+          { id: 5, name: '检测设备', code: 'EQ005', line_id: 'line3', status: '正常' }
+        ];
+
+        // 按产线分组设备
+        this.equipmentsByLine = {
+          'line1': [
+            { id: 1, name: '数控车床1', code: 'EQ001', line_id: 'line1', status: '正常' },
+            { id: 2, name: '数控车床2', code: 'EQ002', line_id: 'line1', status: '正常' }
+          ],
+          'line2': [
+            { id: 3, name: '机械臂', code: 'EQ003', line_id: 'line2', status: '正常' },
+            { id: 4, name: '自动包装机', code: 'EQ004', line_id: 'line2', status: '正常' }
+          ],
+          'line3': [
+            { id: 5, name: '检测设备', code: 'EQ005', line_id: 'line3', status: '正常' }
+          ]
+        };
       }
     },
 
@@ -560,6 +712,181 @@ export default {
       return statusMap[status] || '未知状态';
     },
 
+    // 获取工号对应的用户名
+    async fetchUsernames() {
+      try {
+        // 收集所有需要查询的工号
+        const employeeIds = new Set();
+
+        console.log('当前工单数据:', this.workorders);
+
+        this.workorders.forEach(workorder => {
+          if (workorder.creator) {
+            employeeIds.add(workorder.creator);
+            console.log('添加creator:', workorder.creator);
+          }
+          if (workorder.foreman) {
+            employeeIds.add(workorder.foreman);
+            console.log('添加foreman:', workorder.foreman);
+          }
+          if (workorder.team_members) {
+            // 如果是多个组员，可能是逗号分隔的字符串
+            const members = workorder.team_members.split(',');
+            members.forEach(member => {
+              if (member.trim()) {
+                employeeIds.add(member.trim());
+                console.log('添加team_member:', member.trim());
+              }
+            });
+          }
+          if (workorder.owner) {
+            employeeIds.add(workorder.owner);
+            console.log('添加owner:', workorder.owner);
+          }
+        });
+
+        console.log('收集到的所有工号:', Array.from(employeeIds));
+
+        // 过滤掉已经缓存的工号
+        const idsToFetch = Array.from(employeeIds).filter(id => !this.usernameCache[id]);
+
+        if (idsToFetch.length === 0) {
+          console.log('所有用户名已缓存');
+          return;
+        }
+
+        console.log('需要查询的工号:', idsToFetch);
+
+        // 批量查询用户名
+        // 改为使用单个查询的方式，避免批量查询的问题
+        console.log('开始逐个查询用户名');
+
+        // 先从员工列表中查找
+        const foundInEmployees = {};
+        idsToFetch.forEach(id => {
+          const employee = this.employees.find(emp => emp.id === id);
+          if (employee && employee.name) {
+            foundInEmployees[id] = employee.name;
+          }
+        });
+
+        // 更新已找到的用户名
+        Object.keys(foundInEmployees).forEach(id => {
+          this.$set(this.usernameCache, id, foundInEmployees[id]);
+        });
+
+        // 过滤出员工列表中没有的工号
+        const remainingIds = idsToFetch.filter(id => !foundInEmployees[id]);
+
+        if (remainingIds.length === 0) {
+          console.log('所有用户名已从员工列表中找到');
+          return;
+        }
+
+        // 逐个查询剩余的工号
+        for (const id of remainingIds) {
+          await this.fetchSingleUsername(id);
+        }
+
+        // 打印最终结果
+        console.log('所有用户名查询完成，缓存:', this.usernameCache);
+
+        // 模拟数据作为返回结果
+        const data = {
+          success: true,
+          data: this.usernameCache
+        };
+        console.log('用户名数据:', data);
+
+        if (data.success && data.data) {
+          // 逐个更新缓存，使用Vue的$set确保响应式更新
+          Object.keys(data.data).forEach(id => {
+            if (data.data[id]) {
+              this.$set(this.usernameCache, id, data.data[id]);
+            }
+          });
+
+          console.log('更新后的用户名缓存:', this.usernameCache);
+        } else {
+          console.error('获取用户名失败:', data.error || '未知错误');
+        }
+      } catch (error) {
+        console.error('请求用户名出错:', error);
+      }
+    },
+
+    // 根据工号获取用户名
+    getUsernameById(employeeId) {
+      if (!employeeId) return '未知';
+
+      // 打印调试信息
+      console.log(`获取工号 ${employeeId} 的用户名, 缓存中的值:`, this.usernameCache[employeeId]);
+
+      // 如果缓存中有该工号对应的用户名且不为null，则返回用户名
+      if (this.usernameCache[employeeId]) {
+        return this.usernameCache[employeeId];
+      }
+
+      // 如果缓存中没有该工号对应的用户名，则尝试获取
+      this.fetchSingleUsername(employeeId);
+
+      // 返回工号作为默认值
+      return employeeId;
+    },
+
+    // 获取单个工号的用户名
+    async fetchSingleUsername(employeeId) {
+      if (!employeeId || this.usernameCache[employeeId]) return;
+
+      try {
+        console.log(`开始获取工号 ${employeeId} 的用户名`);
+
+        // 直接从当前员工列表中查找
+        const employee = this.employees.find(emp => emp.id === employeeId);
+        if (employee && employee.name) {
+          console.log(`从员工列表中找到工号 ${employeeId} 的用户名:`, employee.name);
+          this.$set(this.usernameCache, employeeId, employee.name);
+          return;
+        }
+
+        // 如果员工列表中没有，则调用API
+        const response = await fetch(`/api/users/username/${employeeId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        // 打印原始响应信息以便调试
+        const responseText = await response.text();
+        console.log(`工号 ${employeeId} 的API原始响应:`, responseText);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
+        }
+
+        // 尝试解析JSON
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          console.error(`解析响应JSON失败:`, e);
+          throw new Error(`解析响应JSON失败: ${e.message}`);
+        }
+
+        console.log(`工号 ${employeeId} 的用户名数据:`, data);
+
+        if (data.success && data.username) {
+          // 更新缓存
+          this.$set(this.usernameCache, employeeId, data.username);
+          console.log('更新后的用户名缓存:', this.usernameCache);
+        }
+      } catch (error) {
+        console.error(`获取工号 ${employeeId} 的用户名失败:`, error);
+        // 如果失败，使用工号作为用户名
+        this.$set(this.usernameCache, employeeId, employeeId);
+      }
+    },
+
     async createWorkOrder() {
       try {
         // 验证表单
@@ -619,8 +946,8 @@ export default {
         };
 
         // 添加自动生成的字段
-        workorderData.creator = this.currentForeman.username;
-        workorderData.foreman = this.currentForeman.username;
+        workorderData.creator = this.currentForeman.employee_id; // 使用工号而非用户名
+        workorderData.foreman = this.currentForeman.employee_id; // 使用工号而非用户名
         workorderData.team = this.currentForeman.group_id;
         workorderData.status = '未接受';
 
@@ -698,6 +1025,22 @@ export default {
     showWorkOrderDetail(workorder) {
       this.selectedWorkOrder = { ...workorder };
       this.showWorkOrderDetailModal = true;
+
+      // 获取工单相关人员的用户名
+      if (workorder.creator && !this.usernameCache[workorder.creator]) {
+        this.fetchSingleUsername(workorder.creator);
+      }
+      if (workorder.foreman && !this.usernameCache[workorder.foreman]) {
+        this.fetchSingleUsername(workorder.foreman);
+      }
+      if (workorder.team_members) {
+        const members = workorder.team_members.split(',');
+        members.forEach(member => {
+          if (member.trim() && !this.usernameCache[member.trim()]) {
+            this.fetchSingleUsername(member.trim());
+          }
+        });
+      }
     },
     async updateWorkOrder() {
       try {
@@ -798,7 +1141,7 @@ export default {
         // 准备更新数据
         const updateData = {
           status: 'processing',
-          team_members: employee.name,
+          team_members: employee.id, // 使用工号而非用户名
           production_line: this.taskForm.lineId
         };
 

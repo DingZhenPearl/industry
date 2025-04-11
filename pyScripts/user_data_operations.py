@@ -421,6 +421,42 @@ def increase_username_length():
 # =============================================
 # 数据获取函数
 # =============================================
+def get_username_by_id(employee_id):
+    """根据工号查询用户名"""
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        query = """
+            SELECT username
+            FROM users
+            WHERE employee_id = %s
+        """
+
+        cursor.execute(query, (employee_id,))
+        user = cursor.fetchone()
+
+        if user:
+            print(json.dumps({
+                'success': True,
+                'username': user['username']
+            }, ensure_ascii=False))
+        else:
+            print(json.dumps({
+                'success': False,
+                'error': '未找到用户'
+            }, ensure_ascii=False))
+
+    except Exception as e:
+        print(json.dumps({
+            'success': False,
+            'error': str(e)
+        }, ensure_ascii=False))
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
 def get_users():
     """获取所有用户信息"""
     connection = None
@@ -1053,6 +1089,10 @@ def main():
     get_team_parser = subparsers.add_parser('get-team', help='获取团队成员')
     get_team_parser.add_argument('group_id', help='组ID')
 
+    # 根据工号查询用户名命令
+    get_username_parser = subparsers.add_parser('get-username', help='根据工号查询用户名')
+    get_username_parser.add_argument('employee_id', help='工号')
+
     # 获取产线命令
     get_lines_parser = subparsers.add_parser('get-lines', help='获取产线')
     get_lines_parser.add_argument('group_id', help='组ID')
@@ -1122,6 +1162,8 @@ def main():
         get_users()
     elif args.command == 'get-team':
         get_team_members(args.group_id)
+    elif args.command == 'get-username':
+        get_username_by_id(args.employee_id)
     elif args.command == 'get-lines':
         get_assigned_lines(args.group_id)
     elif args.command == 'verify-user':
