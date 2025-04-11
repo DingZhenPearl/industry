@@ -516,108 +516,45 @@ export default {
           await this.fetchProductionLines();
         }
 
-        // 使用模拟数据代替实际API调用，因为API可能有问题
-        console.log('使用模拟数据代替实际API调用');
+        // 从后端获取设备数据
+        console.log('从后端获取设备数据');
+        const response = await fetch('/api/equipment/with-status', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
 
-        // 模拟设备数据
-        const mockEquipmentData = {
-          success: true,
-          data: [
-            {
-              id: 1,
-              equipment_name: '注塑机A-01',
-              equipment_code: 'JSJ-A01',
-              line_id: '1',
-              equipment_type: '注塑机',
-              status: '正常',
-              worker_id: 'WK0003',
-              runtime_hours: 574.0,
-              fault_probability: 0.021
-            },
-            {
-              id: 2,
-              equipment_name: '压铸机B-02',
-              equipment_code: 'YZJ-B02',
-              line_id: '1',
-              equipment_type: '压铸机',
-              status: '正常',
-              worker_id: 'WK0008',
-              runtime_hours: 624.0,
-              fault_probability: 0.076
-            },
-            {
-              id: 3,
-              equipment_name: '车床D-01',
-              equipment_code: 'CD-D01',
-              line_id: '2',
-              equipment_type: '车床',
-              status: '正常',
-              worker_id: 'WK0016',
-              runtime_hours: 674.0,
-              fault_probability: 0.249
-            },
-            {
-              id: 4,
-              equipment_name: '钣床E-01',
-              equipment_code: 'XC-E01',
-              line_id: '2',
-              equipment_type: '钣床',
-              status: '正常',
-              worker_id: 'WK0017',
-              runtime_hours: 724.0,
-              fault_probability: 0.106
-            },
-            {
-              id: 5,
-              equipment_name: '组装台G-01',
-              equipment_code: 'ZZT-G01',
-              line_id: '3',
-              equipment_type: '组装设备',
-              status: '正常',
-              worker_id: null,
-              runtime_hours: 774.0,
-              fault_probability: 0.029
-            },
-            {
-              id: 6,
-              equipment_name: '包装机H-01',
-              equipment_code: 'BZJ-H01',
-              line_id: '3',
-              equipment_type: '包装设备',
-              status: '正常',
-              worker_id: null,
-              runtime_hours: 824.0,
-              fault_probability: 0.031
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('设备数据返回结果:', result);
+
+        // 从后端获取用户数据
+        console.log('从后端获取用户数据');
+        let users = [];
+        try {
+          const usersResponse = await fetch('/api/users', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
-          ]
-        };
+          });
 
-        const result = mockEquipmentData;
-        console.log('模拟设备数据:', result);
-
-        // 使用模拟用户数据代替实际API调用
-        console.log('使用模拟用户数据');
-
-        // 模拟用户数据
-        const mockUsersData = {
-          success: true,
-          data: [
-            {id: 'SP0001', name: '甲厂长', role: 'supervisor'},
-            {id: 'FM0002', name: '甲工长', role: 'foreman'},
-            {id: 'WK0003', name: 'worker', role: 'member'},
-            {id: 'SF0004', name: 'safety', role: 'safety_officer'},
-            {id: 'FM0006', name: '乙工长', role: 'foreman'},
-            {id: 'WK0008', name: 'worker1', role: 'member'},
-            {id: 'SF0009', name: 'safety1', role: 'safety_officer'},
-            {id: 'SF0015', name: '123456', role: 'safety_officer'},
-            {id: 'WK0016', name: 'user_1744293827449_546', role: 'member'},
-            {id: 'WK0017', name: 'user_1744294032153_156', role: 'member'},
-            {id: 'FM0018', name: '丙工长', role: 'foreman'}
-          ]
-        };
-
-        let users = mockUsersData.data;
-        console.log('模拟用户数据:', users);
+          if (usersResponse.ok) {
+            const usersResult = await usersResponse.json();
+            console.log('用户数据返回结果:', usersResult);
+            if (usersResult.success && usersResult.data) {
+              users = usersResult.data;
+              console.log('处理后的用户数据:', users);
+            }
+          } else {
+            console.error('获取用户数据失败:', usersResponse.statusText);
+          }
+        } catch (error) {
+          console.error('获取用户数据出错:', error);
+          // 继续处理设备数据，不让用户数据错误影响整体功能
+        }
 
         if (result.success && result.data) {
           // 处理设备数据
