@@ -260,64 +260,9 @@ export default {
       taskNote: '',
 
       // 工单列表数据
-      workorders: [
-        {
-          id: 1,
-          number: 'T2023001',
-          status: 'pending',
-          statusText: '待接收',
-          type: '生产工单',
-          description: '一号生产线零部件组装',
-          productionLine: '一号生产线',
-          assignedBy: 'FM0001', // 工长工号
-          assignTime: '2023-07-10 09:00',
-          deadline: '2023-07-10 17:00',
-          progress: 0
-        },
-        {
-          id: 2,
-          number: 'T2023002',
-          status: 'accepted',
-          statusText: '已接收',
-          type: '设备维护',
-          description: '二号生产线设备日常维护',
-          productionLine: '二号生产线',
-          assignedBy: 'FM0002', // 工长工号
-          assignTime: '2023-07-10 10:30',
-          deadline: '2023-07-11 12:00',
-          progress: 0
-        },
-        {
-          id: 3,
-          number: 'T2023003',
-          status: 'processing',
-          statusText: '进行中',
-          type: '质量检查',
-          description: '一号生产线产品质量抽检',
-          productionLine: '一号生产线',
-          assignedBy: 'FM0003', // 工长工号
-          assignTime: '2023-07-09 14:00',
-          startTime: '2023-07-09 15:00',
-          deadline: '2023-07-10 14:00',
-          progress: 60
-        },
-        {
-          id: 4,
-          number: 'T2023004',
-          status: 'completed',
-          statusText: '已完成',
-          type: '巡检工单',
-          description: '二号生产线安全巡检',
-          productionLine: '二号生产线',
-          assignedBy: 'FM0004', // 工长工号
-          assignTime: '2023-07-08 09:00',
-          startTime: '2023-07-08 09:30',
-          deadline: '2023-07-08 17:00',
-          completedTime: '2023-07-08 16:30',
-          progress: 100,
-          note: '巡检完成，设备运行正常，无安全隐患'
-        }
-      ]
+      workorders: [],
+      responsibleWorkorders: [],
+      submittedWorkorders: []
     }
   },
   computed: {
@@ -357,7 +302,152 @@ export default {
       return this.workorders.filter(workorder => workorder.status === 'completed').length;
     }
   },
+  created() {
+    // 检查用户信息
+    const employeeId = this.getCurrentEmployeeId();
+    if (!employeeId) {
+      console.error('未找到用户工号信息');
+      alert('无法获取您的工号信息，请重新登录');
+      this.$router.push('/login');
+      return;
+    }
+
+    // 页面创建时加载数据
+    this.fetchWorkorders();
+  },
   methods: {
+    // 获取当前登录用户的工号
+    getCurrentEmployeeId() {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      return userInfo.employee_id;
+    },
+
+    // 从后端获取工单数据
+    async fetchWorkorders() {
+      try {
+        // 获取当前登录用户的工号
+        const employeeId = this.getCurrentEmployeeId();
+
+        if (!employeeId) {
+          console.error('未找到用户工号信息');
+          alert('无法获取您的工号信息，请重新登录');
+          // 重定向到登录页面
+          this.$router.push('/login');
+          return;
+        }
+
+        // 获取负责的工单
+        const responsibleResponse = await fetch(`/api/workorders/worker-responsible-workorders?employee_id=${employeeId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!responsibleResponse.ok) {
+          throw new Error(`获取负责工单失败: ${responsibleResponse.status}`);
+        }
+
+        const responsibleData = await responsibleResponse.json();
+        console.log('负责工单数据:', responsibleData);
+
+        if (responsibleData.success) {
+          this.responsibleWorkorders = this.formatWorkorders(responsibleData.data || []);
+        }
+
+        // 获取提交的工单
+        const submittedResponse = await fetch(`/api/workorders/worker-submitted-workorders?employee_id=${employeeId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!submittedResponse.ok) {
+          throw new Error(`获取提交工单失败: ${submittedResponse.status}`);
+        }
+
+        const submittedData = await submittedResponse.json();
+        console.log('提交工单数据:', submittedData);
+
+        if (submittedData.success) {
+          this.submittedWorkorders = this.formatWorkorders(submittedData.data || []);
+        }
+
+        // 合并工单列表，去除重复
+        const allWorkorders = [...this.responsibleWorkorders];
+
+        this.submittedWorkorders.forEach(submitted => {
+          // 检查是否已存在于负责工单中
+          const exists = allWorkorders.some(wo => wo.number === submitted.number);
+          if (!exists) {
+            allWorkorders.push(submitted);
+          }
+        });
+
+        this.workorders = allWorkorders;
+      } catch (error) {
+        console.error('获取工单数据出错:', error);
+      }
+    },
+
+    // 格式化工单数据
+    formatWorkorders(workorders) {
+      return workorders.map(wo => {
+        // 根据状态设置状态文本
+        let statusText = '未知';
+        let progress = 0;
+
+        switch(wo.status) {
+          case '未接受':
+          case 'pending':
+            statusText = '待接收';
+            progress = 0;
+            wo.status = 'pending';
+            break;
+          case '进行中':
+          case 'processing':
+            statusText = '进行中';
+            progress = wo.progress || 50;
+            wo.status = 'processing';
+            break;
+          case '已完成':
+          case 'completed':
+            statusText = '已完成';
+            progress = 100;
+            wo.status = 'completed';
+            break;
+          case '已接受':
+          case 'accepted':
+            statusText = '已接收';
+            progress = 10;
+            wo.status = 'accepted';
+            break;
+          case '已取消':
+          case 'cancelled':
+            statusText = '已取消';
+            progress = 0;
+            wo.status = 'cancelled';
+            break;
+        }
+
+        return {
+          ...wo,
+          statusText,
+          progress,
+          id: wo.workorder_number || wo.number, // 确保有ID字段
+          number: wo.workorder_number || wo.number,
+          type: wo.task_type || wo.type,
+          description: wo.task_details || wo.description,
+          productionLine: wo.production_line || wo.productionLine,
+          assignedBy: wo.foreman || wo.assignedBy,
+          assignTime: wo.created_at || wo.assignTime,
+          deadline: wo.deadline,
+          startTime: wo.start_time || wo.startTime,
+          completedTime: wo.actual_end_time || wo.completedTime,
+          note: wo.note || ''
+        };
+      });
+    },
+
     // 查看工单详情
     viewWorkorderDetail(workorder) {
       this.selectedWorkorder = { ...workorder };
@@ -366,89 +456,198 @@ export default {
     },
 
     // 接收工单
-    acceptWorkorder(workorder) {
-      // 更新工单状态
-      const index = this.workorders.findIndex(w => w.id === workorder.id);
-      if (index !== -1) {
-        this.workorders[index].status = 'accepted';
-        this.workorders[index].statusText = '已接收';
+    async acceptWorkorder(workorder) {
+      try {
+        // 获取当前登录用户的工号
+        const employeeId = this.getCurrentEmployeeId();
 
-        // 如果是在详情页操作，同步更新选中的工单
-        if (this.selectedWorkorder.id === workorder.id) {
-          this.selectedWorkorder.status = 'accepted';
-          this.selectedWorkorder.statusText = '已接收';
+        if (!employeeId) {
+          alert('无法获取您的工号信息，请重新登录');
+          this.$router.push('/login');
+          return;
         }
 
-        // 提示用户
-        alert('已成功接收工单');
+        // 准备更新数据
+        const updateData = {
+          status: 'accepted',
+          team_members: employeeId
+        };
 
-        // 如果是在详情页操作，关闭详情页
-        if (this.showWorkorderDetailModal) {
-          this.showWorkorderDetailModal = false;
+        // 发送请求更新工单
+        const response = await fetch('/api/workorders/update-workorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            workorder_number: workorder.number,
+            update_data: updateData
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // 更新本地工单状态
+          const index = this.workorders.findIndex(w => w.number === workorder.number);
+          if (index !== -1) {
+            this.workorders[index].status = 'accepted';
+            this.workorders[index].statusText = '已接收';
+            this.workorders[index].progress = 10;
+          }
+
+          // 如果是在详情页操作，同步更新选中的工单
+          if (this.selectedWorkorder.number === workorder.number) {
+            this.selectedWorkorder.status = 'accepted';
+            this.selectedWorkorder.statusText = '已接收';
+            this.selectedWorkorder.progress = 10;
+          }
+
+          // 提示用户
+          alert('已成功接收工单');
+
+          // 如果是在详情页操作，关闭详情页
+          if (this.showWorkorderDetailModal) {
+            this.showWorkorderDetailModal = false;
+          }
+        } else {
+          alert(`接收工单失败: ${data.error || '未知错误'}`);
         }
+      } catch (error) {
+        console.error('接收工单出错:', error);
+        alert('接收工单失败，请重试');
       }
     },
 
     // 开始工单
-    startWorkorder(workorder) {
-      // 更新工单状态
-      const index = this.workorders.findIndex(w => w.id === workorder.id);
-      if (index !== -1) {
-        this.workorders[index].status = 'processing';
-        this.workorders[index].statusText = '进行中';
-        this.workorders[index].startTime = new Date().toLocaleString();
-        this.workorders[index].progress = 10; // 初始进度设为10%
+    async startWorkorder(workorder) {
+      try {
+        const now = new Date();
 
-        // 如果是在详情页操作，同步更新选中的工单
-        if (this.selectedWorkorder.id === workorder.id) {
-          this.selectedWorkorder.status = 'processing';
-          this.selectedWorkorder.statusText = '进行中';
-          this.selectedWorkorder.startTime = new Date().toLocaleString();
-          this.selectedWorkorder.progress = 10;
+        // 准备更新数据
+        const updateData = {
+          status: 'processing',
+          start_time: now.toISOString(),
+          progress: 10
+        };
+
+        // 发送请求更新工单
+        const response = await fetch('/api/workorders/update-workorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            workorder_number: workorder.number,
+            update_data: updateData
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // 更新本地工单状态
+          const index = this.workorders.findIndex(w => w.number === workorder.number);
+          if (index !== -1) {
+            this.workorders[index].status = 'processing';
+            this.workorders[index].statusText = '进行中';
+            this.workorders[index].startTime = now.toLocaleString();
+            this.workorders[index].progress = 10; // 初始进度设为10%
+          }
+
+          // 如果是在详情页操作，同步更新选中的工单
+          if (this.selectedWorkorder.number === workorder.number) {
+            this.selectedWorkorder.status = 'processing';
+            this.selectedWorkorder.statusText = '进行中';
+            this.selectedWorkorder.startTime = now.toLocaleString();
+            this.selectedWorkorder.progress = 10;
+          }
+
+          // 提示用户
+          alert('已开始处理工单');
+
+          // 如果是在详情页操作，关闭详情页
+          if (this.showWorkorderDetailModal) {
+            this.showWorkorderDetailModal = false;
+          }
+        } else {
+          alert(`开始工单失败: ${data.error || '未知错误'}`);
         }
-
-        // 提示用户
-        alert('已开始执行工单');
+      } catch (error) {
+        console.error('开始工单出错:', error);
+        alert('开始工单失败，请重试');
       }
     },
 
     // 完成工单
-    completeWorkorder(workorder) {
+    async completeWorkorder(workorder) {
       // 验证是否填写了备注
       if (this.showWorkorderDetailModal && !this.taskNote.trim()) {
         alert('请填写工单执行备注');
         return;
       }
 
-      // 更新工单状态
-      const index = this.workorders.findIndex(w => w.id === workorder.id);
-      if (index !== -1) {
-        this.workorders[index].status = 'completed';
-        this.workorders[index].statusText = '已完成';
-        this.workorders[index].completedTime = new Date().toLocaleString();
-        this.workorders[index].progress = 100; // 完成进度设为100%
+      try {
+        const now = new Date();
 
-        // 如果是在详情页操作，保存备注
-        if (this.showWorkorderDetailModal) {
-          this.workorders[index].note = this.taskNote;
+        // 准备更新数据
+        const updateData = {
+          status: 'completed',
+          actual_end_time: now.toISOString(),
+          progress: 100,
+          note: this.taskNote
+        };
+
+        // 发送请求更新工单
+        const response = await fetch('/api/workorders/update-workorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            workorder_number: workorder.number,
+            update_data: updateData
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // 更新本地工单状态
+          const index = this.workorders.findIndex(w => w.number === workorder.number);
+          if (index !== -1) {
+            this.workorders[index].status = 'completed';
+            this.workorders[index].statusText = '已完成';
+            this.workorders[index].completedTime = now.toLocaleString();
+            this.workorders[index].progress = 100; // 进度设为100%
+            this.workorders[index].note = this.taskNote; // 添加备注
+          }
+
+          // 如果是在详情页操作，同步更新选中的工单
+          if (this.selectedWorkorder.number === workorder.number) {
+            this.selectedWorkorder.status = 'completed';
+            this.selectedWorkorder.statusText = '已完成';
+            this.selectedWorkorder.completedTime = now.toLocaleString();
+            this.selectedWorkorder.progress = 100;
+            this.selectedWorkorder.note = this.taskNote;
+          }
+
+          // 提示用户
+          alert('工单已完成');
+
+          // 如果是在详情页操作，关闭详情页
+          if (this.showWorkorderDetailModal) {
+            this.showWorkorderDetailModal = false;
+          }
+        } else {
+          alert(`完成工单失败: ${data.error || '未知错误'}`);
         }
-
-        // 如果是在详情页操作，同步更新选中的工单
-        if (this.selectedWorkorder.id === workorder.id) {
-          this.selectedWorkorder.status = 'completed';
-          this.selectedWorkorder.statusText = '已完成';
-          this.selectedWorkorder.completedTime = new Date().toLocaleString();
-          this.selectedWorkorder.progress = 100;
-          this.selectedWorkorder.note = this.taskNote;
-        }
-
-        // 提示用户
-        alert('工单已完成');
-
-        // 如果是在详情页操作，关闭详情页
-        if (this.showWorkorderDetailModal) {
-          this.showWorkorderDetailModal = false;
-        }
+      } catch (error) {
+        console.error('完成工单出错:', error);
+        alert('完成工单失败，请重试');
       }
     }
   }

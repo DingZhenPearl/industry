@@ -148,4 +148,58 @@ router.delete('/delete-workorder/:workorder_number', authMiddleware, async (req,
   }
 });
 
+// 获取工人负责的工单
+router.get('/worker-responsible-workorders', authMiddleware, async (req, res) => {
+  const employee_id = req.query.employee_id;
+  console.log('获取工人负责的工单,工号:', employee_id);
+
+  if (!employee_id) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少工人工号参数'
+    });
+  }
+
+  try {
+    // 使用team_members参数查询工人负责的工单
+    const result = await runPythonScript(
+      'pyScripts/workorder_manager.py',
+      ['list', '--team-member', employee_id],
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('获取工人负责的工单出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
+// 获取工人提交的工单
+router.get('/worker-submitted-workorders', authMiddleware, async (req, res) => {
+  const employee_id = req.query.employee_id;
+  console.log('获取工人提交的工单,工号:', employee_id);
+
+  if (!employee_id) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少工人工号参数'
+    });
+  }
+
+  try {
+    // 使用creator参数查询工人提交的工单
+    const result = await runPythonScript(
+      'pyScripts/workorder_manager.py',
+      ['list', '--creator', employee_id],
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('获取工人提交的工单出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
 module.exports = router;

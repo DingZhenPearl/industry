@@ -290,6 +290,9 @@ def get_workorders(filters=None):
                     elif key == 'creator':
                         where_clause.append(f"creator = %s")
                         values.append(value)
+                    elif key == 'team_member':
+                        where_clause.append(f"team_members LIKE %s")
+                        values.append(f"%{value}%")
                     elif key == 'start_date':
                         where_clause.append(f"DATE(start_time) >= %s")
                         values.append(value)
@@ -492,6 +495,7 @@ def main():
     list_parser.add_argument('--team', help='负责班组')
     list_parser.add_argument('--line', help='产线信息')
     list_parser.add_argument('--creator', help='发出人')
+    list_parser.add_argument('--team-member', help='负责组员')
     list_parser.add_argument('--start-date', help='开始日期')
     list_parser.add_argument('--end-date', help='结束日期')
     list_parser.add_argument('--keyword', help='关键词搜索')
@@ -542,6 +546,8 @@ def main():
             filters['production_line'] = args.line
         if args.creator:
             filters['creator'] = args.creator
+        if args.team_member:
+            filters['team_member'] = args.team_member
         if args.start_date:
             filters['start_date'] = args.start_date
         if args.end_date:
