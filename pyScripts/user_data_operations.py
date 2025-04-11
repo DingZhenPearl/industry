@@ -364,20 +364,8 @@ def verify_column_types():
             print(f"列名: {col['COLUMN_NAME']}")
             print(f"数据类型: {col['DATA_TYPE']}")
             print(f"列类型: {col['COLUMN_TYPE']}")
-            print(f"注释: {col['COLUMN_COMMENT']}")
+            print(f"列注释: {col['COLUMN_COMMENT']}")
             print("-" * 30)
-
-        # 查询示例数据
-        cursor.execute("SELECT id, username, line_id, machine_id FROM users LIMIT 5")
-        users = cursor.fetchall()
-
-        print("\n用户数据示例:")
-        for user in users:
-            print(f"ID: {user['id']}, 用户名: {user['username']}")
-            print(f"产线ID: {user['line_id']} (类型: {type(user['line_id']).__name__})")
-            print(f"机器ID: {user['machine_id']} (类型: {type(user['machine_id']).__name__})")
-            print("-" * 30)
-
     except Error as e:
         print(f"验证过程中出错: {e}")
     finally:
@@ -385,6 +373,50 @@ def verify_column_types():
             cursor.close()
             connection.close()
             print("数据库连接已关闭")
+
+# 增加用户名长度函数
+def increase_username_length():
+    """增加users表中username字段的长度限制"""
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # 查询username字段当前的类型
+        cursor.execute("""
+            SELECT COLUMN_TYPE
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = 'industry_db'
+            AND TABLE_NAME = 'users'
+            AND COLUMN_NAME = 'username'
+        """)
+
+        result = cursor.fetchone()
+        if result and result[0] != 'varchar(255)':
+            # 更新username字段的长度
+            cursor.execute("""
+                ALTER TABLE users
+                MODIFY COLUMN username VARCHAR(255) NOT NULL UNIQUE
+            """)
+            connection.commit()
+            print(json.dumps({
+                'success': True,
+                'message': '用户名长度限制已增加到255个字符'
+            }, ensure_ascii=False))
+        else:
+            print(json.dumps({
+                'success': True,
+                'message': '用户名字段已经是VARCHAR(255)'
+            }, ensure_ascii=False))
+    except Error as e:
+        print(json.dumps({
+            'success': False,
+            'error': f'增加用户名长度限制失败: {str(e)}'
+        }, ensure_ascii=False))
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
 
 # =============================================
 # 数据获取函数
@@ -764,11 +796,11 @@ def update_username(current_username, role, new_username):
     """更新用户名"""
     connection = None
     try:
-        # 验证新用户名长度
-        if len(new_username) < 3 or len(new_username) > 20:
+        # 验证新用户名不为空
+        if not new_username.strip():
             print(json.dumps({
                 'success': False,
-                'error': '用户名长度应在3-20个字符之间'
+                'error': '用户名不能为空'
             }, ensure_ascii=False))
             return
 
@@ -932,7 +964,7 @@ def init_database():
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id INT AUTO_INCREMENT PRIMARY KEY,
-                    username VARCHAR(50) NOT NULL UNIQUE,
+                    username VARCHAR(255) NOT NULL UNIQUE,
                     password VARCHAR(64) NOT NULL,
                     role VARCHAR(20) NOT NULL,
                     phone VARCHAR(20),
@@ -1067,6 +1099,9 @@ def main():
     update_user_parser.add_argument('role', help='角色')
     update_user_parser.add_argument('phone', help='手机号')
 
+    # 增加用户名长度命令
+    increase_username_parser = subparsers.add_parser('increase-username-length', help='增加用户名长度限制')
+
     args = parser.parse_args()
 
     # 根据命令执行相应的函数
@@ -1103,6 +1138,8 @@ def main():
         update_password(args.username, args.role, args.new_password)
     elif args.command == 'update-group':
         update_group(args.username, args.role, args.group_id)
+    elif args.command == 'increase-username-length':
+        increase_username_length()
     else:
         parser.print_help()
 
