@@ -37,6 +37,47 @@ def get_db_connection():
 # =============================================
 # 工单表管理函数
 # =============================================
+def update_workorder_table_structure(connection=None):
+    """更新工单表结构，添加新字段"""
+    if connection is None:
+        connection = get_db_connection()
+
+    try:
+        cursor = connection.cursor()
+
+        # 检查note字段是否存在
+        cursor.execute("""
+            SELECT COUNT(*) FROM information_schema.columns
+            WHERE table_schema = 'industry_db'
+            AND table_name = 'workorders'
+            AND column_name = 'note'
+        """)
+
+        if cursor.fetchone()[0] == 0:
+            # 添加note字段
+            cursor.execute("""
+                ALTER TABLE workorders
+                ADD COLUMN note TEXT COMMENT '完成报告' AFTER production_line
+            """)
+            connection.commit()
+            print(json.dumps({
+                'success': True,
+                'message': '工单表结构更新成功，添加了note字段'
+            }, ensure_ascii=False))
+        else:
+            print(json.dumps({
+                'success': True,
+                'message': '工单表结构已是最新的，note字段已存在'
+            }, ensure_ascii=False))
+    except Error as e:
+        print(json.dumps({
+            'success': False,
+            'error': str(e)
+        }, ensure_ascii=False))
+    finally:
+        if connection and connection.is_connected() and cursor:
+            cursor.close()
+
 def create_workorder_table():
     """创建工单管理表"""
     connection = None
@@ -52,6 +93,8 @@ def create_workorder_table():
         """)
         if cursor.fetchone()[0] > 0:
             print("工单表已存在")
+            # 检查是否需要更新表结构
+            update_workorder_table_structure(connection)
             return
 
         # 创建工单表
@@ -70,6 +113,7 @@ def create_workorder_table():
                 team VARCHAR(50) COMMENT '负责班组',
                 team_members VARCHAR(100) COMMENT '负责组员工号',
                 production_line VARCHAR(100) COMMENT '产线信息',
+                note TEXT COMMENT '完成报告',
                 extension_fields JSON COMMENT '扩展字段',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
@@ -116,6 +160,12 @@ def add_workorder(workorder_data):
 
             workorder_data['workorder_number'] = f"WO{date_part}{seq_number:04d}"
 
+        # 处理日期时间字段
+        datetime_fields = ['start_time', 'deadline', 'actual_end_time']
+        for field in datetime_fields:
+            if field in workorder_data and workorder_data[field]:
+                workorder_data[field] = format_datetime(workorder_data[field])
+
         # 处理扩展字段 (如果有)
         if 'extension_fields' in workorder_data and isinstance(workorder_data['extension_fields'], dict):
             workorder_data['extension_fields'] = json.dumps(workorder_data['extension_fields'])
@@ -157,12 +207,35 @@ def add_workorder(workorder_data):
             cursor.close()
             connection.close()
 
+def format_datetime(dt_str):
+    """将ISO格式的日期时间字符串转换为MySQL兼容的格式"""
+    if not dt_str:
+        return None
+
+    try:
+        # 尝试解析ISO格式的日期时间
+        if 'T' in dt_str:
+            # 处理ISO格式：2023-04-12T01:28:41.571Z
+            dt_str = dt_str.replace('Z', '')
+            dt = datetime.fromisoformat(dt_str)
+            return dt.strftime('%Y-%m-%d %H:%M:%S')
+        return dt_str
+    except Exception as e:
+        print(f"\n日期格式转换错误: {dt_str}, {str(e)}")
+        return dt_str
+
 def update_workorder(workorder_number, update_data):
     """更新工单信息"""
     connection = None
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
+
+        # 处理日期时间字段
+        datetime_fields = ['start_time', 'deadline', 'actual_end_time']
+        for field in datetime_fields:
+            if field in update_data and update_data[field]:
+                update_data[field] = format_datetime(update_data[field])
 
         # 处理扩展字段 (如果有)
         if 'extension_fields' in update_data and isinstance(update_data['extension_fields'], dict):
@@ -474,6 +547,9 @@ def main():
     # 创建工单表命令
     create_table_parser = subparsers.add_parser('create-table', help='创建工单表')
 
+    # 更新工单表结构命令
+    update_table_parser = subparsers.add_parser('update-table', help='更新工单表结构')
+
     # 添加工单命令
     add_parser = subparsers.add_parser('add', help='添加工单')
     add_parser.add_argument('--data', required=True, help='工单数据(JSON格式)')
@@ -512,6 +588,8 @@ def main():
     # 根据命令执行相应的函数
     if args.command == 'create-table':
         create_workorder_table()
+    elif args.command == 'update-table':
+        update_workorder_table_structure()
     elif args.command == 'add':
         try:
             workorder_data = json.loads(args.data)

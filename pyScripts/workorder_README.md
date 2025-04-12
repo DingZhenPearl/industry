@@ -30,6 +30,7 @@
 - `team` VARCHAR(50) - 负责的班组
 - `team_members` VARCHAR(100) - 负责的具体组员
 - `production_line` VARCHAR(100) - 相关产线信息
+- `note` TEXT - 完成报告（工单完成人填写的报告）
 
 ### 特定字段
 
@@ -56,6 +57,12 @@
 
 ```bash
 python workorder_manager.py create-table
+```
+
+### 更新工单表结构
+
+```bash
+python workorder_manager.py update-table
 ```
 
 ### 添加新工单

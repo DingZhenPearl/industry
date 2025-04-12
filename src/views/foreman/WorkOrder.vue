@@ -229,6 +229,11 @@
             <label>发现时间</label>
             <div class="value">{{ formatDateTime(selectedWorkOrder.extension_fields.discovery_time) }}</div>
           </div>
+          <!-- 工单完成报告 -->
+          <div class="detail-item" v-if="selectedWorkOrder.note">
+            <label>完成报告</label>
+            <div class="value note-content">{{ selectedWorkOrder.note }}</div>
+          </div>
         </div>
         <div class="modal-footer">
           <button class="btn" @click="showWorkOrderDetailModal = false">关闭</button>
@@ -609,6 +614,7 @@ export default {
               description: workorder.task_details, // 为了兼容前端显示
               type: workorder.task_type,          // 为了兼容前端显示
               owner: workorder.creator,           // 为了兼容前端显示
+              note: workorder.note,               // 完成报告
               progress: 0                         // 默认进度
             };
 
@@ -624,6 +630,18 @@ export default {
 
             return wo;
           });
+
+          // 收集所有需要获取用户名的工号
+          const employeeIds = new Set();
+          this.workorders.forEach(workorder => {
+            if (workorder.creator) employeeIds.add(workorder.creator);
+            if (workorder.team_members) employeeIds.add(workorder.team_members);
+          });
+
+          // 批量获取用户名
+          if (employeeIds.size > 0) {
+            this.fetchBatchUsernames(Array.from(employeeIds));
+          }
         } else {
           console.error('获取工单列表失败:', data.error || '未知错误');
           this.$message.error('获取工单列表失败');
@@ -803,13 +821,16 @@ export default {
       // 打印调试信息
       console.log(`获取工号 ${employeeId} 的用户名, 缓存中的值:`, this.usernameCache[employeeId]);
 
-      // 如果缓存中有该工号对应的用户名且不为null，则返回用户名
+      // 如果缓存中有该工号对应的用户名，则返回用户名
       if (this.usernameCache[employeeId]) {
         return this.usernameCache[employeeId];
       }
 
       // 如果缓存中没有该工号对应的用户名，则尝试获取
-      this.fetchSingleUsername(employeeId);
+      // 异步获取用户名，但先返回工号作为默认值
+      this.$nextTick(() => {
+        this.fetchSingleUsername(employeeId);
+      });
 
       // 返回工号作为默认值
       return employeeId;
@@ -817,7 +838,11 @@ export default {
 
     // 获取单个工号的用户名
     async fetchSingleUsername(employeeId) {
-      if (!employeeId || this.usernameCache[employeeId]) return;
+      if (!employeeId) return;
+      if (this.usernameCache[employeeId]) {
+        console.log(`使用缓存中的用户名: ${employeeId} -> ${this.usernameCache[employeeId]}`);
+        return;
+      }
 
       try {
         console.log(`开始获取工号 ${employeeId} 的用户名`);
@@ -837,34 +862,64 @@ export default {
           }
         });
 
-        // 打印原始响应信息以便调试
-        const responseText = await response.text();
-        console.log(`工号 ${employeeId} 的API原始响应:`, responseText);
-
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}, body: ${responseText}`);
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        // 尝试解析JSON
-        let data;
-        try {
-          data = JSON.parse(responseText);
-        } catch (e) {
-          console.error(`解析响应JSON失败:`, e);
-          throw new Error(`解析响应JSON失败: ${e.message}`);
-        }
-
+        const data = await response.json();
         console.log(`工号 ${employeeId} 的用户名数据:`, data);
 
         if (data.success && data.username) {
           // 更新缓存
           this.$set(this.usernameCache, employeeId, data.username);
           console.log('更新后的用户名缓存:', this.usernameCache);
+        } else {
+          // 如果没有找到用户名，使用工号作为用户名
+          this.$set(this.usernameCache, employeeId, employeeId);
         }
       } catch (error) {
         console.error(`获取工号 ${employeeId} 的用户名失败:`, error);
         // 如果失败，使用工号作为用户名
         this.$set(this.usernameCache, employeeId, employeeId);
+      }
+    },
+
+    // 批量获取用户名
+    async fetchBatchUsernames(employeeIds) {
+      if (!employeeIds || employeeIds.length === 0) return;
+
+      try {
+        console.log(`批量获取${employeeIds.length}个工号的用户名`);
+
+        const response = await fetch('/api/users/usernames', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ employee_ids: employeeIds })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('批量获取用户名响应:', data);
+
+        if (data.success && data.data) {
+          // 更新缓存
+          Object.entries(data.data).forEach(([employeeId, username]) => {
+            if (username) {
+              this.$set(this.usernameCache, employeeId, username);
+            } else {
+              this.$set(this.usernameCache, employeeId, employeeId);
+            }
+          });
+          console.log('更新后的用户名缓存:', this.usernameCache);
+        }
+      } catch (error) {
+        console.error('批量获取用户名失败:', error);
       }
     },
 
@@ -1427,9 +1482,13 @@ export default {
   font-size: 15px;
 }
 
-.detail-item .value.description {
+.detail-item .value.description, .detail-item .value.note-content {
   line-height: 1.5;
   white-space: pre-wrap;
+  background-color: #f9f9f9;
+  padding: 10px;
+  border-radius: 4px;
+  border-left: 3px solid #ddd;
 }
 
 .status-tag, .type-tag {
