@@ -82,7 +82,7 @@
             <div class="workorder-meta">
               <div class="meta-item">
                 <i class="meta-icon person"></i>
-                <span>{{ workorder.assignedBy }}</span>
+                <span>{{ workorder.assignedByName || workorder.assignedBy }}</span>
               </div>
               <div class="meta-item">
                 <i class="meta-icon time"></i>
@@ -187,7 +187,7 @@
             <div class="detail-grid">
               <div class="detail-item">
                 <label>下发人</label>
-                <div class="value">{{ selectedWorkorder.assignedBy }}</div>
+                <div class="value">{{ selectedWorkorder.assignedByName || selectedWorkorder.assignedBy }} ({{ selectedWorkorder.assignedBy }})</div>
               </div>
             </div>
           </div>
@@ -286,7 +286,10 @@ export default {
       // 工单列表数据
       workorders: [],
       responsibleWorkorders: [],
-      submittedWorkorders: []
+      submittedWorkorders: [],
+
+      // 用户名缓存
+      usernameCache: {}
     }
   },
   computed: {
@@ -448,6 +451,8 @@ export default {
             break;
         }
 
+        // 使用后端返回的用户名，不再需要获取用户名
+
         return {
           ...wo,
           statusText,
@@ -458,6 +463,9 @@ export default {
           description: wo.task_details || wo.description,
           productionLine: wo.production_line || wo.productionLine,
           assignedBy: wo.foreman || wo.assignedBy,
+          assignedByName: wo.foreman_name || wo.assignedBy, // 使用后端返回的用户名
+          creatorName: wo.creator_name || wo.creator, // 使用后端返回的用户名
+          teamMemberName: wo.team_member_name || wo.team_members, // 使用后端返回的用户名
           assignTime: wo.created_at || wo.assignTime,
           deadline: wo.deadline,
           startTime: wo.start_time || wo.startTime,
@@ -465,6 +473,98 @@ export default {
           note: wo.note || ''
         };
       });
+    },
+
+    // 根据工号获取用户名
+    getUsernameById(employeeId) {
+      if (!employeeId) return '未知';
+
+      // 打印调试信息
+      console.log(`获取工号 ${employeeId} 的用户名, 缓存中的值:`, this.usernameCache[employeeId]);
+
+      // 如果缓存中有该工号对应的用户名，则返回用户名
+      if (this.usernameCache[employeeId]) {
+        return this.usernameCache[employeeId];
+      }
+
+      // 如果缓存中没有该工号对应的用户名，则尝试获取
+      // 异步获取用户名，但先返回工号作为默认值
+      this.$nextTick(() => {
+        this.fetchSingleUsername(employeeId);
+      });
+
+      // 返回工号作为默认值
+      return employeeId;
+    },
+
+    // 获取单个工号的用户名
+    async fetchSingleUsername(employeeId) {
+      if (!employeeId) return;
+      if (this.usernameCache[employeeId]) {
+        console.log(`使用缓存中的用户名: ${employeeId} -> ${this.usernameCache[employeeId]}`);
+        return;
+      }
+
+      // 直接使用工号作为用户名，避免调用API
+      this.$set(this.usernameCache, employeeId, employeeId);
+      console.log(`已将工号 ${employeeId} 缓存为用户名`);
+      return;
+
+      // 以下代码暂时不执行，等后端问题解决后再恢复
+      /*
+      try {
+        console.log(`开始获取工号 ${employeeId} 的用户名`);
+        console.log('当前认证令牌:', localStorage.getItem('token'));
+
+        // 调用API获取用户名
+        const response = await fetch(`/api/users/username/${employeeId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        console.log(`响应状态: ${response.status} ${response.statusText}`);
+        console.log('响应头部:', response.headers);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // 尝试解析响应内容
+        let responseText;
+        try {
+          responseText = await response.text();
+
+          // 检查是否是HTML响应
+          if (responseText.trim().startsWith('<!doctype') || responseText.trim().startsWith('<html')) {
+            console.error(`服务器返回了HTML而不是JSON，可能是认证问题`);
+            this.$set(this.usernameCache, employeeId, employeeId);
+            return;
+          }
+
+          const data = JSON.parse(responseText);
+          console.log(`工号 ${employeeId} 的用户名数据:`, data);
+
+          if (data.success && data.username) {
+            // 更新缓存
+            this.$set(this.usernameCache, employeeId, data.username);
+            console.log('更新后的用户名缓存:', this.usernameCache);
+          } else {
+            // 如果没有找到用户名，使用工号作为用户名
+            this.$set(this.usernameCache, employeeId, employeeId);
+          }
+        } catch (parseError) {
+          console.error(`解析工号 ${employeeId} 的用户名响应失败:`, parseError);
+          console.error('响应内容:', responseText);
+          // 如果解析失败，使用工号作为用户名
+          this.$set(this.usernameCache, employeeId, employeeId);
+        }
+      } catch (error) {
+        console.error(`获取工号 ${employeeId} 的用户名失败:`, error);
+        // 如果失败，使用工号作为用户名
+        this.$set(this.usernameCache, employeeId, employeeId);
+      }
+      */
     },
 
     // 查看工单详情

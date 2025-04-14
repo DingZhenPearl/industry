@@ -70,11 +70,11 @@
               <span>位置：{{ item.location }}</span>
             </div>
             <div class="workorder-meta">
-              <span>提交人：{{ getUsernameById(item.submitter) || item.submitter }} ({{ item.submitter }})</span>
+              <span>提交人：{{ item.submitter_name || item.submitter }} ({{ item.submitter }})</span>
               <span>提交时间：{{ item.submitTime }}</span>
             </div>
             <div class="workorder-handler" v-if="item.handler">
-              <span>处理人：{{ getUsernameById(item.handler) || item.handler }} ({{ item.handler }})</span>
+              <span>处理人：{{ item.handler_name || item.handler }} ({{ item.handler }})</span>
               <span>更新时间：{{ item.updateTime }}</span>
             </div>
             <div class="workorder-actions">
@@ -128,11 +128,11 @@
           </div>
           <div class="detail-item">
             <label>发出人</label>
-            <div class="value">{{ getUsernameById(selectedWorkOrder.submitter) || selectedWorkOrder.submitter }} ({{ selectedWorkOrder.submitter }})</div>
+            <div class="value">{{ selectedWorkOrder.creator_name || selectedWorkOrder.submitter }} ({{ selectedWorkOrder.submitter }})</div>
           </div>
           <div class="detail-item">
             <label>负责工长</label>
-            <div class="value">{{ selectedWorkOrder.foreman ? (getUsernameById(selectedWorkOrder.foreman) || selectedWorkOrder.foreman) + ' (' + selectedWorkOrder.foreman + ')' : '未指定' }}</div>
+            <div class="value">{{ selectedWorkOrder.foreman ? (selectedWorkOrder.foreman_name || selectedWorkOrder.foreman) + ' (' + selectedWorkOrder.foreman + ')' : '未指定' }}</div>
           </div>
           <div class="detail-item">
             <label>负责班组</label>
@@ -140,7 +140,7 @@
           </div>
           <div class="detail-item" v-if="selectedWorkOrder.handler">
             <label>负责组员</label>
-            <div class="value">{{ getUsernameById(selectedWorkOrder.handler) || selectedWorkOrder.handler }} ({{ selectedWorkOrder.handler }})</div>
+            <div class="value">{{ selectedWorkOrder.team_member_name || selectedWorkOrder.handler }} ({{ selectedWorkOrder.handler }})</div>
           </div>
           <div class="detail-item">
             <label>创建时间</label>
@@ -244,13 +244,20 @@ export default {
               title: this.getWorkOrderTitle(workorder),
               description: workorder.task_details,
               location: workorder.production_line,
-              submitter: workorder.creator, // 这里已经是工号
+              submitter: workorder.creator, // 工号
+              submitter_name: workorder.creator_name, // 用户名
               submitTime: this.formatDateTime(workorder.created_at),
               status: workorder.status,
-              handler: workorder.team_members, // 这里已经是工号
+              handler: workorder.team_members, // 工号
+              handler_name: workorder.team_member_name, // 用户名
+              foreman: workorder.foreman, // 工号
+              foreman_name: workorder.foreman_name, // 用户名
               updateTime: this.formatDateTime(workorder.updated_at),
-              note: workorder.note, // 添加完成报告字段
-              extension_fields: workorder.extension_fields
+              note: workorder.note, // 完成报告字段
+              extension_fields: workorder.extension_fields,
+              // 保存原始字段以便在详情页中使用
+              creator_name: workorder.creator_name,
+              team_member_name: workorder.team_member_name
             };
           });
 
@@ -330,9 +337,18 @@ export default {
     async fetchBatchUsernames(employeeIds) {
       if (!employeeIds || employeeIds.length === 0) return;
 
-      try {
-        console.log(`批量获取${employeeIds.length}个工号的用户名`);
+      console.log(`批量获取${employeeIds.length}个工号的用户名`);
 
+      // 直接使用工号作为用户名
+      employeeIds.forEach(id => {
+        this.$set(this.usernameCache, id, id);
+      });
+
+      console.log('更新后的用户名缓存:', this.usernameCache);
+
+      // 以下代码暂时不执行，等后端问题解决后再恢复
+      /*
+      try {
         const response = await fetch('/api/users/usernames', {
           method: 'POST',
           headers: {
@@ -346,28 +362,50 @@ export default {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
-        console.log('批量获取用户名响应:', data);
+        // 尝试解析响应内容
+        let responseText;
+        try {
+          responseText = await response.text();
 
-        if (data.success && data.data) {
-          // 更新缓存
-          Object.entries(data.data).forEach(([employeeId, username]) => {
-            if (username) {
-              this.$set(this.usernameCache, employeeId, username);
-            } else {
-              this.$set(this.usernameCache, employeeId, employeeId);
-            }
+          // 检查是否是HTML响应
+          if (responseText.trim().startsWith('<!doctype') || responseText.trim().startsWith('<html')) {
+            console.error(`服务器返回了HTML而不是JSON，可能是认证问题`);
+            employeeIds.forEach(id => {
+              this.$set(this.usernameCache, id, id);
+            });
+            return;
+          }
+
+          const data = JSON.parse(responseText);
+          console.log('批量获取用户名响应:', data);
+
+          if (data.success && data.data) {
+            // 更新缓存
+            Object.entries(data.data).forEach(([employeeId, username]) => {
+              if (username) {
+                this.$set(this.usernameCache, employeeId, username);
+              } else {
+                this.$set(this.usernameCache, employeeId, employeeId);
+              }
+            });
+            console.log('更新后的用户名缓存:', this.usernameCache);
+          }
+        } catch (parseError) {
+          console.error('解析用户名响应失败:', parseError);
+          console.error('响应内容:', responseText);
+          // 如果解析失败，将所有工号对应的用户名设置为工号本身
+          employeeIds.forEach(id => {
+            this.$set(this.usernameCache, id, id);
           });
-          console.log('更新后的用户名缓存:', this.usernameCache);
         }
       } catch (error) {
         console.error('批量获取用户名失败:', error);
-        // 如果批量获取失败，尝试逐个获取
-        console.log('尝试逐个获取用户名');
-        for (const id of employeeIds) {
-          await this.fetchSingleUsername(id);
-        }
+        // 如果批量获取失败，将所有工号对应的用户名设置为工号本身
+        employeeIds.forEach(id => {
+          this.$set(this.usernameCache, id, id);
+        });
       }
+      */
     },
 
     // 根据工号获取用户名
@@ -400,8 +438,16 @@ export default {
         return;
       }
 
+      // 直接使用工号作为用户名，避免调用API
+      this.$set(this.usernameCache, employeeId, employeeId);
+      console.log(`已将工号 ${employeeId} 缓存为用户名`);
+      return;
+
+      // 以下代码暂时不执行，等后端问题解决后再恢复
+      /*
       try {
         console.log(`开始获取工号 ${employeeId} 的用户名`);
+        console.log('当前认证令牌:', localStorage.getItem('token'));
 
         // 调用API获取用户名
         const response = await fetch(`/api/users/username/${employeeId}`, {
@@ -410,19 +456,40 @@ export default {
           }
         });
 
+        console.log(`响应状态: ${response.status} ${response.statusText}`);
+        console.log('响应头部:', response.headers);
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
-        console.log(`工号 ${employeeId} 的用户名数据:`, data);
+        // 尝试解析响应内容
+        let responseText;
+        try {
+          responseText = await response.text();
 
-        if (data.success && data.username) {
-          // 更新缓存
-          this.$set(this.usernameCache, employeeId, data.username);
-          console.log('更新后的用户名缓存:', this.usernameCache);
-        } else {
-          // 如果没有找到用户名，使用工号作为用户名
+          // 检查是否是HTML响应
+          if (responseText.trim().startsWith('<!doctype') || responseText.trim().startsWith('<html')) {
+            console.error(`服务器返回了HTML而不是JSON，可能是认证问题`);
+            this.$set(this.usernameCache, employeeId, employeeId);
+            return;
+          }
+
+          const data = JSON.parse(responseText);
+          console.log(`工号 ${employeeId} 的用户名数据:`, data);
+
+          if (data.success && data.username) {
+            // 更新缓存
+            this.$set(this.usernameCache, employeeId, data.username);
+            console.log('更新后的用户名缓存:', this.usernameCache);
+          } else {
+            // 如果没有找到用户名，使用工号作为用户名
+            this.$set(this.usernameCache, employeeId, employeeId);
+          }
+        } catch (parseError) {
+          console.error(`解析工号 ${employeeId} 的用户名响应失败:`, parseError);
+          console.error('响应内容:', responseText);
+          // 如果解析失败，使用工号作为用户名
           this.$set(this.usernameCache, employeeId, employeeId);
         }
       } catch (error) {
@@ -430,6 +497,7 @@ export default {
         // 如果失败，使用工号作为用户名
         this.$set(this.usernameCache, employeeId, employeeId);
       }
+      */
     },
 
 

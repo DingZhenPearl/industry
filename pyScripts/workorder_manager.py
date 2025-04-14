@@ -288,15 +288,22 @@ def update_workorder(workorder_number, update_data):
 
 
 def get_workorder(workorder_number):
-    """获取单个工单信息"""
+    """获取单个工单信息，并关联用户表获取用户名"""
     connection = None
     try:
         connection = get_db_connection()
         cursor = connection.cursor(dictionary=True)
 
         query = """
-            SELECT * FROM workorders
-            WHERE workorder_number = %s
+            SELECT w.*,
+                   creator_u.username as creator_name,
+                   foreman_u.username as foreman_name,
+                   team_member_u.username as team_member_name
+            FROM workorders w
+            LEFT JOIN users creator_u ON w.creator = creator_u.employee_id
+            LEFT JOIN users foreman_u ON w.foreman = foreman_u.employee_id
+            LEFT JOIN users team_member_u ON w.team_members = team_member_u.employee_id
+            WHERE w.workorder_number = %s
         """
 
         cursor.execute(query, (workorder_number,))
@@ -332,7 +339,7 @@ def get_workorder(workorder_number):
             connection.close()
 
 def get_workorders(filters=None):
-    """获取工单列表，支持筛选"""
+    """获取工单列表，支持筛选，并关联用户表获取用户名"""
     connection = None
     try:
         connection = get_db_connection()
@@ -346,43 +353,53 @@ def get_workorders(filters=None):
             for key, value in filters.items():
                 if value:
                     if key == 'task_type':
-                        where_clause.append(f"task_type = %s")
+                        where_clause.append(f"w.task_type = %s")
                         values.append(value)
                     elif key == 'status':
-                        where_clause.append(f"status = %s")
+                        where_clause.append(f"w.status = %s")
                         values.append(value)
                     elif key == 'foreman':
-                        where_clause.append(f"foreman = %s")
+                        where_clause.append(f"w.foreman = %s")
                         values.append(value)
                     elif key == 'team':
-                        where_clause.append(f"team = %s")
+                        where_clause.append(f"w.team = %s")
                         values.append(value)
                     elif key == 'production_line':
-                        where_clause.append(f"production_line LIKE %s")
+                        where_clause.append(f"w.production_line LIKE %s")
                         values.append(f"%{value}%")
                     elif key == 'creator':
-                        where_clause.append(f"creator = %s")
+                        where_clause.append(f"w.creator = %s")
                         values.append(value)
                     elif key == 'team_member':
-                        where_clause.append(f"team_members LIKE %s")
+                        where_clause.append(f"w.team_members LIKE %s")
                         values.append(f"%{value}%")
                     elif key == 'start_date':
-                        where_clause.append(f"DATE(start_time) >= %s")
+                        where_clause.append(f"DATE(w.start_time) >= %s")
                         values.append(value)
                     elif key == 'end_date':
-                        where_clause.append(f"DATE(start_time) <= %s")
+                        where_clause.append(f"DATE(w.start_time) <= %s")
                         values.append(value)
                     elif key == 'keyword':
-                        where_clause.append(f"(task_details LIKE %s OR workorder_number LIKE %s)")
+                        where_clause.append(f"(w.task_details LIKE %s OR w.workorder_number LIKE %s)")
                         values.append(f"%{value}%")
                         values.append(f"%{value}%")
 
-        # 构建完整查询
-        query = "SELECT * FROM workorders"
+        # 构建完整查询，关联用户表获取用户名
+        query = """
+            SELECT w.*,
+                   creator_u.username as creator_name,
+                   foreman_u.username as foreman_name,
+                   team_member_u.username as team_member_name
+            FROM workorders w
+            LEFT JOIN users creator_u ON w.creator = creator_u.employee_id
+            LEFT JOIN users foreman_u ON w.foreman = foreman_u.employee_id
+            LEFT JOIN users team_member_u ON w.team_members = team_member_u.employee_id
+        """
+
         if where_clause:
             query += " WHERE " + " AND ".join(where_clause)
 
-        query += " ORDER BY created_at DESC"
+        query += " ORDER BY w.created_at DESC"
 
         cursor.execute(query, values)
         workorders = cursor.fetchall()
