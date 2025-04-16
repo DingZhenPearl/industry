@@ -6,7 +6,7 @@
     </div>
     <div class="nav-item" :class="{ active: $route.path === '/safety/warning' }" @click="$router.push('/safety/warning')">
       <i class="nav-icon warning-icon"></i>
-      <span>预警处理</span>
+      <span>设备维护</span>
     </div>
     <div class="nav-item" :class="{ active: $route.path === '/safety/inspection' }" @click="$router.push('/safety/inspection')">
       <i class="nav-icon inspection-icon"></i>

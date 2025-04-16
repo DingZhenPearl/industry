@@ -110,10 +110,30 @@
         </div>
       </div>
 
-      <!-- 安全隐患列表 -->
+      <!-- 预警和安全隐患列表 -->
       <div class="hazard-list">
-        <h3 class="section-title">安全隐患</h3>
-        <div class="hazard-item" v-for="hazard in hazards" :key="hazard.id">
+        <h3 class="section-title">预警和安全隐患</h3>
+
+        <!-- 预警列表 -->
+        <div class="warning-list">
+          <div class="warning-item" v-for="(item, index) in warnings" :key="'warning-'+index">
+            <div class="warning-header">
+              <span class="warning-type">{{ item.type }}</span>
+              <span class="warning-time">{{ item.time }}</span>
+            </div>
+            <div class="warning-content">
+              <p>{{ item.description }}</p>
+              <div class="warning-location">位置：{{ item.location }}</div>
+            </div>
+            <div class="warning-actions">
+              <button class="action-btn primary" @click="handleWarning(item)">处理</button>
+              <button class="action-btn" @click="ignoreWarning(item)">忽略</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 隐患列表 -->
+        <div class="hazard-item" v-for="hazard in hazards" :key="'hazard-'+hazard.id">
           <div class="hazard-header">
             <span class="hazard-type">{{ hazard.type }}</span>
             <span class="hazard-level" :class="hazard.level">{{ hazard.levelText }}</span>
@@ -272,6 +292,22 @@ export default {
         productionLines: null,
         equipments: null
       },
+      warnings: [
+        {
+          id: 1,
+          type: '设备异常',
+          time: '2023-07-10 10:30',
+          description: '检测到设备温度异常升高',
+          location: '一号生产线'
+        },
+        {
+          id: 2,
+          type: '环境预警',
+          time: '2023-07-10 09:15',
+          description: '空气质量超标',
+          location: '生产车间A区'
+        }
+      ],
       // 原始模拟数据
       /*
       monitorItems: [
@@ -515,11 +551,21 @@ export default {
     viewHistory(line) {
       console.log('查看历史记录:', line);
     },
+    // 处理隐患
     handleHazard(hazard) {
       console.log('处理安全隐患:', hazard);
+      // 从隐患列表中移除该隐患
+      const index = this.hazards.findIndex(h => h.id === hazard.id);
+      if (index !== -1) {
+        this.hazards.splice(index, 1);
+        alert('隐患已处理并关闭');
+      }
     },
+
+    // 查看隐患详情
     viewHazardDetail(hazard) {
       console.log('查看隐患详情:', hazard);
+      alert(`隐患详情\n\n类型: ${hazard.type}\n级别: ${hazard.levelText}\n描述: ${hazard.description}\n位置: ${hazard.location}\n时间: ${hazard.time}`);
     },
     submitInspection() {
       console.log('提交巡检结果');
@@ -548,6 +594,41 @@ export default {
 
       this.hazards.push(newHazard);
       alert('已创建安全预警并添加到隐患列表');
+    },
+
+    // 处理预警
+    handleWarning(warning) {
+      console.log('处理预警:', warning);
+      // 从预警列表中移除该预警
+      const index = this.warnings.findIndex(w => w.id === warning.id);
+      if (index !== -1) {
+        this.warnings.splice(index, 1);
+
+        // 将预警转换为隐患并添加到隐患列表
+        const newHazard = {
+          id: this.hazards.length + 1,
+          type: warning.type + '隐患',
+          level: 'medium',
+          levelText: '中危',
+          description: warning.description,
+          location: warning.location,
+          time: new Date().toLocaleString()
+        };
+
+        this.hazards.push(newHazard);
+        alert('预警已处理并转为隐患进行跟踪');
+      }
+    },
+
+    // 忽略预警
+    ignoreWarning(warning) {
+      console.log('忽略预警:', warning);
+      // 从预警列表中移除该预警
+      const index = this.warnings.findIndex(w => w.id === warning.id);
+      if (index !== -1) {
+        this.warnings.splice(index, 1);
+        alert('预警已忽略');
+      }
     },
 
     // 从后端获取产线数据
@@ -1252,5 +1333,62 @@ export default {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+.warning-list {
+  margin-bottom: 15px;
+}
+
+.warning-item {
+  background: white;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 15px;
+}
+
+.warning-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.warning-type {
+  font-weight: bold;
+  color: #f44336;
+}
+
+.warning-time {
+  color: #666;
+  font-size: 12px;
+}
+
+.warning-content p {
+  margin: 5px 0;
+}
+
+.warning-location {
+  color: #666;
+  font-size: 14px;
+  margin-top: 5px;
+}
+
+.warning-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.action-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.action-btn.primary {
+  background-color: #2196F3;
+  color: white;
 }
 </style>

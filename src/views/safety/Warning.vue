@@ -1,45 +1,12 @@
 <template>
   <div class="safety-warning">
     <header class="header">
-      <div class="tab-header">
-        <div
-          class="tab-item"
-          :class="{ active: currentTab === 'warnings' }"
-          @click="currentTab = 'warnings'"
-        >
-          预警处理
-        </div>
-        <div
-          class="tab-item"
-          :class="{ active: currentTab === 'workorders' }"
-          @click="currentTab = 'workorders'"
-        >
-          设备维护工单
-        </div>
-      </div>
+      <h1>设备维护工单</h1>
     </header>
 
     <div class="content">
-      <!-- 预警处理内容 -->
-      <div v-if="currentTab === 'warnings'" class="warning-list">
-        <div class="warning-item" v-for="(item, index) in warnings" :key="index">
-          <div class="warning-header">
-            <span class="warning-type">{{ item.type }}</span>
-            <span class="warning-time">{{ item.time }}</span>
-          </div>
-          <div class="warning-content">
-            <p>{{ item.description }}</p>
-            <div class="warning-location">位置：{{ item.location }}</div>
-          </div>
-          <div class="warning-actions">
-            <button class="action-btn primary" @click="handleWarning(item)">处理</button>
-            <button class="action-btn" @click="ignoreWarning(item)">忽略</button>
-          </div>
-        </div>
-      </div>
-
       <!-- 工单处理内容 -->
-      <div v-else class="workorder-list">
+      <div class="workorder-list">
         <div class="workorder-filter">
           <select v-model="workorderFilter" class="filter-select">
             <option value="all">全部工单</option>
@@ -190,29 +157,12 @@ export default {
   },
   data() {
     return {
-      currentTab: 'warnings',
       workorderFilter: 'all',
       showWorkorderDetailModal: false,
       handlerNote: '',
       selectedWorkorder: {},
       loading: false,
       error: null,
-      warnings: [
-        {
-          id: 1,
-          type: '设备异常',
-          time: '2023-07-10 10:30',
-          description: '检测到设备温度异常升高',
-          location: '一号生产线'
-        },
-        {
-          id: 2,
-          type: '环境预警',
-          time: '2023-07-10 09:15',
-          description: '空气质量超标',
-          location: '生产车间A区'
-        }
-      ],
       workorders: [],
       // 用户名缓存
       usernameCache: {}
@@ -335,15 +285,7 @@ export default {
       });
     },
 
-    handleWarning(warning) {
-      console.log('处理预警:', warning);
-      // 这里可以添加处理预警的逻辑
-    },
 
-    ignoreWarning(warning) {
-      console.log('忽略预警:', warning);
-      // 这里可以添加忽略预警的逻辑
-    },
 
     showWorkorderDetail(workorder) {
       this.selectedWorkorder = { ...workorder };
@@ -354,6 +296,28 @@ export default {
     // 更新工单状态
     async updateWorkOrderStatus(workorderNumber, newStatus, note) {
       try {
+        // 准备更新数据
+        const updateData = {
+          status: newStatus,
+          note: note
+        };
+
+        // 如果是完成状态，添加完成时间
+        if (newStatus === '已完成') {
+          // 格式化日期时间为MySQL兼容格式
+          const now = new Date();
+          const formatDate = (date) => {
+            return date.getFullYear() + '-' +
+                   String(date.getMonth() + 1).padStart(2, '0') + '-' +
+                   String(date.getDate()).padStart(2, '0') + ' ' +
+                   String(date.getHours()).padStart(2, '0') + ':' +
+                   String(date.getMinutes()).padStart(2, '0') + ':' +
+                   String(date.getSeconds()).padStart(2, '0');
+          };
+
+          updateData.actual_end_time = formatDate(now);
+        }
+
         const response = await fetch('/api/workorders/update-workorder', {
           method: 'POST',
           headers: {
@@ -362,10 +326,7 @@ export default {
           },
           body: JSON.stringify({
             workorder_number: workorderNumber,
-            update_data: {
-              status: newStatus,
-              note: note
-            }
+            update_data: updateData
           })
         });
 

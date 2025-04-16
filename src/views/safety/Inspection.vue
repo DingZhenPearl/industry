@@ -63,6 +63,43 @@
     </div>
 
     <SafetyNav />
+
+    <!-- 完成巡检模态框 -->
+    <div class="modal" v-if="showCompleteModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>完成巡检</h3>
+          <span class="close-btn" @click="showCompleteModal = false">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="detail-item">
+            <label>工单编号</label>
+            <div class="value">{{ selectedTask.id }}</div>
+          </div>
+          <div class="detail-item">
+            <label>巡检类型</label>
+            <div class="value">{{ selectedTask.name }}</div>
+          </div>
+          <div class="detail-item">
+            <label>产线信息</label>
+            <div class="value">{{ selectedTask.area }}</div>
+          </div>
+          <div class="detail-item">
+            <label>完成报告</label>
+            <textarea
+              class="form-input"
+              v-model="completionNote"
+              rows="5"
+              placeholder="请输入巡检完成报告和备注信息"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn cancel" @click="showCompleteModal = false">取消</button>
+          <button class="btn submit" @click="submitCompletion">提交</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -81,7 +118,11 @@ export default {
       loading: false,
       error: null,
       // 用户名缓存
-      usernameCache: {}
+      usernameCache: {},
+      // 完成巡检模态框
+      showCompleteModal: false,
+      selectedTask: {},
+      completionNote: ''
     }
   },
   created() {
@@ -221,18 +262,67 @@ export default {
     completeInspection(task) {
       console.log('完成巡检:', task);
 
-      // 更新工单状态为已完成
-      this.updateWorkOrderStatus(task.id, '已完成');
+      // 显示完成巡检模态框
+      this.selectedTask = task;
+      this.completionNote = '';
+      this.showCompleteModal = true;
+    },
+
+    // 提交完成报告
+    submitCompletion() {
+      if (!this.completionNote.trim()) {
+        alert('请填写完成报告');
+        return;
+      }
+
+      // 更新工单状态为已完成，并传递完成报告
+      this.updateWorkOrderStatus(this.selectedTask.id, '已完成', this.completionNote);
+
+      // 关闭模态框
+      this.showCompleteModal = false;
     },
 
     viewTaskDetail(task) {
       console.log('查看工单详情:', task);
-      alert(`工单详情\n\n工单编号: ${task.id}\n类型: ${task.name}\n状态: ${task.statusText}\n产线: ${task.area}\n描述: ${task.description}\n发出人: ${task.creator_name}\n工长: ${task.foreman_name}\n创建时间: ${task.time}`);
+      let detailText = `工单详情\n\n工单编号: ${task.id}\n类型: ${task.name}\n状态: ${task.statusText}\n产线: ${task.area}\n描述: ${task.description}\n发出人: ${task.creator_name}\n工长: ${task.foreman_name}\n创建时间: ${task.time}`;
+
+      // 如果有完成报告，显示完成报告
+      if (task.note) {
+        detailText += `\n\n完成报告:\n${task.note}`;
+      }
+
+      alert(detailText);
     },
 
     // 更新工单状态
-    async updateWorkOrderStatus(workorderNumber, newStatus) {
+    async updateWorkOrderStatus(workorderNumber, newStatus, note = '') {
       try {
+        // 准备更新数据
+        const updateData = {
+          status: newStatus
+        };
+
+        // 如果有完成报告，添加到更新数据中
+        if (note) {
+          updateData.note = note;
+        }
+
+        // 如果是完成状态，添加完成时间
+        if (newStatus === '已完成') {
+          // 格式化日期时间为MySQL兼容格式
+          const now = new Date();
+          const formatDate = (date) => {
+            return date.getFullYear() + '-' +
+                   String(date.getMonth() + 1).padStart(2, '0') + '-' +
+                   String(date.getDate()).padStart(2, '0') + ' ' +
+                   String(date.getHours()).padStart(2, '0') + ':' +
+                   String(date.getMinutes()).padStart(2, '0') + ':' +
+                   String(date.getSeconds()).padStart(2, '0');
+          };
+
+          updateData.actual_end_time = formatDate(now);
+        }
+
         const response = await fetch('/api/workorders/update-workorder', {
           method: 'POST',
           headers: {
@@ -241,9 +331,7 @@ export default {
           },
           body: JSON.stringify({
             workorder_number: workorderNumber,
-            update_data: {
-              status: newStatus
-            }
+            update_data: updateData
           })
         });
 
@@ -471,5 +559,93 @@ export default {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+}
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close-btn {
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.detail-item {
+  margin-bottom: 15px;
+}
+
+.detail-item label {
+  display: block;
+  color: #666;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.detail-item .value {
+  color: #333;
+  font-size: 15px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn.cancel {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.btn.submit {
+  background: #2196F3;
+  color: white;
 }
 </style>
