@@ -53,20 +53,19 @@
             </div>
             <div class="workorder-actions">
               <button
-                class="action-btn primary"
+                class="action-btn"
                 @click="showWorkorderDetail(item)"
+              >查看详情</button>
+              <button
+                class="action-btn primary"
+                @click="startProcessWorkorder(item)"
                 v-if="item.status === 'pending'"
               >开始处理</button>
               <button
                 class="action-btn primary"
-                @click="showWorkorderDetail(item)"
+                @click="showCompleteWorkorderModal(item)"
                 v-else-if="item.status === 'processing'"
               >完成工单</button>
-              <button
-                class="action-btn"
-                @click="showWorkorderDetail(item)"
-                v-else
-              >查看详情</button>
             </div>
           </div>
         </div>
@@ -109,36 +108,95 @@
             <label>上报人员</label>
             <div class="value">{{ selectedWorkorder.reporter }}</div>
           </div>
+          <div class="detail-item" v-if="selectedWorkorder.original && selectedWorkorder.original.foreman">
+            <label>负责工长</label>
+            <div class="value">{{ selectedWorkorder.original.foreman_name || selectedWorkorder.original.foreman }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkorder.original && selectedWorkorder.original.team_members">
+            <label>负责组员</label>
+            <div class="value">{{ selectedWorkorder.original.team_member_name || selectedWorkorder.original.team_members }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkorder.original && selectedWorkorder.original.team">
+            <label>负责班组</label>
+            <div class="value">{{ selectedWorkorder.original.team }}</div>
+          </div>
           <div class="detail-item">
-            <label>上报时间</label>
+            <label>创建时间</label>
             <div class="value">{{ selectedWorkorder.submitTime }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkorder.original && selectedWorkorder.original.start_time">
+            <label>开始时间</label>
+            <div class="value">{{ formatDateTime(selectedWorkorder.original.start_time) }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkorder.original && selectedWorkorder.original.deadline">
+            <label>截止时间</label>
+            <div class="value">{{ formatDateTime(selectedWorkorder.original.deadline) }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkorder.original && selectedWorkorder.original.actual_end_time">
+            <label>实际完成时间</label>
+            <div class="value">{{ formatDateTime(selectedWorkorder.original.actual_end_time) }}</div>
           </div>
           <div class="detail-item" v-if="selectedWorkorder.handlerNote">
             <label>处理记录</label>
-            <div class="value">{{ selectedWorkorder.handlerNote }}</div>
+            <div class="value note-content">{{ selectedWorkorder.handlerNote }}</div>
           </div>
-          <div class="detail-item" v-if="selectedWorkorder.status !== 'completed'">
+          <!-- 设备维修工单的扩展字段 -->
+          <div class="detail-item" v-if="selectedWorkorder.original && selectedWorkorder.original.extension_fields && getExtensionFields(selectedWorkorder.original.extension_fields).device_id">
+            <label>设备编号</label>
+            <div class="value">{{ getExtensionFields(selectedWorkorder.original.extension_fields).device_id }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkorder.original && selectedWorkorder.original.extension_fields && getExtensionFields(selectedWorkorder.original.extension_fields).device_name">
+            <label>设备名称</label>
+            <div class="value">{{ getExtensionFields(selectedWorkorder.original.extension_fields).device_name }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkorder.original && selectedWorkorder.original.extension_fields && getExtensionFields(selectedWorkorder.original.extension_fields).device_info">
+            <label>设备信息</label>
+            <div class="value">{{ getExtensionFields(selectedWorkorder.original.extension_fields).device_info }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkorder.original && selectedWorkorder.original.extension_fields && getExtensionFields(selectedWorkorder.original.extension_fields).discovery_time">
+            <label>发现时间</label>
+            <div class="value">{{ formatDateTime(getExtensionFields(selectedWorkorder.original.extension_fields).discovery_time) }}</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn cancel" @click="showWorkorderDetailModal = false">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 完成工单模态框 -->
+    <div class="modal" v-if="showCompleteModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>完成工单</h3>
+          <span class="close-btn" @click="showCompleteModal = false">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="detail-item">
+            <label>工单编号</label>
+            <div class="value">{{ selectedWorkorder.number }}</div>
+          </div>
+          <div class="detail-item">
+            <label>工单标题</label>
+            <div class="value">{{ selectedWorkorder.title }}</div>
+          </div>
+          <div class="detail-item">
+            <label>设备位置</label>
+            <div class="value">{{ selectedWorkorder.location }}</div>
+          </div>
+          <div class="detail-item">
             <label>处理记录</label>
             <textarea
               v-model="handlerNote"
               class="form-input"
-              rows="3"
+              rows="5"
               placeholder="请输入处理记录"
             ></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn cancel" @click="showWorkorderDetailModal = false">关闭</button>
-          <button
-            class="btn submit"
-            @click="processWorkorder"
-            v-if="selectedWorkorder.status === 'pending'"
-          >开始处理</button>
-          <button
-            class="btn submit"
-            @click="completeWorkorder"
-            v-if="selectedWorkorder.status === 'processing'"
-          >完成处理</button>
+          <button class="btn cancel" @click="showCompleteModal = false">取消</button>
+          <button class="btn submit" @click="completeWorkorder">提交</button>
         </div>
       </div>
     </div>
@@ -159,6 +217,7 @@ export default {
     return {
       workorderFilter: 'all',
       showWorkorderDetailModal: false,
+      showCompleteModal: false,
       handlerNote: '',
       selectedWorkorder: {},
       loading: false,
@@ -289,8 +348,57 @@ export default {
 
     showWorkorderDetail(workorder) {
       this.selectedWorkorder = { ...workorder };
-      this.handlerNote = workorder.handlerNote || '';
       this.showWorkorderDetailModal = true;
+    },
+
+    // 开始处理工单
+    async startProcessWorkorder(workorder) {
+      this.selectedWorkorder = { ...workorder };
+      // 直接更新工单状态为已接受，不需要处理记录
+      const success = await this.updateWorkOrderStatus(workorder.number, '已接受');
+
+      if (success) {
+        alert('已开始处理工单');
+      }
+    },
+
+    // 显示完成工单模态框
+    showCompleteWorkorderModal(workorder) {
+      this.selectedWorkorder = { ...workorder };
+      this.handlerNote = '';
+      this.showCompleteModal = true;
+    },
+
+    // 解析扩展字段
+    getExtensionFields(extensionFields) {
+      if (!extensionFields) return {};
+
+      try {
+        let fields = extensionFields;
+
+        // 如果是字符串，尝试解析为JSON
+        if (typeof extensionFields === 'string') {
+          fields = JSON.parse(extensionFields);
+        }
+
+        // 处理嵌套对象，将其转换为字符串表示
+        const result = {};
+        for (const key in fields) {
+          const value = fields[key];
+          if (value === null) {
+            result[key] = '无';
+          } else if (typeof value === 'object') {
+            result[key] = JSON.stringify(value);
+          } else {
+            result[key] = value;
+          }
+        }
+
+        return result;
+      } catch (error) {
+        console.error('解析扩展字段失败:', error);
+        return { error: '解析扩展字段失败', raw: String(extensionFields) };
+      }
     },
 
     // 更新工单状态
@@ -352,20 +460,7 @@ export default {
       }
     },
 
-    async processWorkorder() {
-      if (!this.handlerNote.trim()) {
-        alert('请填写处理记录');
-        return;
-      }
 
-      // 更新工单状态为已接受
-      const success = await this.updateWorkOrderStatus(this.selectedWorkorder.number, '已接受', this.handlerNote);
-
-      if (success) {
-        this.showWorkorderDetailModal = false;
-        alert('已开始处理工单');
-      }
-    },
 
     async completeWorkorder() {
       if (!this.handlerNote.trim()) {
@@ -377,10 +472,12 @@ export default {
       const success = await this.updateWorkOrderStatus(this.selectedWorkorder.number, '已完成', this.handlerNote);
 
       if (success) {
-        this.showWorkorderDetailModal = false;
+        this.showCompleteModal = false;
         alert('工单已完成');
       }
-    }
+    },
+
+
   }
 }
 </script>
@@ -682,6 +779,33 @@ export default {
 
 .detail-item .value.description {
   white-space: pre-wrap;
+}
+
+.detail-item .value.note-content {
+  white-space: pre-wrap;
+  background-color: #f9f9f9;
+  padding: 10px;
+  border-radius: 4px;
+  border-left: 3px solid #2196F3;
+}
+
+.extension-field-item {
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  display: flex;
+}
+
+.extension-field-key {
+  font-weight: bold;
+  color: #2196F3;
+  margin-right: 8px;
+  min-width: 100px;
+}
+
+.extension-field-value {
+  flex: 1;
 }
 
 .form-input {

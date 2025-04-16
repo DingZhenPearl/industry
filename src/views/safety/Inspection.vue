@@ -100,6 +100,92 @@
         </div>
       </div>
     </div>
+
+    <!-- 查看详情模态框 -->
+    <div class="modal" v-if="showDetailModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>工单详情</h3>
+          <span class="close-btn" @click="showDetailModal = false">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="detail-item">
+            <label>工单编号</label>
+            <div class="value">{{ detailTask.id }}</div>
+          </div>
+          <div class="detail-item">
+            <label>巡检类型</label>
+            <div class="value">{{ detailTask.name }}</div>
+          </div>
+          <div class="detail-item">
+            <label>工单状态</label>
+            <div class="value">
+              <span class="status-tag" :class="detailTask.status">{{ detailTask.statusText }}</span>
+            </div>
+          </div>
+          <div class="detail-item">
+            <label>产线信息</label>
+            <div class="value">{{ detailTask.area }}</div>
+          </div>
+          <div class="detail-item">
+            <label>工单描述</label>
+            <div class="value">{{ detailTask.description }}</div>
+          </div>
+          <div class="detail-item">
+            <label>发出人</label>
+            <div class="value">{{ detailTask.creator_name }} ({{ detailTask.creator }})</div>
+          </div>
+          <div class="detail-item">
+            <label>负责工长</label>
+            <div class="value">{{ detailTask.foreman_name }} ({{ detailTask.foreman }})</div>
+          </div>
+          <div class="detail-item" v-if="detailTask.team_members">
+            <label>负责组员</label>
+            <div class="value">{{ detailTask.team_member_name }} ({{ detailTask.team_members }})</div>
+          </div>
+          <div class="detail-item" v-if="detailTask.team">
+            <label>负责班组</label>
+            <div class="value">{{ detailTask.team }}</div>
+          </div>
+          <div class="detail-item">
+            <label>创建时间</label>
+            <div class="value">{{ detailTask.time }}</div>
+          </div>
+          <div class="detail-item" v-if="detailTask.original && detailTask.original.start_time">
+            <label>开始时间</label>
+            <div class="value">{{ formatDateTime(detailTask.original.start_time) }}</div>
+          </div>
+          <div class="detail-item" v-if="detailTask.deadline">
+            <label>截止时间</label>
+            <div class="value">{{ detailTask.deadline }}</div>
+          </div>
+          <div class="detail-item" v-if="detailTask.original && detailTask.original.actual_end_time">
+            <label>实际完成时间</label>
+            <div class="value">{{ formatDateTime(detailTask.original.actual_end_time) }}</div>
+          </div>
+          <div class="detail-item" v-if="detailTask.note">
+            <label>完成报告</label>
+            <div class="value note-content">{{ detailTask.note }}</div>
+          </div>
+          <!-- 产线巡检工单的扩展字段 -->
+          <div class="detail-item" v-if="detailTask.original && detailTask.original.extension_fields && getExtensionFields(detailTask.original.extension_fields).inspection_items">
+            <label>巡检项目</label>
+            <div class="value">{{ getExtensionFields(detailTask.original.extension_fields).inspection_items }}</div>
+          </div>
+          <div class="detail-item" v-if="detailTask.original && detailTask.original.extension_fields && getExtensionFields(detailTask.original.extension_fields).inspection_frequency">
+            <label>巡检频率</label>
+            <div class="value">{{ getExtensionFields(detailTask.original.extension_fields).inspection_frequency }}</div>
+          </div>
+          <div class="detail-item" v-if="detailTask.original && detailTask.original.extension_fields && getExtensionFields(detailTask.original.extension_fields).inspection_standard">
+            <label>巡检标准</label>
+            <div class="value">{{ getExtensionFields(detailTask.original.extension_fields).inspection_standard }}</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn cancel" @click="showDetailModal = false">关闭</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -122,7 +208,10 @@ export default {
       // 完成巡检模态框
       showCompleteModal: false,
       selectedTask: {},
-      completionNote: ''
+      completionNote: '',
+      // 查看详情模态框
+      showDetailModal: false,
+      detailTask: {}
     }
   },
   created() {
@@ -284,14 +373,41 @@ export default {
 
     viewTaskDetail(task) {
       console.log('查看工单详情:', task);
-      let detailText = `工单详情\n\n工单编号: ${task.id}\n类型: ${task.name}\n状态: ${task.statusText}\n产线: ${task.area}\n描述: ${task.description}\n发出人: ${task.creator_name}\n工长: ${task.foreman_name}\n创建时间: ${task.time}`;
+      // 设置详情任务并显示模态框
+      this.detailTask = { ...task };
+      this.showDetailModal = true;
+    },
 
-      // 如果有完成报告，显示完成报告
-      if (task.note) {
-        detailText += `\n\n完成报告:\n${task.note}`;
+    // 解析扩展字段
+    getExtensionFields(extensionFields) {
+      if (!extensionFields) return {};
+
+      try {
+        let fields = extensionFields;
+
+        // 如果是字符串，尝试解析为JSON
+        if (typeof extensionFields === 'string') {
+          fields = JSON.parse(extensionFields);
+        }
+
+        // 处理嵌套对象，将其转换为字符串表示
+        const result = {};
+        for (const key in fields) {
+          const value = fields[key];
+          if (value === null) {
+            result[key] = '无';
+          } else if (typeof value === 'object') {
+            result[key] = JSON.stringify(value);
+          } else {
+            result[key] = value;
+          }
+        }
+
+        return result;
+      } catch (error) {
+        console.error('解析扩展字段失败:', error);
+        return { error: '解析扩展字段失败', raw: String(extensionFields) };
       }
-
-      alert(detailText);
     },
 
     // 更新工单状态
@@ -505,9 +621,44 @@ export default {
   color: #4CAF50;
 }
 
-.task-status.cancelled {
+.task-status.cancelled, .status-tag.cancelled {
   background: #f5f5f5;
   color: #757575;
+}
+
+.status-tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.note-content {
+  white-space: pre-wrap;
+  background-color: #f9f9f9;
+  padding: 10px;
+  border-radius: 4px;
+  border-left: 3px solid #2196F3;
+}
+
+.extension-field-item {
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  display: flex;
+}
+
+.extension-field-key {
+  font-weight: bold;
+  color: #2196F3;
+  margin-right: 8px;
+  min-width: 100px;
+}
+
+.extension-field-value {
+  flex: 1;
 }
 
 .task-info {
