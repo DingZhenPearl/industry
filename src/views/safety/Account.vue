@@ -42,6 +42,10 @@
           <div class="value">安全员</div>
         </div>
         <div class="info-item">
+          <label>组号</label>
+          <div class="value">{{ userInfo.group_id || '未分配' }}</div>
+        </div>
+        <div class="info-item">
           <label>手机号</label>
           <div class="value">{{ userInfo.phone || '未设置' }}</div>
         </div>
