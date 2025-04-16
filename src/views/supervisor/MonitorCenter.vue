@@ -48,7 +48,19 @@
           </button>
         </div>
 
-        <div class="line-list">
+        <!-- 加载中提示 -->
+        <div class="loading-container" v-if="loading.productionLines">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">正在加载产线数据...</div>
+        </div>
+
+        <!-- 错误提示 -->
+        <div class="error-container" v-if="error.productionLines">
+          <div class="error-message">加载产线数据出错: {{ error.productionLines }}</div>
+          <button class="retry-btn" @click="fetchProductionLines">重试</button>
+        </div>
+
+        <div class="line-list" v-if="!loading.productionLines && !error.productionLines && productionLines.length > 0">
           <div class="line-item" v-for="line in productionLines" :key="line.id">
             <div class="line-header">
               <span class="line-name">{{ line.name }}</span>
@@ -130,7 +142,19 @@
           </div>
         </div>
 
-        <div class="equipment-table">
+        <!-- 加载中提示 -->
+        <div class="loading-container" v-if="loading.equipments">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">正在加载设备数据...</div>
+        </div>
+
+        <!-- 错误提示 -->
+        <div class="error-container" v-if="error.equipments">
+          <div class="error-message">加载设备数据出错: {{ error.equipments }}</div>
+          <button class="retry-btn" @click="fetchEquipments">重试</button>
+        </div>
+
+        <div class="equipment-table" v-if="!loading.equipments && !error.equipments && equipments.length > 0">
           <table>
             <thead>
               <tr>
@@ -241,9 +265,18 @@ export default {
         status: '',
         type: ''
       },
-      equipments: [
-
-      ]
+      equipments: [],
+      // 错误和加载状态
+      loading: {
+        productionLines: false,
+        equipments: false,
+        foremen: false
+      },
+      error: {
+        productionLines: null,
+        equipments: null,
+        foremen: null
+      }
     }
   },
   computed: {
@@ -290,20 +323,36 @@ export default {
   methods: {
     // 获取产线数据
     async fetchProductionLines() {
+      this.loading.productionLines = true;
+      this.error.productionLines = null;
+
       try {
         console.log('开始获取产线数据');
-        const response = await fetch('/api/production-line/with-foremen', {
+        const response = await fetch('/api/production_line/with-foremen', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const errorText = await response.text();
+          console.error('响应状态错误:', response.status, errorText);
+          throw new Error(`获取产线数据失败: ${response.status}`);
         }
 
-        const result = await response.json();
-        console.log('产线数据返回结果:', result);
+        // 先获取响应文本，然后尝试解析为JSON
+        const responseText = await response.text();
+        console.log('原始响应文本:', responseText);
+
+        let result;
+        try {
+          result = JSON.parse(responseText);
+          console.log('产线数据返回结果:', result);
+        } catch (jsonError) {
+          console.error('JSON解析错误:', jsonError);
+          console.error('收到的响应不是有效的JSON:', responseText.substring(0, 100) + '...');
+          throw new Error(`响应数据格式错误: ${jsonError.message}`);
+        }
 
         if (result.success && result.data) {
           // 处理产线数据
@@ -383,6 +432,11 @@ export default {
         }
       } catch (error) {
         console.error('获取产线数据出错:', error);
+        this.error.productionLines = error.message || '获取产线数据出错';
+        this.productionLines = []; // 清空产线数据
+        alert(`获取产线数据出错: ${error.message}`);
+      } finally {
+        this.loading.productionLines = false;
       }
     },
 
@@ -437,7 +491,7 @@ export default {
 
       try {
         // 调用API分配工长到产线
-        const response = await fetch('/api/production-line/assign-foreman', {
+        const response = await fetch('/api/production_line/assign-foreman', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -449,7 +503,20 @@ export default {
           })
         });
 
-        const result = await response.json();
+        // 先获取响应文本，然后尝试解析为JSON
+        const responseText = await response.text();
+        console.log('原始响应文本:', responseText);
+
+        let result;
+        try {
+          result = JSON.parse(responseText);
+          console.log('分配工长返回结果:', result);
+        } catch (jsonError) {
+          console.error('JSON解析错误:', jsonError);
+          console.error('收到的响应不是有效的JSON:', responseText.substring(0, 100) + '...');
+          alert(`分配失败: 响应数据格式错误`);
+          return;
+        }
 
         if (result.success) {
           alert('工长分配成功！');
@@ -481,6 +548,9 @@ export default {
 
     // 获取工长列表
     async fetchForemen() {
+      this.loading.foremen = true;
+      this.error.foremen = null;
+
       try {
         console.log('开始获取工长列表');
         const response = await fetch('/api/users/foremen', {
@@ -489,8 +559,25 @@ export default {
           }
         });
 
-        const result = await response.json();
-        console.log('工长列表返回数据:', result);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('响应状态错误:', response.status, errorText);
+          throw new Error(`获取工长列表失败: ${response.status}`);
+        }
+
+        // 先获取响应文本，然后尝试解析为JSON
+        const responseText = await response.text();
+        console.log('原始响应文本:', responseText);
+
+        let result;
+        try {
+          result = JSON.parse(responseText);
+          console.log('工长列表返回数据:', result);
+        } catch (jsonError) {
+          console.error('JSON解析错误:', jsonError);
+          console.error('收到的响应不是有效的JSON:', responseText.substring(0, 100) + '...');
+          throw new Error(`响应数据格式错误: ${jsonError.message}`);
+        }
 
         if (result.success && result.data) {
           this.foremen = result.data.map(foreman => ({
@@ -503,11 +590,18 @@ export default {
         }
       } catch (error) {
         console.error('获取工长列表出错:', error);
+        this.error.foremen = error.message || '获取工长列表出错';
+        this.foremen = []; // 清空工长列表
+      } finally {
+        this.loading.foremen = false;
       }
     },
 
     // 获取设备数据
     async fetchEquipments() {
+      this.loading.equipments = true;
+      this.error.equipments = null;
+
       try {
         console.log('开始获取设备数据');
 
@@ -525,11 +619,24 @@ export default {
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const errorText = await response.text();
+          console.error('响应状态错误:', response.status, errorText);
+          throw new Error(`获取设备数据失败: ${response.status}`);
         }
 
-        const result = await response.json();
-        console.log('设备数据返回结果:', result);
+        // 先获取响应文本，然后尝试解析为JSON
+        const responseText = await response.text();
+        console.log('原始响应文本:', responseText);
+
+        let result;
+        try {
+          result = JSON.parse(responseText);
+          console.log('设备数据返回结果:', result);
+        } catch (jsonError) {
+          console.error('JSON解析错误:', jsonError);
+          console.error('收到的响应不是有效的JSON:', responseText.substring(0, 100) + '...');
+          throw new Error(`响应数据格式错误: ${jsonError.message}`);
+        }
 
         // 从后端获取用户数据
         console.log('从后端获取用户数据');
@@ -640,6 +747,10 @@ export default {
         }
       } catch (error) {
         console.error('获取设备数据出错:', error);
+        this.error.equipments = error.message || '获取设备数据出错';
+        this.equipments = []; // 清空设备数据
+      } finally {
+        this.loading.equipments = false;
       }
     }
   }
@@ -787,6 +898,66 @@ export default {
 .line-status.stopped {
   background: #ffebee;
   color: #f44336;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #2196F3;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: #666;
+  font-size: 16px;
+}
+
+.error-container {
+  background-color: #ffebee;
+  border: 1px solid #ffcdd2;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.error-message {
+  color: #d32f2f;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.retry-btn {
+  padding: 8px 16px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.retry-btn:hover {
+  background: #d32f2f;
 }
 
 .line-details {
