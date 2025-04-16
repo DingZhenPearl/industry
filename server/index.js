@@ -21,7 +21,7 @@ app.use('/api', userRoutes);
 app.use('/api/foreman', foremanRoutes);
 app.use('/api/workorders', workorderRoutes);
 app.use('/api/equipment', equipmentRoutes);
-app.use('/api/production-line', productionLineRoutes);
+app.use('/api/production_line', productionLineRoutes);
 
 // 处理Vue路由 - 所有未匹配的路由返回index.html
 app.get('*', (_, res) => {

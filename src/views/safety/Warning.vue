@@ -2,23 +2,23 @@
   <div class="safety-warning">
     <header class="header">
       <div class="tab-header">
-        <div 
-          class="tab-item" 
-          :class="{ active: currentTab === 'warnings' }" 
+        <div
+          class="tab-item"
+          :class="{ active: currentTab === 'warnings' }"
           @click="currentTab = 'warnings'"
         >
           预警处理
         </div>
-        <div 
-          class="tab-item" 
-          :class="{ active: currentTab === 'workorders' }" 
+        <div
+          class="tab-item"
+          :class="{ active: currentTab === 'workorders' }"
           @click="currentTab = 'workorders'"
         >
-          工单处理
+          设备维护工单
         </div>
       </div>
     </header>
-    
+
     <div class="content">
       <!-- 预警处理内容 -->
       <div v-if="currentTab === 'warnings'" class="warning-list">
@@ -46,34 +46,61 @@
             <option value="pending">待处理</option>
             <option value="processing">处理中</option>
             <option value="completed">已完成</option>
+            <option value="cancelled">已取消</option>
           </select>
+          <button class="refresh-btn" @click="fetchWorkorders">刷新</button>
         </div>
-        
-        <div class="workorder-item" v-for="(item, index) in filteredWorkorders" :key="index">
-          <div class="workorder-header">
-            <span class="workorder-number">{{ item.number }}</span>
-            <span class="workorder-status" :class="item.status">{{ item.statusText }}</span>
-          </div>
-          <div class="workorder-content">
-            <h3 class="workorder-title">{{ item.title }}</h3>
-            <p>{{ item.description }}</p>
-            <div class="workorder-meta">
-              <span>上报人：{{ item.reporter }}</span>
-              <span>位置：{{ item.location }}</span>
+
+        <!-- 加载中提示 -->
+        <div class="loading-container" v-if="loading">
+          <div class="loading-spinner"></div>
+          <p>正在加载设备维护工单数据...</p>
+        </div>
+
+        <!-- 错误提示 -->
+        <div class="error-container" v-if="error">
+          <p class="error-message">{{ error }}</p>
+          <button class="retry-btn" @click="fetchWorkorders">重试</button>
+        </div>
+
+        <!-- 空数据提示 -->
+        <div class="empty-container" v-if="!loading && !error && filteredWorkorders.length === 0">
+          <p>没有找到相关设备维护工单</p>
+        </div>
+
+        <!-- 工单列表 -->
+        <div class="workorder-items" v-if="!loading && !error && filteredWorkorders.length > 0">
+          <div class="workorder-item" v-for="(item, index) in filteredWorkorders" :key="index">
+            <div class="workorder-header">
+              <span class="workorder-number">{{ item.number }}</span>
+              <span class="workorder-status" :class="item.status">{{ item.statusText }}</span>
             </div>
-            <div class="workorder-time">上报时间：{{ item.submitTime }}</div>
-          </div>
-          <div class="workorder-actions">
-            <button 
-              class="action-btn primary" 
-              @click="showWorkorderDetail(item)"
-              v-if="item.status !== 'completed'"
-            >处理工单</button>
-            <button 
-              class="action-btn" 
-              @click="showWorkorderDetail(item)"
-              v-else
-            >查看详情</button>
+            <div class="workorder-content">
+              <h3 class="workorder-title">{{ item.title }}</h3>
+              <p>{{ item.description }}</p>
+              <div class="workorder-meta">
+                <span>上报人：{{ item.reporter }}</span>
+                <span>位置：{{ item.location }}</span>
+              </div>
+              <div class="workorder-time">上报时间：{{ item.submitTime }}</div>
+            </div>
+            <div class="workorder-actions">
+              <button
+                class="action-btn primary"
+                @click="showWorkorderDetail(item)"
+                v-if="item.status === 'pending'"
+              >开始处理</button>
+              <button
+                class="action-btn primary"
+                @click="showWorkorderDetail(item)"
+                v-else-if="item.status === 'processing'"
+              >完成工单</button>
+              <button
+                class="action-btn"
+                @click="showWorkorderDetail(item)"
+                v-else
+              >查看详情</button>
+            </div>
           </div>
         </div>
       </div>
@@ -125,24 +152,24 @@
           </div>
           <div class="detail-item" v-if="selectedWorkorder.status !== 'completed'">
             <label>处理记录</label>
-            <textarea 
-              v-model="handlerNote" 
-              class="form-input" 
-              rows="3" 
+            <textarea
+              v-model="handlerNote"
+              class="form-input"
+              rows="3"
               placeholder="请输入处理记录"
             ></textarea>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn cancel" @click="showWorkorderDetailModal = false">关闭</button>
-          <button 
-            class="btn submit" 
-            @click="processWorkorder" 
+          <button
+            class="btn submit"
+            @click="processWorkorder"
             v-if="selectedWorkorder.status === 'pending'"
           >开始处理</button>
-          <button 
-            class="btn submit" 
-            @click="completeWorkorder" 
+          <button
+            class="btn submit"
+            @click="completeWorkorder"
             v-if="selectedWorkorder.status === 'processing'"
           >完成处理</button>
         </div>
@@ -168,6 +195,8 @@ export default {
       showWorkorderDetailModal: false,
       handlerNote: '',
       selectedWorkorder: {},
+      loading: false,
+      error: null,
       warnings: [
         {
           id: 1,
@@ -184,44 +213,13 @@ export default {
           location: '生产车间A区'
         }
       ],
-      workorders: [
-        {
-          id: 1,
-          number: 'WO2023001',
-          title: '一号生产线温度异常',
-          description: '一号生产线主轴承温度异常升高，需紧急检查。',
-          location: '一号生产线',
-          reporter: '张工',
-          submitTime: '2023-07-10 10:30',
-          status: 'pending',
-          statusText: '待处理'
-        },
-        {
-          id: 2,
-          number: 'WO2023002',
-          title: '二号生产线噪音异常',
-          description: '二号生产线传送带噪音异常，需检查。',
-          location: '二号生产线',
-          reporter: '李工',
-          submitTime: '2023-07-10 14:20',
-          status: 'processing',
-          statusText: '处理中',
-          handlerNote: '已初步检查，更换了传送带润滑油，仍需观察。'
-        },
-        {
-          id: 3,
-          number: 'WO2023003',
-          title: '安全门故障',
-          description: '三号车间安全门无法正常关闭，需维修。',
-          location: '三号车间',
-          reporter: '王工',
-          submitTime: '2023-07-09 16:45',
-          status: 'completed',
-          statusText: '已完成',
-          handlerNote: '已维修完成，更换了门锁装置。'
-        }
-      ]
+      workorders: [],
+      // 用户名缓存
+      usernameCache: {}
     }
+  },
+  created() {
+    this.fetchWorkorders();
   },
   computed: {
     filteredWorkorders() {
@@ -230,59 +228,197 @@ export default {
     }
   },
   methods: {
+    // 从后端获取工单数据
+    async fetchWorkorders() {
+      this.loading = true;
+      this.error = null;
+
+      try {
+        // 获取当前登录用户的组号
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        const groupId = userInfo.group_id;
+
+        if (!groupId) {
+          console.error('未找到组号信息');
+          this.error = '无法获取您的组号信息，请重新登录';
+          return;
+        }
+
+        // 获取安全员组的设备维护工单
+        const response = await fetch(`/api/workorders/safety-maintenance-workorders?group_id=${groupId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取工单失败: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('安全员设备维护工单数据:', data);
+
+        if (data.success) {
+          this.workorders = this.formatWorkorders(data.data || []);
+        } else {
+          this.error = data.error || '获取工单失败';
+        }
+      } catch (error) {
+        console.error('获取工单数据出错:', error);
+        this.error = error.message || '获取工单数据出错';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // 格式化工单数据
+    formatWorkorders(workorders) {
+      return workorders.map(wo => {
+        // 根据状态设置状态文本
+        let statusText = '未知';
+        let status = wo.status;
+
+        switch(wo.status) {
+          case '未接受':
+          case 'pending':
+            statusText = '待处理';
+            status = 'pending';
+            break;
+
+          case '已完成':
+          case 'completed':
+            statusText = '已完成';
+            status = 'completed';
+            break;
+
+          case '已接受':
+          case 'accepted':
+            statusText = '处理中';
+            status = 'processing';
+            break;
+
+          case '已取消':
+          case 'cancelled':
+            statusText = '已取消';
+            status = 'cancelled';
+            break;
+        }
+
+        return {
+          id: wo.id,
+          number: wo.workorder_number,
+          title: wo.task_type,
+          description: wo.task_details,
+          location: wo.production_line,
+          reporter: wo.creator_name || wo.creator,
+          submitTime: this.formatDateTime(wo.created_at),
+          status: status,
+          statusText: statusText,
+          handlerNote: wo.note || '',
+          // 保存原始工单数据
+          original: wo
+        };
+      });
+    },
+
+    // 格式化日期时间
+    formatDateTime(dateTimeStr) {
+      if (!dateTimeStr) return '';
+
+      const date = new Date(dateTimeStr);
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
+
     handleWarning(warning) {
       console.log('处理预警:', warning);
       // 这里可以添加处理预警的逻辑
     },
+
     ignoreWarning(warning) {
       console.log('忽略预警:', warning);
       // 这里可以添加忽略预警的逻辑
     },
+
     showWorkorderDetail(workorder) {
       this.selectedWorkorder = { ...workorder };
       this.handlerNote = workorder.handlerNote || '';
       this.showWorkorderDetailModal = true;
     },
-    processWorkorder() {
-      if (!this.handlerNote.trim()) {
-        alert('请填写处理记录');
-        return;
+
+    // 更新工单状态
+    async updateWorkOrderStatus(workorderNumber, newStatus, note) {
+      try {
+        const response = await fetch('/api/workorders/update-workorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            workorder_number: workorderNumber,
+            update_data: {
+              status: newStatus,
+              note: note
+            }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`更新工单状态失败: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('更新工单状态响应:', data);
+
+        if (data.success) {
+          // 更新成功，重新获取工单列表
+          this.fetchWorkorders();
+          return true;
+        } else {
+          alert(`更新失败: ${data.error || '未知错误'}`);
+          return false;
+        }
+      } catch (error) {
+        console.error('更新工单状态出错:', error);
+        alert(`更新工单状态出错: ${error.message}`);
+        return false;
       }
-      
-      // 更新选中的工单状态为处理中
-      this.selectedWorkorder.status = 'processing';
-      this.selectedWorkorder.statusText = '处理中';
-      this.selectedWorkorder.handlerNote = this.handlerNote;
-      
-      // 更新工单列表中的状态
-      const index = this.workorders.findIndex(w => w.id === this.selectedWorkorder.id);
-      if (index !== -1) {
-        this.workorders[index] = { ...this.selectedWorkorder };
-      }
-      
-      this.showWorkorderDetailModal = false;
-      alert('已开始处理工单');
     },
-    completeWorkorder() {
+
+    async processWorkorder() {
       if (!this.handlerNote.trim()) {
         alert('请填写处理记录');
         return;
       }
-      
-      // 更新选中的工单状态为已完成
-      this.selectedWorkorder.status = 'completed';
-      this.selectedWorkorder.statusText = '已完成';
-      this.selectedWorkorder.handlerNote = this.handlerNote;
-      this.selectedWorkorder.completedTime = new Date().toLocaleString();
-      
-      // 更新工单列表中的状态
-      const index = this.workorders.findIndex(w => w.id === this.selectedWorkorder.id);
-      if (index !== -1) {
-        this.workorders[index] = { ...this.selectedWorkorder };
+
+      // 更新工单状态为已接受
+      const success = await this.updateWorkOrderStatus(this.selectedWorkorder.number, '已接受', this.handlerNote);
+
+      if (success) {
+        this.showWorkorderDetailModal = false;
+        alert('已开始处理工单');
       }
-      
-      this.showWorkorderDetailModal = false;
-      alert('工单已完成');
+    },
+
+    async completeWorkorder() {
+      if (!this.handlerNote.trim()) {
+        alert('请填写处理记录');
+        return;
+      }
+
+      // 更新工单状态为已完成
+      const success = await this.updateWorkOrderStatus(this.selectedWorkorder.number, '已完成', this.handlerNote);
+
+      if (success) {
+        this.showWorkorderDetailModal = false;
+        alert('工单已完成');
+      }
     }
   }
 }
@@ -397,14 +533,87 @@ export default {
 
 .workorder-filter {
   margin-bottom: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .filter-select {
   padding: 8px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  width: 100%;
+  flex: 1;
+  margin-right: 10px;
   background-color: white;
+}
+
+.refresh-btn {
+  padding: 8px 16px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-container {
+  background-color: #ffebee;
+  border: 1px solid #ffcdd2;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.error-message {
+  color: #d32f2f;
+  margin-bottom: 10px;
+}
+
+.retry-btn {
+  padding: 8px 16px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.empty-container {
+  text-align: center;
+  padding: 30px;
+  color: #757575;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.workorder-items {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 .workorder-number {

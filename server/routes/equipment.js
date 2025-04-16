@@ -29,16 +29,33 @@ router.get('/list', authMiddleware, async (req, res) => {
 // 获取设备及其最新状态
 router.get('/with-status', authMiddleware, async (req, res) => {
   const line_id = req.query.line_id;
+  const group_id = req.query.group_id;
 
   try {
-    const args = ['get-with-status'];
-    if (line_id) args.push('--line-id', line_id);
+    let result;
 
-    const result = await runPythonScript(
-      'pyScripts/equipment_manager.py',
-      args,
-      { debug: true }
-    );
+    if (group_id) {
+      // 如果有组号参数，使用按组号获取设备的脚本
+      result = await runPythonScript(
+        'pyScripts/get_equipment_by_group.py',
+        [group_id],
+        { debug: true }
+      );
+    } else if (line_id) {
+      // 如果有产线 ID 参数，使用原来的脚本按产线获取设备
+      result = await runPythonScript(
+        'pyScripts/equipment_manager.py',
+        ['get-with-status', '--line-id', line_id],
+        { debug: true }
+      );
+    } else {
+      // 如果没有特定参数，获取所有设备
+      result = await runPythonScript(
+        'pyScripts/equipment_manager.py',
+        ['get-with-status'],
+        { debug: true }
+      );
+    }
 
     res.json(result);
   } catch (error) {

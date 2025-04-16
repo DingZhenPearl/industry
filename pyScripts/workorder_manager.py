@@ -355,6 +355,12 @@ def get_workorders(filters=None):
                     if key == 'task_type':
                         where_clause.append(f"w.task_type = %s")
                         values.append(value)
+                    elif key == 'task_types':
+                        # 支持多个任务类型的查询
+                        types = value.split(',')
+                        placeholders = ', '.join(['%s'] * len(types))
+                        where_clause.append(f"w.task_type IN ({placeholders})")
+                        values.extend(types)
                     elif key == 'status':
                         where_clause.append(f"w.status = %s")
                         values.append(value)
@@ -583,6 +589,7 @@ def main():
     # 获取工单列表命令
     list_parser = subparsers.add_parser('list', help='获取工单列表')
     list_parser.add_argument('--type', help='任务类型')
+    list_parser.add_argument('--types', help='多个任务类型，用逗号分隔')
     list_parser.add_argument('--status', help='工单状态')
     list_parser.add_argument('--foreman', help='负责工长')
     list_parser.add_argument('--team', help='负责班组')
@@ -631,6 +638,8 @@ def main():
         filters = {}
         if args.type:
             filters['task_type'] = args.type
+        if args.types:
+            filters['task_types'] = args.types
         if args.status:
             filters['status'] = args.status
         if args.foreman:

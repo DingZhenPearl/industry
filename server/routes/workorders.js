@@ -202,4 +202,58 @@ router.get('/worker-submitted-workorders', authMiddleware, async (req, res) => {
   }
 });
 
+// 获取安全员的产线巡检类型工单
+router.get('/safety-inspection-workorders', authMiddleware, async (req, res) => {
+  const group_id = req.query.group_id;
+  console.log('获取安全员组的产线巡检工单,组号:', group_id);
+
+  if (!group_id) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少组号参数'
+    });
+  }
+
+  try {
+    // 使用team参数查询安全员组的工单，并指定类型为产线巡检
+    const result = await runPythonScript(
+      'pyScripts/workorder_manager.py',
+      ['list', '--team', group_id, '--type', '产线巡检'],
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('获取安全员产线巡检工单出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
+// 获取安全员的设备维护类型工单
+router.get('/safety-maintenance-workorders', authMiddleware, async (req, res) => {
+  const group_id = req.query.group_id;
+  console.log('获取安全员组的设备维护工单,组号:', group_id);
+
+  if (!group_id) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少组号参数'
+    });
+  }
+
+  try {
+    // 使用team参数查询安全员组的工单，并指定类型为设备维护
+    const result = await runPythonScript(
+      'pyScripts/workorder_manager.py',
+      ['list', '--team', group_id, '--type', '设备维护'],
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('获取安全员设备维护工单出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
 module.exports = router;

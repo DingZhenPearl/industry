@@ -21,12 +21,26 @@ router.get('/list', authMiddleware, async (req, res) => {
 
 // 获取产线及其最新状态
 router.get('/with-status', authMiddleware, async (req, res) => {
+  const group_id = req.query.group_id;
+
   try {
-    const result = await runPythonScript(
-      'pyScripts/production_line_manager.py',
-      ['get-with-status'],
-      { debug: true }
-    );
+    let result;
+
+    if (group_id) {
+      // 如果有组号参数，使用按组号获取产线的脚本
+      result = await runPythonScript(
+        'pyScripts/get_production_lines_by_group.py',
+        [group_id],
+        { debug: true }
+      );
+    } else {
+      // 如果没有组号参数，使用原来的脚本获取所有产线
+      result = await runPythonScript(
+        'pyScripts/production_line_manager.py',
+        ['get-with-status'],
+        { debug: true }
+      );
+    }
 
     res.json(result);
   } catch (error) {
