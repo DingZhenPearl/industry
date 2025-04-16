@@ -184,6 +184,25 @@
               </tr>
             </tbody>
           </table>
+
+          <!-- 分页控件 -->
+          <div class="pagination-controls" v-if="filteredTotal > pagination.pageSize">
+            <button
+              class="pagination-btn"
+              :disabled="pagination.currentPage === 1"
+              @click="changePage(pagination.currentPage - 1)">
+              上一页
+            </button>
+            <span class="pagination-info">
+              {{ pagination.currentPage }} / {{ totalPages }} (共{{ filteredTotal }}条)
+            </span>
+            <button
+              class="pagination-btn"
+              :disabled="pagination.currentPage === totalPages"
+              @click="changePage(pagination.currentPage + 1)">
+              下一页
+            </button>
+          </div>
         </div>
       </div>
 
@@ -259,13 +278,19 @@ export default {
       selectedLine: {},
       selectedManager: '',
       foremen: [],
-      // 新增设备监控相关数据
+      // 设备监控相关数据
       equipmentFilter: {
         line: '',
         status: '',
         type: ''
       },
       equipments: [],
+      // 分页相关数据
+      pagination: {
+        currentPage: 1,
+        pageSize: 10,
+        total: 0
+      },
       // 错误和加载状态
       loading: {
         productionLines: false,
@@ -276,16 +301,22 @@ export default {
         productionLines: null,
         equipments: null,
         foremen: null
+      },
+      // 缓存数据
+      cachedData: {
+        equipments: null,
+        timestamp: null
       }
     }
   },
   computed: {
     // 根据筛选条件过滤设备
     filteredEquipments() {
-      return this.equipments.filter(equipment => {
+      // 先过滤所有设备
+      const filtered = this.equipments.filter(equipment => {
         // 按产线筛选
         const lineMatch = !this.equipmentFilter.line ||
-          equipment.productionLine.includes(this.productionLines.find(l => l.id === this.equipmentFilter.line)?.name || '');
+          String(equipment.productionLine).includes(this.productionLines.find(l => l.id === this.equipmentFilter.line)?.name || '');
 
         // 按状态筛选
         const statusMatch = !this.equipmentFilter.status ||
@@ -297,6 +328,26 @@ export default {
 
         return lineMatch && statusMatch && typeMatch;
       });
+
+      // 计算分页起始和结束索引
+      const start = (this.pagination.currentPage - 1) * this.pagination.pageSize;
+      const end = start + this.pagination.pageSize;
+
+      // 返回当前页的数据
+      return filtered.slice(start, end);
+    },
+
+    // 过滤后的总数
+    filteredTotal() {
+      return this.equipments.filter(equipment => {
+        const lineMatch = !this.equipmentFilter.line ||
+          String(equipment.productionLine).includes(this.productionLines.find(l => l.id === this.equipmentFilter.line)?.name || '');
+        const statusMatch = !this.equipmentFilter.status ||
+          equipment.status === this.equipmentFilter.status;
+        const typeMatch = !this.equipmentFilter.type ||
+          equipment.type === this.equipmentFilter.type;
+        return lineMatch && statusMatch && typeMatch;
+      }).length;
     },
 
     // 设备状态统计
@@ -313,6 +364,11 @@ export default {
       });
 
       return stats;
+    },
+
+    // 计算总页数
+    totalPages() {
+      return Math.ceil(this.filteredTotal / this.pagination.pageSize);
     }
   },
   created() {
@@ -327,7 +383,6 @@ export default {
       this.error.productionLines = null;
 
       try {
-        console.log('开始获取产线数据');
         const response = await fetch('/api/production_line/with-foremen', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -335,30 +390,14 @@ export default {
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('响应状态错误:', response.status, errorText);
           throw new Error(`获取产线数据失败: ${response.status}`);
         }
 
-        // 先获取响应文本，然后尝试解析为JSON
-        const responseText = await response.text();
-        console.log('原始响应文本:', responseText);
-
-        let result;
-        try {
-          result = JSON.parse(responseText);
-          console.log('产线数据返回结果:', result);
-        } catch (jsonError) {
-          console.error('JSON解析错误:', jsonError);
-          console.error('收到的响应不是有效的JSON:', responseText.substring(0, 100) + '...');
-          throw new Error(`响应数据格式错误: ${jsonError.message}`);
-        }
+        const result = await response.json();
 
         if (result.success && result.data) {
           // 处理产线数据
           this.productionLines = result.data.map(line => {
-            console.log('处理产线数据:', line);
-
             // 根据实时产能和理论产能计算利用率
             const utilization = line.theoretical_capacity ?
               Math.round((line.real_time_capacity / line.theoretical_capacity) * 100) : 0;
@@ -423,18 +462,14 @@ export default {
             };
           });
 
-          console.log('处理后的产线数据:', this.productionLines);
-
           // 更新状态卡片的数据
           this.updateStatusCards();
         } else {
-          console.error('获取产线数据失败:', result.error || '未知错误');
+          throw new Error(result.error || '未知错误');
         }
       } catch (error) {
-        console.error('获取产线数据出错:', error);
         this.error.productionLines = error.message || '获取产线数据出错';
         this.productionLines = []; // 清空产线数据
-        alert(`获取产线数据出错: ${error.message}`);
       } finally {
         this.loading.productionLines = false;
       }
@@ -457,23 +492,18 @@ export default {
       if (stoppedCard) stoppedCard.textContent = stoppedLines;
     },
 
-    editLine(line) {
-      console.log('编辑产线:', line);
+    editLine() {
       // 这里添加编辑产线的逻辑
     },
     deleteLine(line) {
       if(confirm(`确定要停用${line.name}吗？`)) {
-        console.log('停用产线:', line);
         // 这里添加停用产线的逻辑
       }
     },
     addNewLine() {
-      console.log('新增产线');
       // 这里添加新增产线的逻辑
     },
     assignManager(line) {
-      console.log('分配管理工长到产线:', line);
-      console.log('当前可用的工长列表:', this.foremen);
       this.selectedLine = line;
       this.showAssignModal = true;
       // 确保工长列表已加载
@@ -482,13 +512,10 @@ export default {
       }
     },
     viewDetails(line) {
-      console.log('查看详情:', line);
       // 跳转到产线详情页面
       this.$router.push(`/supervisor/production-line-detail/${line.id}`);
     },
     async confirmAssign() {
-      console.log(`将${this.selectedLine.name}分配给ID为${this.selectedManager}的工长管理`);
-
       try {
         // 调用API分配工长到产线
         const response = await fetch('/api/production_line/assign-foreman', {
@@ -503,20 +530,7 @@ export default {
           })
         });
 
-        // 先获取响应文本，然后尝试解析为JSON
-        const responseText = await response.text();
-        console.log('原始响应文本:', responseText);
-
-        let result;
-        try {
-          result = JSON.parse(responseText);
-          console.log('分配工长返回结果:', result);
-        } catch (jsonError) {
-          console.error('JSON解析错误:', jsonError);
-          console.error('收到的响应不是有效的JSON:', responseText.substring(0, 100) + '...');
-          alert(`分配失败: 响应数据格式错误`);
-          return;
-        }
+        const result = await response.json();
 
         if (result.success) {
           alert('工长分配成功！');
@@ -526,7 +540,6 @@ export default {
           alert(`分配失败: ${result.error || '未知错误'}`);
         }
       } catch (error) {
-        console.error('分配工长时出错:', error);
         alert('分配失败，请重试');
       }
 
@@ -535,14 +548,12 @@ export default {
     },
     // 查看设备详情
     viewDeviceDetail(device) {
-      console.log('查看设备详情:', device);
       // 跳转到设备详情页面
       this.$router.push(`/supervisor/equipment-detail/${device.id}`);
     },
 
     // 分配维护任务
-    assignMaintenance(device) {
-      console.log('分配设备维护任务:', device);
+    assignMaintenance() {
       // 这里可以增加设备维护任务分配的逻辑
     },
 
@@ -552,7 +563,6 @@ export default {
       this.error.foremen = null;
 
       try {
-        console.log('开始获取工长列表');
         const response = await fetch('/api/users/foremen', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -560,36 +570,20 @@ export default {
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('响应状态错误:', response.status, errorText);
           throw new Error(`获取工长列表失败: ${response.status}`);
         }
 
-        // 先获取响应文本，然后尝试解析为JSON
-        const responseText = await response.text();
-        console.log('原始响应文本:', responseText);
-
-        let result;
-        try {
-          result = JSON.parse(responseText);
-          console.log('工长列表返回数据:', result);
-        } catch (jsonError) {
-          console.error('JSON解析错误:', jsonError);
-          console.error('收到的响应不是有效的JSON:', responseText.substring(0, 100) + '...');
-          throw new Error(`响应数据格式错误: ${jsonError.message}`);
-        }
+        const result = await response.json();
 
         if (result.success && result.data) {
           this.foremen = result.data.map(foreman => ({
             id: foreman.id,  // 这里的id是employee_id
             name: foreman.name
           }));
-          console.log('处理后的工长列表:', this.foremen);
         } else {
-          console.error('获取工长列表失败:', result.error);
+          throw new Error(result.error || '获取工长列表失败');
         }
       } catch (error) {
-        console.error('获取工长列表出错:', error);
         this.error.foremen = error.message || '获取工长列表出错';
         this.foremen = []; // 清空工长列表
       } finally {
@@ -603,69 +597,64 @@ export default {
       this.error.equipments = null;
 
       try {
-        console.log('开始获取设备数据');
+        // 检查缓存是否有效（缓存时间30秒）
+        const now = Date.now();
+        if (this.cachedData.equipments && this.cachedData.timestamp &&
+            (now - this.cachedData.timestamp < 30000)) {
+          this.equipments = this.cachedData.equipments;
+          this.loading.equipments = false;
+          return;
+        }
 
         // 确保先获取产线数据
         if (this.productionLines.length === 0) {
           await this.fetchProductionLines();
         }
 
-        // 从后端获取设备数据
-        console.log('从后端获取设备数据');
-        const response = await fetch('/api/equipment/with-status', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('响应状态错误:', response.status, errorText);
-          throw new Error(`获取设备数据失败: ${response.status}`);
-        }
-
-        // 先获取响应文本，然后尝试解析为JSON
-        const responseText = await response.text();
-        console.log('原始响应文本:', responseText);
-
-        let result;
-        try {
-          result = JSON.parse(responseText);
-          console.log('设备数据返回结果:', result);
-        } catch (jsonError) {
-          console.error('JSON解析错误:', jsonError);
-          console.error('收到的响应不是有效的JSON:', responseText.substring(0, 100) + '...');
-          throw new Error(`响应数据格式错误: ${jsonError.message}`);
-        }
-
-        // 从后端获取用户数据
-        console.log('从后端获取用户数据');
-        let users = [];
-        try {
-          const usersResponse = await fetch('/api/users', {
+        // 并行获取设备数据和用户数据
+        const [equipmentResponse, usersResponse] = await Promise.all([
+          fetch('/api/equipment/with-status', {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
-          });
-
-          if (usersResponse.ok) {
-            const usersResult = await usersResponse.json();
-            console.log('用户数据返回结果:', usersResult);
-            if (usersResult.success && usersResult.data) {
-              users = usersResult.data;
-              console.log('处理后的用户数据:', users);
+          }),
+          fetch('/api/users', {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
             }
-          } else {
-            console.error('获取用户数据失败:', usersResponse.statusText);
-          }
-        } catch (error) {
-          console.error('获取用户数据出错:', error);
-          // 继续处理设备数据，不让用户数据错误影响整体功能
+          })
+        ]);
+
+        if (!equipmentResponse.ok) {
+          throw new Error(`获取设备数据失败: ${equipmentResponse.status}`);
         }
+
+        const result = await equipmentResponse.json();
+
+        // 处理用户数据
+        let users = [];
+        if (usersResponse.ok) {
+          const usersResult = await usersResponse.json();
+          if (usersResult.success && usersResult.data) {
+            users = usersResult.data;
+          }
+        }
+
+        // 创建产线映射表，提高查询效率
+        const lineMap = {};
+        this.productionLines.forEach(line => {
+          lineMap[line.id] = line.name || line.line_name;
+        });
+
+        // 创建用户映射表，提高查询效率
+        const userMap = {};
+        users.forEach(user => {
+          userMap[user.id] = user.name || user.username;
+        });
 
         if (result.success && result.data) {
           // 处理设备数据
-          this.equipments = result.data.map(device => {
+          const processedEquipments = result.data.map(device => {
             // 获取设备状态
             let status = 'running';
             if (device.status === '故障') status = 'stopped';
@@ -687,42 +676,11 @@ export default {
               typeText = '辅助设备';
             }
 
-            // 获取产线名称 - 从产线数组中查找匹配的产线
-            let productionLine = '未知产线';
-            console.log('设备的产线 ID:', device.line_id);
-            console.log('可用的产线列表:', this.productionLines);
+            // 使用映射表获取产线名称
+            const productionLine = lineMap[device.line_id] || '未知产线';
 
-            // 注意：设备的line_id是字符串，而产线的id可能是数字
-            const matchedLine = this.productionLines.find(line => {
-              return String(line.id) === String(device.line_id);
-            });
-
-            if (matchedLine) {
-              console.log('找到匹配的产线:', matchedLine);
-              productionLine = matchedLine.name || matchedLine.line_name;
-            } else {
-              console.log('未找到匹配的产线');
-            }
-
-            // 获取负责人名称 - 从用户数组中查找匹配的用户
-            let manager = '未分配';
-            if (device.worker_id) {
-              console.log('设备的负责人 ID:', device.worker_id);
-              console.log('可用的用户列表:', users);
-
-              // 注意：设备的worker_id对应用户的id字段
-              const matchedUser = users.find(user => {
-                return String(user.id) === String(device.worker_id);
-              });
-
-              if (matchedUser) {
-                console.log('找到匹配的用户:', matchedUser);
-                manager = matchedUser.name || matchedUser.username || device.worker_id;
-              } else {
-                console.log('未找到匹配的用户');
-                manager = device.worker_id; // 如果找不到用户，则显示工号
-              }
-            }
+            // 使用映射表获取负责人名称
+            const manager = device.worker_id ? (userMap[device.worker_id] || device.worker_id) : '未分配';
 
             return {
               id: device.id,
@@ -741,23 +699,64 @@ export default {
             };
           });
 
-          console.log('处理后的设备数据:', this.equipments);
+          // 更新数据和缓存
+          this.equipments = processedEquipments;
+          this.cachedData.equipments = processedEquipments;
+          this.cachedData.timestamp = now;
+
+          // 重置分页到第一页
+          this.pagination.currentPage = 1;
+          this.pagination.total = processedEquipments.length;
         } else {
-          console.error('获取设备数据失败:', result.error || '未知错误');
+          throw new Error(result.error || '未知错误');
         }
       } catch (error) {
-        console.error('获取设备数据出错:', error);
         this.error.equipments = error.message || '获取设备数据出错';
         this.equipments = []; // 清空设备数据
       } finally {
         this.loading.equipments = false;
       }
+    },
+
+    // 切换页面
+    changePage(page) {
+      if (page < 1 || page > this.totalPages) return;
+      this.pagination.currentPage = page;
     }
   }
 }
 </script>
 
 <style scoped>
+/* 分页控件样式 */
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  padding: 10px 0;
+}
+
+.pagination-btn {
+  padding: 6px 12px;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0 5px;
+}
+
+.pagination-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  margin: 0 15px;
+  font-size: 14px;
+  color: #666;
+}
 .monitor-center {
   display: flex;
   flex-direction: column;

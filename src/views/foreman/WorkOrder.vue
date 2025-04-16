@@ -11,6 +11,47 @@
     <div class="content">
       <!-- 工单管理内容 -->
       <div class="workorder-content">
+        <!-- 筛选和操作区 -->
+        <div class="filter-bar">
+          <!-- 工单类型筛选 -->
+          <div class="filter-item">
+            <label for="type-filter">工单类型</label>
+            <select id="type-filter" v-model="filterType" class="filter-select" @change="onFilterTypeChange">
+              <option value="all">全部类型</option>
+              <option value="schedule">排班任务</option>
+              <option value="maintenance">设备维护</option>
+              <option value="inspection">产线巡检</option>
+            </select>
+          </div>
+
+          <!-- 工单状态筛选 -->
+          <div class="filter-item">
+            <label for="status-filter">工单状态</label>
+            <select id="status-filter" v-model="filterStatus" class="filter-select">
+              <option value="all">全部状态</option>
+              <option value="pending">待处理</option>
+              <option value="processing">处理中</option>
+              <option value="completed">已完成</option>
+            </select>
+          </div>
+
+          <!-- 关键词搜索 -->
+          <div class="filter-item search">
+            <input
+              type="text"
+              v-model="searchKeyword"
+              placeholder="搜索工单编号或描述"
+              class="search-input"
+            >
+            <button class="search-btn" @click="searchWorkorders">搜索</button>
+          </div>
+
+          <!-- 刷新按钮 -->
+          <button class="refresh-btn" @click="fetchWorkOrders">
+            <i class="refresh-icon">&#8635;</i> 刷新
+          </button>
+        </div>
+
         <!-- 添加工单按钮 -->
         <div class="action-bar">
           <button class="add-btn" @click="showNewWorkOrderModal = true">
@@ -19,11 +60,24 @@
         </div>
         <!-- 工单列表 -->
         <div class="workorder-list">
-          <div class="workorder-item" v-for="(item, index) in workorders" :key="index">
+          <!-- 加载中提示 -->
+          <div class="loading-container" v-if="loading">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">正在加载工单数据...</div>
+          </div>
+
+          <!-- 无数据提示 -->
+          <div class="empty-container" v-else-if="filteredWorkorders.length === 0">
+            <div class="empty-icon">&#x1F4C4;</div>
+            <div class="empty-text">没有找到符合条件的工单</div>
+          </div>
+
+          <!-- 工单列表内容 -->
+          <div class="workorder-item" v-for="(item, index) in filteredWorkorders" :key="index" v-else>
             <div class="workorder-header">
               <span class="workorder-number">{{ item.number }}</span>
               <span class="workorder-status" :class="item.status">{{ item.statusText }}</span>
-              <span class="workorder-type">类型：{{ item.type }}</span>
+              <span class="workorder-type">类型：{{ getTypeText(item.type || item.task_type) }}</span>
             </div>
             <div class="workorder-body">
               <p class="workorder-desc">{{ item.description }}</p>
@@ -169,7 +223,7 @@
           <div class="detail-item">
             <label>任务类型</label>
             <div class="value">
-              <span class="type-tag">{{ selectedWorkOrder.type }}</span>
+              <span class="type-tag">{{ getTypeText(selectedWorkOrder.type || selectedWorkOrder.task_type) }}</span>
             </div>
           </div>
           <div class="detail-item">
@@ -289,6 +343,12 @@ export default {
       assignedLines: [],
       workorders: [],
 
+      // 筛选相关
+      filterType: 'all',
+      filterStatus: 'all',
+      searchKeyword: '',
+      loading: false,
+
       // 员工列表
       employees: [],
       // 设备列表
@@ -377,6 +437,43 @@ export default {
         return [];
       }
       return this.equipmentsByLine[this.newWorkOrder.production_line] || [];
+    },
+
+    // 筛选后的工单列表
+    filteredWorkorders() {
+      return this.workorders.filter(workorder => {
+        // 类型筛选
+        // 添加调试信息
+        console.log('筛选工单类型:', this.filterType, '工单:', workorder.number, '工单类型:', workorder.task_type, workorder.type);
+
+        const typeMatch = this.filterType === 'all' ||
+          (workorder.task_type === this.filterType) ||
+          (workorder.type === this.filterType) ||
+          // 处理中文类型名称的情况
+          (this.filterType === 'schedule' && (workorder.task_type === '排班任务' || workorder.type === '排班任务')) ||
+          (this.filterType === 'maintenance' && (workorder.task_type === '设备维护' || workorder.type === '设备维护')) ||
+          (this.filterType === 'inspection' && (workorder.task_type === '产线巡检' || workorder.type === '产线巡检'));
+
+        // 状态筛选
+        let statusMatch = this.filterStatus === 'all';
+
+        if (this.filterStatus === 'pending') {
+          statusMatch = workorder.status === 'pending' || workorder.status === '未接受';
+        } else if (this.filterStatus === 'processing') {
+          statusMatch = workorder.status === 'processing' || workorder.status === '处理中' || workorder.status === '已接受';
+        } else if (this.filterStatus === 'completed') {
+          statusMatch = workorder.status === 'completed' || workorder.status === '已完成';
+        }
+
+        // 关键词搜索
+        const keyword = this.searchKeyword.toLowerCase();
+        const keywordMatch = !keyword ||
+          (workorder.number && workorder.number.toLowerCase().includes(keyword)) ||
+          (workorder.description && workorder.description.toLowerCase().includes(keyword)) ||
+          (workorder.task_details && workorder.task_details.toLowerCase().includes(keyword));
+
+        return typeMatch && statusMatch && keywordMatch;
+      });
     },
   },
   methods: {
@@ -589,6 +686,14 @@ export default {
           return;
         }
 
+        // 设置加载状态
+        this.loading = true;
+
+        // 重置筛选条件
+        this.filterType = 'all';
+        this.filterStatus = 'all';
+        this.searchKeyword = '';
+
         console.log('开始获取工单数据,工长组号:', this.currentForeman.group_id);
         const response = await fetch(`/api/workorders/foreman-workorders?group_id=${this.currentForeman.group_id}`, {
           headers: {
@@ -622,6 +727,16 @@ export default {
               foreman_name: workorder.foreman_name
             };
 
+            // 确保 task_type 字段存在且与 type 一致
+            if (!wo.task_type && wo.type) {
+              wo.task_type = wo.type;
+            } else if (!wo.type && wo.task_type) {
+              wo.type = wo.task_type;
+            }
+
+            // 输出工单类型信息，帮助调试
+            console.log(`工单 ${wo.number} 类型信息: task_type=${wo.task_type}, type=${wo.type}`);
+
             // 如果扩展字段是字符串，尝试解析为JSON对象
             if (typeof workorder.extension_fields === 'string') {
               try {
@@ -641,6 +756,9 @@ export default {
       } catch (error) {
         console.error('请求工单列表出错:', error);
         this.$message.error('获取工单列表失败');
+      } finally {
+        // 无论成功失败，都关闭加载状态
+        this.loading = false;
       }
     },
 
@@ -1203,6 +1321,40 @@ export default {
       this.showWorkOrderDetailModal = false; // 关闭详情模态框
     },
 
+    // 工单类型筛选变化处理
+    onFilterTypeChange() {
+      console.log('工单类型筛选已更改为:', this.filterType);
+
+      // 输出所有工单的类型信息，帮助调试
+      this.workorders.forEach(workorder => {
+        const isMatch = this.filterType === 'all' ||
+          (workorder.task_type === this.filterType) ||
+          (workorder.type === this.filterType) ||
+          (this.filterType === 'schedule' && (workorder.task_type === '排班任务' || workorder.type === '排班任务')) ||
+          (this.filterType === 'maintenance' && (workorder.task_type === '设备维护' || workorder.type === '设备维护')) ||
+          (this.filterType === 'inspection' && (workorder.task_type === '产线巡检' || workorder.type === '产线巡检'));
+
+        console.log(`工单 ${workorder.number} 类型信息: task_type=${workorder.task_type}, type=${workorder.type}, 是否匹配=${isMatch}`);
+      });
+
+      // 输出筛选后的工单数量
+      console.log('筛选后的工单数量:', this.filteredWorkorders.length);
+    },
+
+    // 搜索工单
+    searchWorkorders() {
+      console.log('搜索关键词:', this.searchKeyword);
+      console.log('当前筛选条件 - 类型:', this.filterType, '状态:', this.filterStatus);
+      console.log('筛选后的工单数量:', this.filteredWorkorders.length);
+
+      // 输出所有工单的类型信息，帮助调试
+      this.workorders.forEach(workorder => {
+        console.log(`工单 ${workorder.number} 类型信息: task_type=${workorder.task_type}, type=${workorder.type}`);
+      });
+
+      // 不需要额外的操作，因为我们已经在 filteredWorkorders 计算属性中处理了搜索逻辑
+    },
+
     // 删除工单
     async deleteWorkOrder() {
       try {
@@ -1313,6 +1465,76 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 15px;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 15px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+}
+
+.filter-item label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+}
+
+.filter-item.search {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.search-input {
+  flex-grow: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.search-btn {
+  padding: 8px 16px;
+  background: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.refresh-btn {
+  padding: 8px 16px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.refresh-icon {
+  font-size: 16px;
 }
 
 .action-bar {
@@ -1629,5 +1851,60 @@ export default {
 .btn.assign {
   background-color: #4CAF50;
   color: white;
+}
+
+/* 加载和空数据状态样式 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #2196F3;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  color: #666;
+  font-size: 16px;
+}
+
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: #ccc;
+  margin-bottom: 15px;
+}
+
+.empty-text {
+  color: #666;
+  font-size: 16px;
 }
 </style>
