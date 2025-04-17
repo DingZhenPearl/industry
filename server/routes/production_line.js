@@ -116,6 +116,31 @@ router.get('/status-history', authMiddleware, async (req, res) => {
   }
 });
 
+// 获取单个产线的详细信息
+router.get('/detail', authMiddleware, async (req, res) => {
+  const line_id = req.query.line_id;
+
+  if (!line_id) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少产线ID参数'
+    });
+  }
+
+  try {
+    const result = await runPythonScript(
+      'pyScripts/production_line_manager.py',
+      ['get-detail', '--line-id', line_id],
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('获取产线详情出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
 // 添加新产线
 router.post('/add', authMiddleware, async (req, res) => {
   const lineData = req.body;

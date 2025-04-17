@@ -391,6 +391,103 @@ def assign_foreman_to_line(line_id, foreman_id):
             cursor.close()
             connection.close()
 
+def get_production_line_detail(line_id):
+    """获取单个产线的详细信息及其最新状态和设备信息"""
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        # 获取产线基本信息及最新状态
+        query = """
+            SELECT pl.*,
+                   pls.runtime_hours,
+                   pls.real_time_capacity,
+                   pls.collection_time,
+                   u.username as foreman_name
+            FROM production_line pl
+            LEFT JOIN (
+                SELECT pls1.*
+                FROM production_line_status pls1
+                INNER JOIN (
+                    SELECT line_id, MAX(collection_time) as max_time
+                    FROM production_line_status
+                    GROUP BY line_id
+                ) pls2 ON pls1.line_id = pls2.line_id AND pls1.collection_time = pls2.max_time
+            ) pls ON pl.id = pls.line_id
+            LEFT JOIN users u ON pl.foreman_id = u.employee_id
+            WHERE pl.id = %s
+        """
+
+        cursor.execute(query, (line_id,))
+        line_data = cursor.fetchone()
+
+        if not line_data:
+            print(json.dumps({
+                'success': False,
+                'error': f'未找到ID为{line_id}的产线'
+            }, ensure_ascii=False))
+            return
+
+        # 处理JSON字段
+        if 'equipment_list' in line_data and line_data['equipment_list']:
+            try:
+                if isinstance(line_data['equipment_list'], str):
+                    line_data['equipment_list'] = json.loads(line_data['equipment_list'])
+            except:
+                pass  # 如果解析失败，保持原样
+
+        # 获取产线上的设备信息
+        equipment_query = """
+            SELECT e.*, es.runtime_hours, es.fault_probability, es.collection_time, es.sensor_data,
+                   u.username as worker_name
+            FROM equipment e
+            LEFT JOIN (
+                SELECT es1.*
+                FROM equipment_status es1
+                INNER JOIN (
+                    SELECT equipment_id, MAX(collection_time) as max_time
+                    FROM equipment_status
+                    GROUP BY equipment_id
+                ) es2 ON es1.equipment_id = es2.equipment_id AND es1.collection_time = es2.max_time
+            ) es ON e.id = es.equipment_id
+            LEFT JOIN users u ON e.worker_id = u.employee_id
+            WHERE e.line_id = %s
+        """
+
+        cursor.execute(equipment_query, (line_id,))
+        equipment_data = cursor.fetchall()
+
+        # 处理设备的JSON字段
+        for device in equipment_data:
+            if 'sensor_data' in device and device['sensor_data']:
+                try:
+                    if isinstance(device['sensor_data'], str):
+                        device['sensor_data'] = json.loads(device['sensor_data'])
+                except:
+                    pass  # 如果解析失败，保持原样
+
+        # 组合结果
+        result = {
+            'line': line_data,
+            'equipment': equipment_data
+        }
+
+        print(json.dumps({
+            'success': True,
+            'data': result
+        }, ensure_ascii=False, cls=DateTimeEncoder))
+
+    except Error as e:
+        print(json.dumps({
+            'success': False,
+            'error': f'获取产线详情时出错: {str(e)}'
+        }, ensure_ascii=False))
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
 # =============================================
 # 主函数
 # =============================================
@@ -431,6 +528,10 @@ def main():
     # 获取产线及其状态命令
     combined_parser = subparsers.add_parser('get-with-status', help='获取产线及其最新状态')
 
+    # 获取单个产线详情命令
+    detail_parser = subparsers.add_parser('get-detail', help='获取单个产线的详细信息')
+    detail_parser.add_argument('--line-id', required=True, type=int, help='产线ID')
+
     args = parser.parse_args()
 
     if args.command == 'create-tables':
@@ -463,6 +564,8 @@ def main():
         get_production_line_status(args.line_id, args.limit)
     elif args.command == 'get-with-status':
         get_production_line_with_status()
+    elif args.command == 'get-detail':
+        get_production_line_detail(args.line_id)
     else:
         parser.print_help()
 

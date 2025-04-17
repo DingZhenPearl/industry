@@ -84,32 +84,7 @@
         </div>
       </div>
 
-      <!-- 人员排班信息 -->
-      <div class="staff-section">
-        <h2>人员排班</h2>
-        <div class="shift-schedule">
-          <table>
-            <thead>
-              <tr>
-                <th>班次</th>
-                <th>时间</th>
-                <th>工长</th>
-                <th>操作员</th>
-                <th>质检员</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="shift in shifts" :key="shift.id">
-                <td>{{ shift.name }}</td>
-                <td>{{ shift.time }}</td>
-                <td>{{ shift.foreman }}</td>
-                <td>{{ shift.operators.join(', ') }}</td>
-                <td>{{ shift.inspector }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
+
     </div>
   </div>
 </template>
@@ -122,72 +97,141 @@ export default {
   data() {
     return {
       productionLine: {
-        id: 1,
-        name: '一号生产线',
-        status: 'running',
-        statusText: '运行中',
-        utilization: 95,
-        output: 850,
-        target: 1000,
-        runtime: 18.5,
-        manager: '张工长'
+        id: 0,
+        name: '加载中...',
+        status: '',
+        statusText: '加载中',
+        utilization: 0,
+        output: 0,
+        target: 0,
+        runtime: 0,
+        manager: ''
       },
-      devices: [
-        {
-          id: 1,
-          name: '注塑机A-01',
-          type: 'production',
-          typeText: '生产设备',
-          status: 'running',
-          runtime: 126.5,
-          manager: '张工'
-        },
-        {
-          id: 2,
-          name: '检测仪B-01',
-          type: 'inspection',
-          typeText: '检测设备',
-          status: 'warning',
-          runtime: 85.2,
-          manager: '李工'
-        }
-      ],
-      shifts: [
-        {
-          id: 1,
-          name: '早班',
-          time: '06:00-14:00',
-          foreman: '张工长',
-          operators: ['王操作员', '李操作员'],
-          inspector: '赵质检'
-        },
-        {
-          id: 2,
-          name: '中班',
-          time: '14:00-22:00',
-          foreman: '李工长',
-          operators: ['刘操作员', '陈操作员'],
-          inspector: '钱质检'
-        }
-      ],
+      devices: [],
+      loading: {
+        productionLine: false,
+        devices: false
+      },
+      error: {
+        productionLine: null,
+        devices: null
+      },
+
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       zoomLevel: 'day'
+    }
+  },
+  created() {
+    // 获取产线ID并加载数据
+    const lineId = this.$route.params.id;
+    if (lineId) {
+      this.fetchProductionLineDetail(lineId);
     }
   },
   mounted() {
     this.initGantt()
   },
   methods: {
+    async fetchProductionLineDetail(lineId) {
+      this.loading.productionLine = true;
+      this.error.productionLine = null;
+
+      try {
+        const response = await fetch(`/api/production_line/detail?line_id=${lineId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取产线详情失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          // 处理产线数据
+          const lineData = result.data.line;
+
+          // 根据状态设置状态文本
+          let statusText = '未知';
+          let status = '';
+
+          if (lineData.status === '正常') {
+            statusText = '运行中';
+            status = 'running';
+          } else if (lineData.status === '异常') {
+            statusText = '异常';
+            status = 'warning';
+          } else if (lineData.status === '停机') {
+            statusText = '已停机';
+            status = 'stopped';
+          }
+
+          // 计算产能利用率
+          const utilization = lineData.real_time_capacity && lineData.theoretical_capacity ?
+            Math.round((lineData.real_time_capacity / lineData.theoretical_capacity) * 100) : 0;
+
+          this.productionLine = {
+            id: lineData.id,
+            name: lineData.line_name,
+            status: status,
+            statusText: statusText,
+            utilization: utilization,
+            output: lineData.real_time_capacity || 0,
+            target: lineData.theoretical_capacity || 0,
+            runtime: lineData.runtime_hours || 0,
+            manager: lineData.foreman_name || '未分配'
+          };
+
+          // 处理设备数据
+          if (result.data.equipment && result.data.equipment.length > 0) {
+            this.devices = result.data.equipment.map(device => {
+              // 根据设备状态设置状态文本
+              let deviceStatus = 'running';
+              let deviceTypeText = '生产设备';
+
+              if (device.status === '异常') {
+                deviceStatus = 'warning';
+              } else if (device.status === '停机') {
+                deviceStatus = 'stopped';
+              }
+
+              if (device.type === 'inspection') {
+                deviceTypeText = '检测设备';
+              }
+
+              return {
+                id: device.id,
+                name: device.equipment_name,
+                type: device.type || 'production',
+                typeText: deviceTypeText,
+                status: deviceStatus,
+                runtime: device.runtime_hours || 0,
+                manager: device.worker_name || '未分配'
+              };
+            });
+          }
+        } else {
+          throw new Error(result.error || '获取产线详情失败');
+        }
+      } catch (error) {
+        this.error.productionLine = error.message || '获取产线详情出错';
+        console.error('获取产线详情出错:', error);
+      } finally {
+        this.loading.productionLine = false;
+      }
+    },
     initGantt() {
       // 使用window.gantt访问甘特图对象
       const gantt = window.gantt
       gantt.init(this.$refs.ganttContainer)
-      
+
       // 配置甘特图
       gantt.config.date_format = '%Y-%m-%d %H:%i'
       gantt.config.scale_height = 60
-      
+
       // 示例数据
       const tasks = {
         data: [
@@ -198,7 +242,7 @@ export default {
           { id: 1, source: 1, target: 2, type: '0' }
         ]
       }
-      
+
       gantt.parse(tasks)
     },
     updateGantt() {
@@ -414,26 +458,5 @@ export default {
   color: #ff9800;
 }
 
-.staff-section {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-}
 
-.shift-schedule table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.shift-schedule th,
-.shift-schedule td {
-  padding: 12px;
-  text-align: left;
-  border-bottom: 1px solid #eee;
-}
-
-.shift-schedule th {
-  background: #f5f5f5;
-  font-weight: bold;
-}
 </style>
