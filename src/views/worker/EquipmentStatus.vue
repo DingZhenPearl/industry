@@ -5,16 +5,14 @@
     </header>
 
     <div class="content">
-      <!-- 加载中提示 -->
-      <div class="loading-container" v-if="loading">
-        <div class="loading-spinner"></div>
-        <p>正在加载设备数据...</p>
-      </div>
-
-      <!-- 错误提示 -->
-      <div class="error-container" v-if="error">
-        <p class="error-message">{{ error }}</p>
-        <button class="retry-btn" @click="fetchMyDevices">重试</button>
+      <!-- 设备选择器，当有多个设备时显示 -->
+      <div class="device-selector" v-if="!loading && !error && myDevices.length > 1">
+        <label for="device-select">选择设备：</label>
+        <select id="device-select" v-model="selectedDeviceId" @change="onDeviceChange" class="device-select">
+          <option v-for="device in myDevices" :key="device.id" :value="device.id">
+            {{ device.name }} ({{ device.code }})
+          </option>
+        </select>
       </div>
 
       <!-- 无设备提示 -->
@@ -23,62 +21,29 @@
         <p>您当前没有负责的设备</p>
       </div>
 
-      <!-- 设备列表 -->
-      <div v-if="!loading && !error && myDevices.length > 0">
-        <!-- 设备选择器，当有多个设备时显示 -->
-        <div class="device-selector" v-if="myDevices.length > 1">
-          <label for="device-select">选择设备：</label>
-          <select id="device-select" v-model="selectedDeviceId" @change="onDeviceChange" class="device-select">
-            <option v-for="device in myDevices" :key="device.id" :value="device.id">
-              {{ device.name }} ({{ device.code }})
-            </option>
-          </select>
-        </div>
-
-        <!-- 当前选中设备的状态卡片 -->
-        <div class="assigned-device" v-if="currentDevice">
-          <div class="device-header">
-            <h3>设备状态</h3>
-            <span :class="['status-tag', currentDevice.status]">{{ currentDevice.statusText }}</span>
-          </div>
-          <div class="device-body">
-            <div class="info-row">
-              <span>设备名称：{{ currentDevice.name }}</span>
-              <span>设备编号：{{ currentDevice.code }}</span>
-            </div>
-            <div class="info-row">
-              <span>所属产线：{{ currentDevice.productionLine }}</span>
-              <span>运行时长：{{ currentDevice.runtime }}h</span>
-            </div>
-            <div class="parameter-list">
-              <template v-if="currentDevice.sensorData && Object.keys(currentDevice.sensorData).length > 0">
-                <div class="parameter-item" v-for="(value, key) in currentDevice.sensorData" :key="key">
-                  <span class="label">{{ getSensorLabel(key) }}</span>
-                  <span class="value" :class="{ warning: isSensorWarning(key, value) }">
-                    {{ formatSensorValue(key, value) }}
-                  </span>
-                </div>
-              </template>
-              <div class="parameter-item" v-else>
-                <span class="label">故障概率</span>
-                <span class="value" :class="{ warning: currentDevice.faultProbability > 0.3 }">
-                  {{ Math.round(currentDevice.faultProbability * 100) }}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 操作按钮组 -->
-        <div class="action-group" v-if="currentDevice">
+      <!-- 使用设备详情组件 -->
+      <equipment-detail-component
+        v-if="myDevices.length > 0"
+        :equipment="currentDevice"
+        :device-history="deviceHistory"
+        :loading="loading"
+        :error="error"
+        :auto-refresh-enabled="autoRefresh"
+        :refresh-rate="refreshRate"
+        @retry="fetchMyDevices"
+        @refresh-data="fetchLatestDeviceData"
+        @fetch-history="fetchDeviceHistory"
+      >
+        <!-- 自定义操作按钮 -->
+        <template v-slot:actions>
           <button
             class="action-btn"
-            :class="{ disabled: currentDevice.status === 'stopped' }"
+            :class="{ disabled: currentDevice && currentDevice.status === 'stopped' }"
             @click="checkParameters"
           >参数检查</button>
           <button
             class="action-btn"
-            :class="{ disabled: currentDevice.status === 'stopped' }"
+            :class="{ disabled: currentDevice && currentDevice.status === 'stopped' }"
             @click="reportIssue"
           >故障上报</button>
           <button
@@ -89,48 +54,21 @@
             class="action-btn refresh"
             @click="refreshDeviceData"
           >刷新数据</button>
-        </div>
-
-        <!-- 参数图表 -->
-        <div class="parameter-chart" v-if="currentDevice">
-          <div class="chart-header">
-            <h3>参数变化图表</h3>
-            <div class="chart-controls">
-              <select v-model="selectedParameter" class="parameter-select" @change="updateChart">
-                <option v-for="(label, key) in sensorLabels" :key="key" :value="key">
-                  {{ label }}
-                </option>
-                <option value="fault_probability">故障概率</option>
-              </select>
-              <select v-model="historyLimit" class="limit-select" @change="fetchDeviceHistory">
-                <option value="10">10条记录</option>
-                <option value="20">20条记录</option>
-                <option value="30">30条记录</option>
-                <option value="50">50条记录</option>
-              </select>
-              <button
-                class="auto-refresh-btn"
-                :class="{ active: autoRefresh }"
-                @click="toggleAutoRefresh"
-              >
-                {{ autoRefresh ? '实时更新中' : '开启实时更新' }}
-              </button>
-            </div>
-          </div>
-          <div class="chart-container" ref="chartContainer"></div>
-        </div>
+        </template>
 
         <!-- 运行日志 -->
-        <div class="operation-log" v-if="currentDevice">
-          <h3>运行日志</h3>
-          <div class="log-list">
-            <div class="log-item" v-for="log in operationLogs" :key="log.time">
-              <span class="log-time">{{ log.time }}</span>
-              <span class="log-content">{{ log.content }}</span>
+        <template v-slot:extra-content>
+          <div class="operation-log">
+            <h3>运行日志</h3>
+            <div class="log-list">
+              <div class="log-item" v-for="log in operationLogs" :key="log.time">
+                <span class="log-time">{{ log.time }}</span>
+                <span class="log-content">{{ log.content }}</span>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </template>
+      </equipment-detail-component>
     </div>
 
     <WorkerNav />
@@ -139,12 +77,13 @@
 
 <script>
 import WorkerNav from '@/components/WorkerNav.vue'
-import * as echarts from 'echarts'
+import EquipmentDetailComponent from '@/components/EquipmentDetailComponent.vue'
 
 export default {
   name: 'EquipmentStatus',
   components: {
-    WorkerNav
+    WorkerNav,
+    EquipmentDetailComponent
   },
   data() {
     return {
@@ -153,23 +92,9 @@ export default {
       myDevices: [],
       selectedDeviceId: null,
       currentUserInfo: {},
-      historyLimit: '10',
-      selectedParameter: 'temperature',
       deviceHistory: [],
-      chartInstance: null,
       autoRefresh: true,
-      refreshInterval: null,
       refreshRate: 10000, // 10秒更新一次
-      sensorLabels: {
-        'temperature': '温度',
-        'pressure': '压力',
-        'speed': '转速',
-        'vibration': '振动',
-        'noise': '噪音',
-        'humidity': '湿度',
-        'voltage': '电压',
-        'current': '电流'
-      },
       operationLogs: [
         { time: '2023-07-10 10:30', content: '完成设备检查' },
         { time: '2023-07-10 09:15', content: '设备启动运行' },
@@ -191,19 +116,15 @@ export default {
     this.getCurrentUserInfo();
     // 获取工人负责的设备
     this.fetchMyDevices();
+
+    // 打印自动刷新设置
+    console.log('工人设备详情页面初始化，自动刷新:', this.autoRefresh, '刷新间隔:', this.refreshRate);
   },
   mounted() {
-    window.addEventListener('resize', this.resizeChart);
-    // 启动自动刷新
-    this.startAutoRefresh();
+    // 组件内部会处理自动刷新
   },
   beforeDestroy() {
-    window.removeEventListener('resize', this.resizeChart);
-    if (this.chartInstance) {
-      this.chartInstance.dispose();
-    }
-    // 清除定时器
-    this.stopAutoRefresh();
+    // 组件内部会处理清理工作
   },
   watch: {
     currentDevice(newDevice) {
@@ -270,10 +191,12 @@ export default {
               if (status === 'warning') statusText = '预警';
               else if (status === 'stopped') statusText = '已停机';
 
-              return {
+              // 创建设备对象
+              const deviceObj = {
                 id: device.id,
                 name: device.equipment_name,
                 code: device.equipment_code,
+                line_id: device.line_id,
                 productionLine: device.line_name || '未知产线',
                 status: status,
                 statusText: statusText,
@@ -281,6 +204,10 @@ export default {
                 faultProbability: device.fault_probability || 0,
                 sensorData: device.sensor_data || {}
               };
+
+              console.log('设备产线名称:', device.line_name);
+
+              return deviceObj;
             });
 
           // 如果有设备，选中第一个
@@ -304,39 +231,6 @@ export default {
       // 刷新图表数据
       if (this.currentDevice) {
         this.fetchDeviceHistory();
-      }
-    },
-
-    // 开始自动刷新
-    startAutoRefresh() {
-      if (this.refreshInterval) {
-        clearInterval(this.refreshInterval);
-      }
-
-      if (this.autoRefresh) {
-        this.refreshInterval = setInterval(() => {
-          if (this.currentDevice) {
-            this.fetchLatestDeviceData();
-          }
-        }, this.refreshRate);
-      }
-    },
-
-    // 停止自动刷新
-    stopAutoRefresh() {
-      if (this.refreshInterval) {
-        clearInterval(this.refreshInterval);
-        this.refreshInterval = null;
-      }
-    },
-
-    // 切换自动刷新状态
-    toggleAutoRefresh() {
-      this.autoRefresh = !this.autoRefresh;
-      if (this.autoRefresh) {
-        this.startAutoRefresh();
-      } else {
-        this.stopAutoRefresh();
       }
     },
 
@@ -376,16 +270,22 @@ export default {
                            new Date(latestData.collection_time) > new Date(this.deviceHistory[this.deviceHistory.length - 1].collection_time);
 
           if (isNewData) {
+            console.log('检测到新数据，添加到历史数据中');
             // 添加新数据到历史数据中
             this.deviceHistory.push(latestData);
 
             // 如果历史数据超过限制，删除最早的数据
-            if (this.deviceHistory.length > parseInt(this.historyLimit)) {
+            if (this.deviceHistory.length > parseInt(this.historyLimit || 10)) {
               this.deviceHistory.shift();
             }
 
-            // 更新图表
-            this.updateChart();
+            // 对数据进行排序，确保按时间正序排列
+            this.deviceHistory.sort((a, b) => new Date(a.collection_time) - new Date(b.collection_time));
+
+            // 创建一个新数组，触发Vue的响应式更新
+            this.deviceHistory = [...this.deviceHistory];
+
+            // 图表将自动更新，因为我们修改了 deviceHistory
 
             // 更新当前设备的传感器数据
             if (this.currentDevice && latestData.sensor_data) {
@@ -413,16 +313,14 @@ export default {
     onDeviceChange() {
       console.log('选中设备:', this.selectedDeviceId);
       this.fetchDeviceHistory();
-      // 重新启动自动刷新
-      this.startAutoRefresh();
     },
 
     // 获取设备历史数据
-    async fetchDeviceHistory() {
+    async fetchDeviceHistory(limit = 10) {
       if (!this.currentDevice) return;
 
       try {
-        const response = await fetch(`/api/equipment/status-history?equipment_id=${this.currentDevice.id}&limit=${this.historyLimit}`, {
+        const response = await fetch(`/api/equipment/status-history?equipment_id=${this.currentDevice.id}&limit=${limit}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -451,226 +349,12 @@ export default {
               }
               return item;
             });
-
-          // 更新图表
-          this.updateChart();
         } else {
           console.error('获取设备历史数据失败:', result.error || '未知错误');
         }
       } catch (error) {
         console.error('获取设备历史数据出错:', error);
       }
-    },
-
-    // 初始化图表
-    initChart() {
-      if (this.chartInstance) {
-        this.chartInstance.dispose();
-      }
-
-      const chartDom = this.$refs.chartContainer;
-      if (!chartDom) return;
-
-      this.chartInstance = echarts.init(chartDom);
-      this.updateChart();
-    },
-
-    // 更新图表
-    updateChart() {
-      if (!this.chartInstance) {
-        this.initChart();
-        return;
-      }
-
-      if (!this.deviceHistory.length) return;
-
-      const xAxisData = [];
-      const seriesData = [];
-
-      // 准备图表数据
-      this.deviceHistory.forEach(item => {
-        // 格式化时间
-        const date = new Date(item.collection_time);
-        const timeStr = `${date.getMonth()+1}-${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
-        xAxisData.push(timeStr);
-
-        // 获取数据值
-        if (this.selectedParameter === 'fault_probability') {
-          // 如果是故障概率，直接使用
-          seriesData.push((item.fault_probability * 100).toFixed(2));
-        } else if (item.sensor_data && item.sensor_data[this.selectedParameter] !== undefined) {
-          // 如果是传感器数据，从传感器数据中获取
-          seriesData.push(item.sensor_data[this.selectedParameter]);
-        } else {
-          // 如果没有数据，使用null
-          seriesData.push(null);
-        }
-      });
-
-      // 设置图表选项
-      const option = {
-        title: {
-          text: this.getParameterTitle(),
-          left: 'center'
-        },
-        tooltip: {
-          trigger: 'axis',
-          formatter: (params) => {
-            const param = params[0];
-            return `${param.name}<br/>${this.getParameterTitle()}: ${param.value}${this.getParameterUnit()}`;
-          }
-        },
-        grid: {
-          left: '3%',
-          right: '4%',
-          bottom: '3%',
-          containLabel: true
-        },
-        xAxis: {
-          type: 'category',
-          data: xAxisData,
-          axisLabel: {
-            rotate: 30
-          }
-        },
-        yAxis: {
-          type: 'value',
-          name: this.getParameterUnit(),
-          nameLocation: 'end'
-        },
-        series: [{
-          name: this.getParameterTitle(),
-          type: 'line',
-          data: seriesData,
-          smooth: true,
-          markPoint: {
-            data: [
-              { type: 'max', name: '最大值' },
-              { type: 'min', name: '最小值' }
-            ]
-          },
-          markLine: {
-            data: [
-              { type: 'average', name: '平均值' }
-            ]
-          },
-          lineStyle: {
-            width: 3
-          },
-          itemStyle: {
-            color: this.getParameterColor()
-          },
-          areaStyle: {
-            color: {
-              type: 'linear',
-              x: 0,
-              y: 0,
-              x2: 0,
-              y2: 1,
-              colorStops: [{
-                offset: 0, color: this.getParameterColor(0.6)
-              }, {
-                offset: 1, color: this.getParameterColor(0.1)
-              }]
-            }
-          }
-        }]
-      };
-
-      this.chartInstance.setOption(option);
-    },
-
-    // 调整图表大小
-    resizeChart() {
-      if (this.chartInstance) {
-        this.chartInstance.resize();
-      }
-    },
-
-    // 获取参数标题
-    getParameterTitle() {
-      if (this.selectedParameter === 'fault_probability') {
-        return '故障概率';
-      }
-      return this.sensorLabels[this.selectedParameter] || this.selectedParameter;
-    },
-
-    // 获取参数单位
-    getParameterUnit() {
-      if (this.selectedParameter === 'fault_probability') {
-        return '%';
-      }
-
-      const unitMap = {
-        'temperature': '°C',
-        'pressure': 'MPa',
-        'speed': 'rpm',
-        'vibration': 'mm/s',
-        'noise': 'dB',
-        'humidity': '%',
-        'voltage': 'V',
-        'current': 'A'
-      };
-
-      return unitMap[this.selectedParameter] || '';
-    },
-
-    // 获取参数颜色
-    getParameterColor(alpha = 1) {
-      const colorMap = {
-        'temperature': `rgba(255, 69, 0, ${alpha})`,  // 温度用红色
-        'pressure': `rgba(30, 144, 255, ${alpha})`,   // 压力用蓝色
-        'speed': `rgba(50, 205, 50, ${alpha})`,       // 转速用绿色
-        'vibration': `rgba(255, 165, 0, ${alpha})`,   // 振动用橙色
-        'noise': `rgba(128, 0, 128, ${alpha})`,       // 噪音用紫色
-        'humidity': `rgba(0, 191, 255, ${alpha})`,    // 湿度用浅蓝色
-        'voltage': `rgba(255, 215, 0, ${alpha})`,     // 电压用金色
-        'current': `rgba(139, 69, 19, ${alpha})`,     // 电流用棕色
-        'fault_probability': `rgba(220, 20, 60, ${alpha})` // 故障概率用深红色
-      };
-
-      return colorMap[this.selectedParameter] || `rgba(65, 105, 225, ${alpha})`;
-    },
-
-    // 获取传感器标签
-    getSensorLabel(key) {
-      const labelMap = {
-        'temperature': '温度',
-        'pressure': '压力',
-        'speed': '转速',
-        'vibration': '振动',
-        'noise': '噪音',
-        'humidity': '湿度',
-        'voltage': '电压',
-        'current': '电流'
-      };
-      return labelMap[key] || key;
-    },
-
-    // 格式化传感器值
-    formatSensorValue(key, value) {
-      const unitMap = {
-        'temperature': '°C',
-        'pressure': 'MPa',
-        'speed': 'rpm',
-        'vibration': 'mm/s',
-        'noise': 'dB',
-        'humidity': '%',
-        'voltage': 'V',
-        'current': 'A'
-      };
-      return `${value}${unitMap[key] || ''}`;
-    },
-
-    // 判断传感器值是否异常
-    isSensorWarning(key, value) {
-      const warningThresholds = {
-        'temperature': 80,
-        'pressure': 20,
-        'vibration': 10,
-        'noise': 90
-      };
-      return warningThresholds[key] && value > warningThresholds[key];
     },
 
     // 检查参数
@@ -688,7 +372,9 @@ export default {
     // 查看操作手册
     viewManual() {
       console.log('查看设备操作手册');
-    }
+    },
+
+
   }
 }
 </script>
@@ -886,53 +572,7 @@ export default {
   cursor: not-allowed;
 }
 
-.parameter-chart {
-  background: white;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
 
-.chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.chart-controls {
-  display: flex;
-  gap: 10px;
-}
-
-.parameter-select, .limit-select {
-  padding: 6px 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.auto-refresh-btn {
-  padding: 6px 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  background-color: #f5f5f5;
-  color: #333;
-  cursor: pointer;
-}
-
-.auto-refresh-btn.active {
-  background-color: #e3f2fd;
-  color: #2196F3;
-  border-color: #2196F3;
-}
-
-.chart-container {
-  width: 100%;
-  height: 300px;
-}
 
 .operation-log {
   background: white;

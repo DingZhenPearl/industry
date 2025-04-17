@@ -218,6 +218,7 @@
                   </td>
                   <td>{{ device.lastCheck }}</td>
                   <td>
+                    <button class="action-btn" @click="viewDeviceDetail(device)">查看详情</button>
                     <button class="action-btn" @click="startInspectionForDevice(device)">开始巡检</button>
                     <button class="action-btn warning" v-if="device.riskLevel === 'high'" @click="createSafetyAlert(device)">安全预警</button>
                   </td>
@@ -572,6 +573,13 @@ export default {
       this.showInspectionModal = false;
     },
 
+    // 查看设备详情
+    viewDeviceDetail(device) {
+      console.log('查看设备详情:', device);
+      // 跳转到设备详情页面
+      this.$router.push(`/safety/equipment-detail/${device.id}`);
+    },
+
     // 对特定设备开始巡检
     startInspectionForDevice(device) {
       console.log('对设备开始安全巡检:', device);
@@ -828,7 +836,15 @@ export default {
     formatEquipments(equipments) {
       return equipments.map(equipment => {
         // 获取关联的产线名称
-        const productionLine = this.productionLines.find(line => line.id === equipment.line_id)?.name || '未知产线';
+        // 优先使用设备数据中的 line_name 字段
+        const productionLine = equipment.line_name || this.productionLines.find(line => line.id === equipment.line_id)?.name || '未知产线';
+        console.log('设备产线信息:', {
+          equipment_id: equipment.id,
+          equipment_name: equipment.equipment_name,
+          line_id: equipment.line_id,
+          line_name: equipment.line_name,
+          productionLine: productionLine
+        });
 
         // 解析传感器数据
         let temperature = 0;

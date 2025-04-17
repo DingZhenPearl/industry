@@ -16,6 +16,11 @@ const foremanRoutes = [
     component: () => import('../views/foreman/Equipment.vue')
   },
   {
+    path: '/foreman/equipment-detail/:id',
+    name: 'ForemanEquipmentDetail',
+    component: () => import('../views/foreman/EquipmentDetail.vue')
+  },
+  {
     path: '/foreman/team',
     name: 'Team',
     component: () => import('../views/foreman/TeamManagement.vue')
@@ -50,7 +55,7 @@ const workerRoutes = [
   },
   {
     path: '/worker/profile',
-    name: 'WorkerProfile', 
+    name: 'WorkerProfile',
     component: () => import('../views/worker/Account.vue')
   }
 ]
@@ -110,6 +115,11 @@ const safetyRoutes = [
     component: () => import('../views/safety/Inspection.vue')
   },
   {
+    path: '/safety/equipment-detail/:id',
+    name: 'SafetyEquipmentDetail',
+    component: () => import('../views/safety/EquipmentDetail.vue')
+  },
+  {
     path: '/safety/statistics',
     name: 'SafetyStatistics',
     component: () => import('../views/safety/Statistics.vue')
@@ -144,7 +154,7 @@ const router = new VueRouter({
 // 修改导航守卫
 router.beforeEach((to, from, next) => {
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-  
+
   if (to.path === '/login') {
     next()
     return

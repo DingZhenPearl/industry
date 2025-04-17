@@ -91,13 +91,14 @@ def get_equipment_by_group(group_id):
         # 构建IN子句的参数占位符
         line_placeholders = ', '.join(['%s'] * len(line_ids))
 
-        # 查询这些产线上的设备及其最新状态
+        # 查询这些产线上的设备及其最新状态，并关联查询产线名称
         query = f"""
             SELECT e.*,
                    es.runtime_hours,
                    es.collection_time,
                    es.sensor_data,
-                   es.fault_probability
+                   es.fault_probability,
+                   pl.line_name
             FROM equipment e
             LEFT JOIN (
                 SELECT es1.*
@@ -108,6 +109,7 @@ def get_equipment_by_group(group_id):
                     GROUP BY equipment_id
                 ) es2 ON es1.equipment_id = es2.equipment_id AND es1.collection_time = es2.max_time
             ) es ON e.id = es.equipment_id
+            LEFT JOIN production_line pl ON e.line_id = pl.id
             WHERE e.line_id IN ({line_placeholders})
         """
 

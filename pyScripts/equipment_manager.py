@@ -302,8 +302,8 @@ def get_equipment_status(equipment_id, limit=1):
             cursor.close()
             connection.close()
 
-def get_equipment_with_status(line_id=None):
-    """获取设备信息及其最新状态"""
+def get_equipment_with_status(line_id=None, equipment_id=None):
+    """获取设备信息及其最新状态，并关联查询产线名称"""
     connection = None
     try:
         connection = get_db_connection()
@@ -314,7 +314,8 @@ def get_equipment_with_status(line_id=None):
                    es.runtime_hours,
                    es.collection_time,
                    es.sensor_data,
-                   es.fault_probability
+                   es.fault_probability,
+                   pl.line_name
             FROM equipment e
             LEFT JOIN (
                 SELECT es1.*
@@ -325,12 +326,22 @@ def get_equipment_with_status(line_id=None):
                     GROUP BY equipment_id
                 ) es2 ON es1.equipment_id = es2.equipment_id AND es1.collection_time = es2.max_time
             ) es ON e.id = es.equipment_id
+            LEFT JOIN production_line pl ON e.line_id = pl.id
         """
 
         params = []
+        where_clauses = []
+
         if line_id:
-            query += " WHERE e.line_id = %s"
+            where_clauses.append("e.line_id = %s")
             params.append(line_id)
+
+        if equipment_id:
+            where_clauses.append("e.id = %s")
+            params.append(equipment_id)
+
+        if where_clauses:
+            query += " WHERE " + " AND ".join(where_clauses)
 
         cursor.execute(query, params)
         equipment_data = cursor.fetchall()
@@ -397,6 +408,7 @@ def main():
     # 获取设备及其状态命令
     combined_parser = subparsers.add_parser('get-with-status', help='获取设备及其最新状态')
     combined_parser.add_argument('--line-id', help='按产线ID筛选')
+    combined_parser.add_argument('--equipment-id', type=int, help='按设备ID筛选')
 
     args = parser.parse_args()
 
@@ -427,7 +439,7 @@ def main():
     elif args.command == 'get-status':
         get_equipment_status(args.equipment_id, args.limit)
     elif args.command == 'get-with-status':
-        get_equipment_with_status(args.line_id)
+        get_equipment_with_status(args.line_id, args.equipment_id)
     else:
         parser.print_help()
 

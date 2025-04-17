@@ -277,6 +277,16 @@ export default {
         const data = await response.json();
         console.log('设备数据:', data);
 
+        // 检查设备数据中是否包含 line_name 字段
+        if (data.success && data.data && data.data.length > 0) {
+          console.log('第一个设备的产线信息:', {
+            equipment_id: data.data[0].id,
+            equipment_name: data.data[0].equipment_name,
+            line_id: data.data[0].line_id,
+            line_name: data.data[0].line_name
+          });
+        }
+
         if (data.success && data.data) {
           // 处理设备数据
           this.devices = data.data.map(device => {
@@ -290,7 +300,7 @@ export default {
               id: device.id,
               name: device.equipment_name,
               code: device.equipment_code,
-              productionLine: this.lineNameMap[device.line_id] || '未知产线',
+              productionLine: device.line_name || this.lineNameMap[device.line_id] || '未知产线',
               status: status,
               statusText: this.getDeviceStatusText(status),
               runtime: device.runtime_hours || 0,
@@ -375,6 +385,8 @@ export default {
     // 查看设备详情
     viewDeviceDetail(device) {
       console.log('查看设备详情:', device);
+      // 跳转到设备详情页面
+      this.$router.push(`/foreman/equipment-detail/${device.id}`);
     },
 
     // 上报故障

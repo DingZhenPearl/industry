@@ -30,6 +30,7 @@ router.get('/list', authMiddleware, async (req, res) => {
 router.get('/with-status', authMiddleware, async (req, res) => {
   const line_id = req.query.line_id;
   const group_id = req.query.group_id;
+  const equipment_id = req.query.equipment_id;
 
   try {
     let result;
@@ -39,6 +40,13 @@ router.get('/with-status', authMiddleware, async (req, res) => {
       result = await runPythonScript(
         'pyScripts/get_equipment_by_group.py',
         [group_id],
+        { debug: true }
+      );
+    } else if (equipment_id) {
+      // 如果有设备 ID 参数，获取特定设备
+      result = await runPythonScript(
+        'pyScripts/equipment_manager.py',
+        ['get-with-status', '--equipment-id', equipment_id],
         { debug: true }
       );
     } else if (line_id) {

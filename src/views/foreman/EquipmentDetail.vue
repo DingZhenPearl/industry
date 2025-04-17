@@ -25,79 +25,144 @@
       >
         <!-- 自定义操作按钮 -->
         <template v-slot:actions>
-          <button class="action-btn" @click="generateChart">绘制图像</button>
-          <button class="action-btn" @click="assignMaintenance" v-if="formattedEquipment && formattedEquipment.status === 'warning'">安排维护</button>
+          <button class="action-btn" @click="scheduleMaintenace" v-if="formattedEquipment && formattedEquipment.status !== 'stopped'">排程维护</button>
+          <button class="action-btn" @click="assignWorker" v-if="formattedEquipment">分配工人</button>
+          <button class="action-btn" @click="viewWorkOrders" v-if="formattedEquipment">相关工单</button>
         </template>
 
-        <!-- 时间范围选择器 -->
+        <!-- 额外内容 - 设备维护记录 -->
         <template v-slot:extra-content>
-          <div class="time-range">
-            <h3>选择时间范围：</h3>
-            <div class="date-inputs">
-              <div class="date-input">
-                <span>日期</span>
-                <input type="date" v-model="dateRange.date">
-              </div>
-              <div class="time-input">
-                <span>开始时间</span>
-                <input type="time" v-model="dateRange.startTime">
-              </div>
-              <div class="time-input">
-                <span>结束时间</span>
-                <input type="time" v-model="dateRange.endTime">
+          <div class="maintenance-history">
+            <h3>维护记录</h3>
+            <div class="maintenance-list" v-if="maintenanceRecords.length > 0">
+              <div class="maintenance-item" v-for="record in maintenanceRecords" :key="record.id">
+                <div class="maintenance-header">
+                  <span class="maintenance-type">{{ record.type }}</span>
+                  <span class="maintenance-date">{{ record.date }}</span>
+                </div>
+                <div class="maintenance-body">
+                  <p class="maintenance-desc">{{ record.description }}</p>
+                  <p class="maintenance-worker">执行人: {{ record.worker }}</p>
+                </div>
               </div>
             </div>
-          </div>
-
-          <!-- 传感器数据展示区 -->
-          <div class="sensor-data" v-if="currentSensor">
-            <h3>传感器数据</h3>
-            <div class="sensor-type">{{ currentSensor.name }}传感器</div>
-            <div class="sensor-value">{{ currentSensor.value }}<span class="unit">{{ currentSensor.unit }}</span></div>
+            <div class="empty-maintenance" v-else>
+              <p>暂无维护记录</p>
+            </div>
           </div>
         </template>
       </equipment-detail-component>
+
+      <!-- 排程维护弹窗 -->
+      <div class="modal" v-if="showMaintenanceModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>排程设备维护</h3>
+            <button class="close-btn" @click="showMaintenanceModal = false">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>维护时间</label>
+              <input type="datetime-local" v-model="maintenanceForm.time" class="form-control">
+            </div>
+            <div class="form-group">
+              <label>维护类型</label>
+              <select v-model="maintenanceForm.type" class="form-control">
+                <option value="routine">例行维护</option>
+                <option value="repair">故障修复</option>
+                <option value="upgrade">设备升级</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>负责工人</label>
+              <select v-model="maintenanceForm.worker" class="form-control">
+                <option v-for="worker in teamMembers" :key="worker.id" :value="worker.id">
+                  {{ worker.name }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>备注</label>
+              <textarea v-model="maintenanceForm.notes" class="form-control" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="cancel-btn" @click="showMaintenanceModal = false">取消</button>
+            <button class="confirm-btn" @click="confirmMaintenance">确认</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 分配工人弹窗 -->
+      <div class="modal" v-if="showAssignModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>分配负责工人</h3>
+            <button class="close-btn" @click="showAssignModal = false">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>选择工人</label>
+              <select v-model="selectedWorker" class="form-control">
+                <option value="">请选择工人</option>
+                <option v-for="worker in teamMembers" :key="worker.id" :value="worker.id">
+                  {{ worker.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="cancel-btn" @click="showAssignModal = false">取消</button>
+            <button class="confirm-btn" @click="confirmAssign">确认</button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <SupervisorNav />
+    <ForemanNav />
   </div>
 </template>
 
 <script>
-import SupervisorNav from '@/components/SupervisorNav.vue'
+import ForemanNav from '@/components/ForemanNav.vue'
 import EquipmentDetailComponent from '@/components/EquipmentDetailComponent.vue'
 
 export default {
-  name: 'EquipmentDetail',
   components: {
-    SupervisorNav,
+    ForemanNav,
     EquipmentDetailComponent
   },
   data() {
     return {
       equipment: {
         id: '',
-        name: '花都新工厂-机加线M3内喷电机',
-        location: '花都',
+        name: '',
+        line_id: '',
+        location: '',
+        lineName: '',
+        sensorId: '',
+        description: '',
         status: 'normal',
-        statusText: '正常',
-        sensorId: '1000004700060003',
-        description: '该设备提供传感器共有2个，当前传感器提供属性：温度'
+        statusText: '正常'
       },
-      sensors: [
-        { name: '接触式温度', value: '24.8', unit: '°C' }
-      ],
-      currentSensor: { name: '温度', value: '24.8', unit: '°C' },
-      dateRange: {
-        date: '2023-04-13',
-        startTime: '08:00',
-        endTime: '08:05'
-      },
+      sensors: [],
+      currentSensor: null,
       deviceHistory: [],
       loading: false,
       error: null,
       autoRefresh: true,
-      refreshRate: 10000 // 10秒更新一次
+      refreshRate: 10000, // 10秒更新一次
+      showMaintenanceModal: false,
+      showAssignModal: false,
+      maintenanceForm: {
+        time: '',
+        type: 'routine',
+        worker: '',
+        notes: ''
+      },
+      selectedWorker: '',
+      teamMembers: [],
+      maintenanceRecords: []
     }
   },
   computed: {
@@ -134,21 +199,17 @@ export default {
     const equipmentId = this.$route.params.id
     this.equipment.id = equipmentId
 
-    // 这里应该根据ID从API获取设备详情
+    // 获取设备详情
     this.fetchEquipmentDetail(equipmentId)
 
-    // 打印自动刷新设置
-    console.log('厂长设备详情页面初始化，自动刷新:', this.autoRefresh, '刷新间隔:', this.refreshRate)
-  },
-  mounted() {
-    // 测试自动刷新功能
-    console.log('厂长设备详情页面挂载完成，测试自动刷新功能');
+    // 获取团队成员
+    this.fetchTeamMembers()
 
-    // 手动触发一次数据刷新，测试是否正常工作
-    setTimeout(() => {
-      console.log('手动触发数据刷新');
-      this.fetchLatestDeviceData();
-    }, 2000);
+    // 获取维护记录
+    this.fetchMaintenanceRecords()
+
+    // 打印自动刷新设置
+    console.log('工长设备详情页面初始化，自动刷新:', this.autoRefresh, '刷新间隔:', this.refreshRate)
   },
   methods: {
     async fetchEquipmentDetail(id) {
@@ -173,7 +234,6 @@ export default {
         console.log('设备详情数据:', result);
 
         if (result.success && result.data && result.data.length > 0) {
-          // 获取设备数据
           const deviceData = result.data[0];
 
           // 处理sensor_data字段，确保是对象
@@ -363,53 +423,166 @@ export default {
       }
     },
 
-    generateChart() {
-      // 生成图表的逻辑
-      console.log('生成图表，时间范围:', this.dateRange);
-    },
-
-    assignMaintenance() {
-      // 安排维护的逻辑
-      console.log('安排设备维护');
-    },
-
-    goBack() {
-      // 返回到监控中心页面
-      this.$router.push('/supervisor/monitor')
-    },
-
-    // 根据产线 ID 获取产线名称
-    async fetchProductionLineName(lineId) {
-      if (!lineId) return;
-
+    // 获取团队成员
+    async fetchTeamMembers() {
       try {
-        console.log('获取产线信息, 产线ID:', lineId);
-        const response = await fetch(`/api/production-line/detail?line_id=${lineId}`, {
+        // 获取当前登录用户的组号
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        const groupId = userInfo.group_id;
+
+        if (!groupId) {
+          console.error('未找到组号信息');
+          return;
+        }
+
+        const response = await fetch(`/api/foreman/team-members?group_id=${groupId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
 
         if (!response.ok) {
-          throw new Error(`获取产线信息失败: ${response.status}`);
+          throw new Error(`获取团队成员失败: ${response.status}`);
         }
 
         const result = await response.json();
-        console.log('产线信息:', result);
+        console.log('团队成员数据:', result);
 
-        if (result.success && result.data && result.data.line) {
-          const lineData = result.data.line;
-          console.log('获取到产线名称:', lineData.line_name);
-
-          // 更新设备的产线信息
-          this.equipment.lineName = lineData.line_name;
-          this.equipment.location = lineData.line_name;
-        } else {
-          console.error('获取产线信息失败: 没有找到产线数据');
+        if (result.success && result.data) {
+          // 过滤出工人角色的成员
+          this.teamMembers = result.data
+            .filter(member => member.role === 'member')
+            .map(member => ({
+              id: member.employee_id,
+              name: member.username
+            }));
         }
       } catch (error) {
-        console.error('获取产线信息出错:', error);
+        console.error('获取团队成员出错:', error);
       }
+    },
+
+    // 获取维护记录
+    async fetchMaintenanceRecords() {
+      if (!this.equipment || !this.equipment.id) return;
+
+      try {
+        // 模拟获取维护记录的API调用
+        // 实际项目中应该调用后端API
+        setTimeout(() => {
+          this.maintenanceRecords = [
+            {
+              id: 1,
+              type: '例行维护',
+              date: '2023-07-15',
+              description: '更换传感器，清理设备表面',
+              worker: '张工'
+            },
+            {
+              id: 2,
+              type: '故障修复',
+              date: '2023-06-20',
+              description: '修复电机故障，更换轴承',
+              worker: '李工'
+            }
+          ];
+        }, 500);
+      } catch (error) {
+        console.error('获取维护记录出错:', error);
+      }
+    },
+
+    // 排程维护
+    scheduleMaintenace() {
+      // 设置默认时间为明天同一时间
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      this.maintenanceForm.time = tomorrow.toISOString().slice(0, 16);
+
+      this.showMaintenanceModal = true;
+    },
+
+    // 确认维护
+    async confirmMaintenance() {
+      try {
+        // 模拟API调用
+        console.log('排程维护:', this.maintenanceForm);
+
+        // 创建工单
+        const workOrderData = {
+          equipment_id: this.equipment.id,
+          equipment_name: this.equipment.name,
+          scheduled_time: this.maintenanceForm.time,
+          type: '设备维护',
+          worker_id: this.maintenanceForm.worker,
+          description: this.maintenanceForm.notes,
+          maintenance_type: this.maintenanceForm.type
+        };
+
+        // 实际项目中应该调用后端API
+        console.log('创建维护工单:', workOrderData);
+
+        alert('维护排程成功！');
+        this.showMaintenanceModal = false;
+      } catch (error) {
+        console.error('排程维护出错:', error);
+        alert('排程维护失败，请重试');
+      }
+    },
+
+    // 分配工人
+    assignWorker() {
+      this.showAssignModal = true;
+    },
+
+    // 确认分配
+    async confirmAssign() {
+      if (!this.selectedWorker) {
+        alert('请选择工人');
+        return;
+      }
+
+      try {
+        // 模拟API调用
+        console.log('分配工人:', this.selectedWorker, '到设备:', this.equipment.id);
+
+        // 实际项目中应该调用后端API
+        const response = await fetch('/api/equipment/assign-worker', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            equipment_id: this.equipment.id,
+            worker_id: this.selectedWorker
+          })
+        });
+
+        if (response.ok) {
+          alert('工人分配成功！');
+          this.showAssignModal = false;
+        } else {
+          alert('工人分配失败，请重试');
+        }
+      } catch (error) {
+        console.error('分配工人出错:', error);
+        alert('分配工人失败，请重试');
+      }
+    },
+
+    // 查看相关工单
+    viewWorkOrders() {
+      // 跳转到工单页面并传递设备ID
+      this.$router.push({
+        path: '/foreman/workorder',
+        query: { equipment_id: this.equipment.id }
+      });
+    },
+
+    // 返回上一页
+    goBack() {
+      this.$router.push('/foreman/equipment');
     },
 
     // 获取传感器标签
@@ -465,7 +638,7 @@ export default {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  padding-bottom: 60px; /* 为底部导航留出空间 */
+  padding-bottom: 60px;
 }
 
 .header {
@@ -477,14 +650,6 @@ export default {
 .header-content {
   display: flex;
   align-items: center;
-  max-width: 1200px;
-  margin: 0 auto;
-  position: relative;
-}
-
-.header h1 {
-  flex: 1;
-  text-align: center;
 }
 
 .back-btn {
@@ -493,28 +658,19 @@ export default {
   background: none;
   border: none;
   color: white;
-  font-size: 16px;
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 4px;
-  position: absolute;
-  left: 0;
-}
-
-.back-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  margin-right: 15px;
+  padding: 5px;
 }
 
 .back-icon {
   display: inline-block;
-  width: 20px;
-  height: 20px;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid white;
+  border-left: 2px solid white;
+  transform: rotate(-45deg);
   margin-right: 5px;
-  background-color: white;
-  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>');
-  mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
 }
 
 .content {
@@ -522,208 +678,171 @@ export default {
   padding: 15px;
 }
 
-/* 信息卡片样式 */
-.info-card {
+.maintenance-history {
   background: white;
   border-radius: 8px;
   padding: 15px;
-  margin-bottom: 20px;
+  margin-top: 15px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.info-row {
-  display: flex;
-  margin-bottom: 10px;
+.maintenance-history h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 16px;
 }
 
-.info-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+.maintenance-list {
+  max-height: 300px;
+  overflow-y: auto;
 }
 
-.label {
-  color: #666;
-  font-size: 14px;
+.maintenance-item {
+  border-bottom: 1px solid #eee;
+  padding: 10px 0;
+}
+
+.maintenance-item:last-child {
+  border-bottom: none;
+}
+
+.maintenance-header {
+  display: flex;
+  justify-content: space-between;
   margin-bottom: 5px;
 }
 
-.value {
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.value.normal {
-  color: #4CAF50;
-}
-
-.value.warning {
-  color: #FF9800;
-}
-
-.value.error {
-  color: #F44336;
-}
-
-/* 传感器数据样式 */
-.sensor-data {
-  background: white;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.sensor-data h3 {
-  margin-top: 0;
-  margin-bottom: 15px;
-  color: #333;
-}
-
-.sensor-type {
-  font-size: 16px;
-  color: #666;
-  margin-bottom: 10px;
-}
-
-.sensor-value {
-  font-size: 32px;
+.maintenance-type {
   font-weight: bold;
   color: #2196F3;
 }
 
-.unit {
-  font-size: 18px;
-  margin-left: 5px;
+.maintenance-date {
+  color: #666;
+  font-size: 14px;
 }
 
-/* 时间范围选择器样式 */
-.time-range {
-  background: white;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.time-range h3 {
-  margin-top: 0;
-  margin-bottom: 15px;
+.maintenance-desc {
+  margin: 5px 0;
   color: #333;
 }
 
-.date-inputs {
+.maintenance-worker {
+  margin: 5px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.empty-maintenance {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
   display: flex;
-  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+}
+
+.modal-body {
+  padding: 15px;
+}
+
+.form-group {
   margin-bottom: 15px;
 }
 
-.date-input, .time-input {
-  display: flex;
-  flex-direction: column;
-}
-
-.date-input span, .time-input span {
-  font-size: 14px;
-  color: #666;
+.form-group label {
+  display: block;
   margin-bottom: 5px;
+  font-weight: bold;
 }
 
-.date-input input, .time-input input {
+.form-control {
+  width: 100%;
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  font-size: 14px;
 }
 
-.generate-btn {
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  padding: 10px 15px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-/* 图表容器样式 */
-.chart-container {
-  background: white;
-  border-radius: 8px;
+.modal-footer {
   padding: 15px;
-  margin-bottom: 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cancel-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  color: #333;
+  cursor: pointer;
+}
+
+.confirm-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #2196F3;
+  color: white;
+  cursor: pointer;
+}
+
+.action-btn {
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: white;
+  color: #2196F3;
+  font-size: 14px;
+  cursor: pointer;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.chart-container h3 {
-  margin-top: 0;
-  margin-bottom: 15px;
-  color: #333;
-}
-
-.chart {
-  width: 100%;
-  height: 300px;
-  position: relative;
-}
-
-.chart-placeholder {
-  height: 100%;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  position: relative;
-  padding: 20px;
-}
-
-.chart-legend {
-  display: flex;
-  justify-content: flex-end;
-  gap: 15px;
-  margin-bottom: 10px;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  font-size: 12px;
-}
-
-.color-box {
-  width: 12px;
-  height: 12px;
-  margin-right: 5px;
-  border-radius: 2px;
-}
-
-.color-box.normal {
-  background-color: #4CAF50;
-}
-
-.color-box.warning {
-  background-color: #FFD700;
-}
-
-.color-box.danger {
-  background-color: #F44336;
-}
-
-.chart-y-axis {
-  position: absolute;
-  left: 0;
-  top: 40px;
-  bottom: 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  font-size: 12px;
-  color: #666;
-  padding-right: 5px;
-}
-
-.chart-line {
-  position: absolute;
-  left: 40px;
-  right: 20px;
-  top: 40px;
-  bottom: 20px;
+.action-btn.disabled {
+  background: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
 }
 </style>
