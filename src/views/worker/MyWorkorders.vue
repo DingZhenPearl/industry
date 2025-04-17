@@ -66,7 +66,7 @@
 
       <!-- 工单列表 -->
       <div class="workorder-list">
-        <div class="workorder-item" v-for="workorder in filteredWorkorders" :key="workorder.id" :class="workorder.status">
+        <div class="workorder-item" v-for="workorder in filteredWorkorders" :key="workorder.id" :class="workorder.displayStatus">
           <div class="workorder-header">
             <div class="workorder-left">
               <span class="workorder-type-icon" :class="workorder.type === '生产工单' ? 'production' :
@@ -74,7 +74,7 @@
                                                       workorder.type === '质量检查' ? 'quality' : 'inspection'"></span>
               <span class="workorder-number">{{ workorder.number }}</span>
             </div>
-            <span class="workorder-status" :class="workorder.status">{{ workorder.statusText }}</span>
+            <span class="workorder-status" :class="workorder.displayStatus">{{ workorder.statusText }}</span>
           </div>
           <div class="workorder-body">
             <h3 class="workorder-title">{{ workorder.type }}</h3>
@@ -93,12 +93,12 @@
           <div class="workorder-footer">
             <button
               class="action-btn accept"
-              v-if="workorder.status === 'pending'"
+              v-if="workorder.displayStatus === 'pending'"
               @click="acceptWorkorder(workorder)"
             >接收工单</button>
             <button
               class="action-btn complete"
-              v-if="workorder.status === 'accepted'"
+              v-if="workorder.displayStatus === 'accepted'"
               @click="completeWorkorder(workorder)"
             >完成工单</button>
             <button class="detail-btn" @click="viewWorkorderDetail(workorder)">
@@ -126,7 +126,7 @@
         <div class="workorder-overview">
           <div class="overview-header">
             <div class="overview-number">{{ selectedWorkorder.number }}</div>
-            <div class="overview-status" :class="selectedWorkorder.status">{{ selectedWorkorder.statusText }}</div>
+            <div class="overview-status" :class="selectedWorkorder.displayStatus">{{ selectedWorkorder.statusText }}</div>
           </div>
           <div class="overview-type">{{ selectedWorkorder.type }}</div>
           <div class="overview-progress">
@@ -134,7 +134,7 @@
               <div
                 class="progress"
                 :style="{ width: (selectedWorkorder.progress || 0) + '%' }"
-                :class="selectedWorkorder.status"
+                :class="selectedWorkorder.displayStatus"
               ></div>
             </div>
             <span class="progress-text">{{ selectedWorkorder.progress || 0 }}%</span>
@@ -175,7 +175,7 @@
                 <label>截止时间</label>
                 <div class="value">{{ selectedWorkorder.deadline }}</div>
               </div>
-              <div class="detail-item" v-if="selectedWorkorder.status === 'completed'">
+              <div class="detail-item" v-if="selectedWorkorder.displayStatus === 'completed'">
                 <label>完成时间</label>
                 <div class="value">{{ selectedWorkorder.completedTime }}</div>
               </div>
@@ -192,9 +192,9 @@
             </div>
           </div>
 
-          <div class="detail-item" v-if="selectedWorkorder.status === 'accepted' || selectedWorkorder.status === 'completed'">
+          <div class="detail-item" v-if="selectedWorkorder.displayStatus === 'accepted' || selectedWorkorder.displayStatus === 'completed'">
             <label>任务备注</label>
-            <div class="value" v-if="selectedWorkorder.status === 'completed'">
+            <div class="value" v-if="selectedWorkorder.displayStatus === 'completed'">
               {{ selectedWorkorder.note || '无' }}
             </div>
             <textarea
@@ -210,13 +210,13 @@
           <button class="btn cancel" @click="showWorkorderDetailModal = false">关闭</button>
           <button
             class="btn accept"
-            v-if="selectedWorkorder.status === 'pending'"
+            v-if="selectedWorkorder.displayStatus === 'pending'"
             @click="acceptWorkorder(selectedWorkorder)"
           >接收工单</button>
 
           <button
             class="btn complete"
-            v-if="selectedWorkorder.status === 'accepted'"
+            v-if="selectedWorkorder.displayStatus === 'accepted'"
             @click="completeWorkorder(selectedWorkorder)"
           >完成工单</button>
         </div>
@@ -297,7 +297,7 @@ export default {
     filteredWorkorders() {
       return this.workorders.filter(workorder => {
         // 按状态筛选
-        const statusMatch = this.workorderFilter.status === 'all' || workorder.status === this.workorderFilter.status;
+        const statusMatch = this.workorderFilter.status === 'all' || workorder.displayStatus === this.workorderFilter.status;
 
         // 按类型筛选
         const typeMatch = this.workorderFilter.type === 'all' || workorder.type.includes(this.workorderFilter.type === 'production' ? '生产' :
@@ -316,17 +316,17 @@ export default {
 
     // 待接收工单数量
     pendingWorkordersCount() {
-      return this.workorders.filter(workorder => workorder.status === 'pending').length;
+      return this.workorders.filter(workorder => workorder.displayStatus === 'pending').length;
     },
 
     // 已接收工单数量
     acceptedWorkordersCount() {
-      return this.workorders.filter(workorder => workorder.status === 'accepted').length;
+      return this.workorders.filter(workorder => workorder.displayStatus === 'accepted').length;
     },
 
     // 已完成工单数量
     completedWorkordersCount() {
-      return this.workorders.filter(workorder => workorder.status === 'completed').length;
+      return this.workorders.filter(workorder => workorder.displayStatus === 'completed').length;
     }
   },
   created() {
@@ -399,13 +399,17 @@ export default {
           this.submittedWorkorders = this.formatWorkorders(submittedData.data || []);
         }
 
-        // 合并工单列表，去除重复
+        // 合并工单列表，去除重复和自己上报的设备维护工单
         const allWorkorders = [...this.responsibleWorkorders];
 
         this.submittedWorkorders.forEach(submitted => {
           // 检查是否已存在于负责工单中
           const exists = allWorkorders.some(wo => wo.number === submitted.number);
-          if (!exists) {
+          // 检查是否是设备维护工单
+          const isMaintenanceWorkorder = submitted.type === '设备维护' || submitted.task_type === '设备维护';
+
+          // 只添加非设备维护类型的自己上报的工单
+          if (!exists && !isMaintenanceWorkorder) {
             allWorkorders.push(submitted);
           }
         });
@@ -422,32 +426,37 @@ export default {
         // 根据状态设置状态文本
         let statusText = '未知';
         let progress = 0;
+        let displayStatus = wo.status; // 用于前端显示的状态
 
         switch(wo.status) {
           case '未接受':
           case 'pending':
             statusText = '待接收';
             progress = 0;
-            wo.status = 'pending';
+            displayStatus = 'pending';
+            wo.status = '未接受'; // 统一使用中文状态
             break;
 
           case '已完成':
           case 'completed':
             statusText = '已完成';
             progress = 100;
-            wo.status = 'completed';
+            displayStatus = 'completed';
+            wo.status = '已完成'; // 统一使用中文状态
             break;
           case '已接受':
           case 'accepted':
             statusText = '已接收';
             progress = 10;
-            wo.status = 'accepted';
+            displayStatus = 'accepted';
+            wo.status = '已接受'; // 统一使用中文状态
             break;
           case '已取消':
           case 'cancelled':
             statusText = '已取消';
             progress = 0;
-            wo.status = 'cancelled';
+            displayStatus = 'cancelled';
+            wo.status = '已取消'; // 统一使用中文状态
             break;
         }
 
@@ -457,6 +466,7 @@ export default {
           ...wo,
           statusText,
           progress,
+          displayStatus, // 用于前端显示的状态类名
           id: wo.workorder_number || wo.number, // 确保有ID字段
           number: wo.workorder_number || wo.number,
           type: wo.task_type || wo.type,
@@ -588,7 +598,7 @@ export default {
 
         // 准备更新数据
         const updateData = {
-          status: 'accepted',
+          status: '已接受', // 使用中文状态
           team_members: employeeId
         };
 
@@ -611,14 +621,16 @@ export default {
           // 更新本地工单状态
           const index = this.workorders.findIndex(w => w.number === workorder.number);
           if (index !== -1) {
-            this.workorders[index].status = 'accepted';
+            this.workorders[index].status = '已接受'; // 使用中文状态
+            this.workorders[index].displayStatus = 'accepted'; // 前端显示状态仍然使用英文
             this.workorders[index].statusText = '已接收';
             this.workorders[index].progress = 10;
           }
 
           // 如果是在详情页操作，同步更新选中的工单
           if (this.selectedWorkorder.number === workorder.number) {
-            this.selectedWorkorder.status = 'accepted';
+            this.selectedWorkorder.status = '已接受'; // 使用中文状态
+            this.selectedWorkorder.displayStatus = 'accepted'; // 前端显示状态仍然使用英文
             this.selectedWorkorder.statusText = '已接收';
             this.selectedWorkorder.progress = 10;
           }
@@ -701,7 +713,7 @@ export default {
 
         // 准备更新数据
         const updateData = {
-          status: 'completed',
+          status: '已完成', // 使用中文状态
           start_time: formatDate(now), // 设置开始时间为当前时间
           actual_end_time: formatDate(now),
           team_members: employeeId, // 确保记录负责人
@@ -727,7 +739,8 @@ export default {
           // 更新本地工单状态
           const index = this.workorders.findIndex(w => w.number === workorder.number);
           if (index !== -1) {
-            this.workorders[index].status = 'completed';
+            this.workorders[index].status = '已完成'; // 使用中文状态
+            this.workorders[index].displayStatus = 'completed'; // 前端显示状态仍然使用英文
             this.workorders[index].statusText = '已完成';
             this.workorders[index].startTime = now.toLocaleString();
             this.workorders[index].completedTime = now.toLocaleString();
@@ -736,7 +749,8 @@ export default {
 
           // 如果是在详情页操作，同步更新选中的工单
           if (this.selectedWorkorder.number === workorder.number) {
-            this.selectedWorkorder.status = 'completed';
+            this.selectedWorkorder.status = '已完成'; // 使用中文状态
+            this.selectedWorkorder.displayStatus = 'completed'; // 前端显示状态仍然使用英文
             this.selectedWorkorder.statusText = '已完成';
             this.selectedWorkorder.startTime = now.toLocaleString();
             this.selectedWorkorder.completedTime = now.toLocaleString();
