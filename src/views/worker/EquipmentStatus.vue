@@ -108,6 +108,13 @@
                 <option value="30">30条记录</option>
                 <option value="50">50条记录</option>
               </select>
+              <button
+                class="auto-refresh-btn"
+                :class="{ active: autoRefresh }"
+                @click="toggleAutoRefresh"
+              >
+                {{ autoRefresh ? '实时更新中' : '开启实时更新' }}
+              </button>
             </div>
           </div>
           <div class="chart-container" ref="chartContainer"></div>
@@ -150,6 +157,9 @@ export default {
       selectedParameter: 'temperature',
       deviceHistory: [],
       chartInstance: null,
+      autoRefresh: true,
+      refreshInterval: null,
+      refreshRate: 10000, // 10秒更新一次
       sensorLabels: {
         'temperature': '温度',
         'pressure': '压力',
@@ -184,12 +194,16 @@ export default {
   },
   mounted() {
     window.addEventListener('resize', this.resizeChart);
+    // 启动自动刷新
+    this.startAutoRefresh();
   },
   beforeDestroy() {
     window.removeEventListener('resize', this.resizeChart);
     if (this.chartInstance) {
       this.chartInstance.dispose();
     }
+    // 清除定时器
+    this.stopAutoRefresh();
   },
   watch: {
     currentDevice(newDevice) {
@@ -287,12 +301,120 @@ export default {
     // 刷新设备数据
     refreshDeviceData() {
       this.fetchMyDevices();
+      // 刷新图表数据
+      if (this.currentDevice) {
+        this.fetchDeviceHistory();
+      }
+    },
+
+    // 开始自动刷新
+    startAutoRefresh() {
+      if (this.refreshInterval) {
+        clearInterval(this.refreshInterval);
+      }
+
+      if (this.autoRefresh) {
+        this.refreshInterval = setInterval(() => {
+          if (this.currentDevice) {
+            this.fetchLatestDeviceData();
+          }
+        }, this.refreshRate);
+      }
+    },
+
+    // 停止自动刷新
+    stopAutoRefresh() {
+      if (this.refreshInterval) {
+        clearInterval(this.refreshInterval);
+        this.refreshInterval = null;
+      }
+    },
+
+    // 切换自动刷新状态
+    toggleAutoRefresh() {
+      this.autoRefresh = !this.autoRefresh;
+      if (this.autoRefresh) {
+        this.startAutoRefresh();
+      } else {
+        this.stopAutoRefresh();
+      }
+    },
+
+    // 获取最新的设备数据并更新图表
+    async fetchLatestDeviceData() {
+      if (!this.currentDevice) return;
+
+      try {
+        // 获取最新的一条记录
+        const response = await fetch(`/api/equipment/status-history?equipment_id=${this.currentDevice.id}&limit=1`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取设备最新数据失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data && result.data.length > 0) {
+          const latestData = result.data[0];
+
+          // 处理sensor_data字段，确保是对象
+          if (latestData.sensor_data && typeof latestData.sensor_data === 'string') {
+            try {
+              latestData.sensor_data = JSON.parse(latestData.sensor_data);
+            } catch (e) {
+              console.error('解析sensor_data失败:', e);
+              latestData.sensor_data = {};
+            }
+          }
+
+          // 检查是否是新数据
+          const isNewData = this.deviceHistory.length === 0 ||
+                           new Date(latestData.collection_time) > new Date(this.deviceHistory[this.deviceHistory.length - 1].collection_time);
+
+          if (isNewData) {
+            // 添加新数据到历史数据中
+            this.deviceHistory.push(latestData);
+
+            // 如果历史数据超过限制，删除最早的数据
+            if (this.deviceHistory.length > parseInt(this.historyLimit)) {
+              this.deviceHistory.shift();
+            }
+
+            // 更新图表
+            this.updateChart();
+
+            // 更新当前设备的传感器数据
+            if (this.currentDevice && latestData.sensor_data) {
+              this.currentDevice.sensorData = latestData.sensor_data;
+              this.currentDevice.faultProbability = latestData.fault_probability || 0;
+              this.currentDevice.runtime = latestData.runtime_hours || 0;
+
+              // 更新设备状态
+              let status = 'running';
+              if (latestData.fault_probability > 0.3) status = 'warning';
+              this.currentDevice.status = status;
+
+              let statusText = '运行中';
+              if (status === 'warning') statusText = '预警';
+              this.currentDevice.statusText = statusText;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('获取设备最新数据出错:', error);
+      }
     },
 
     // 设备选择变更
     onDeviceChange() {
       console.log('选中设备:', this.selectedDeviceId);
       this.fetchDeviceHistory();
+      // 重新启动自动刷新
+      this.startAutoRefresh();
     },
 
     // 获取设备历史数据
@@ -789,6 +911,22 @@ export default {
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
+}
+
+.auto-refresh-btn {
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: #f5f5f5;
+  color: #333;
+  cursor: pointer;
+}
+
+.auto-refresh-btn.active {
+  background-color: #e3f2fd;
+  color: #2196F3;
+  border-color: #2196F3;
 }
 
 .chart-container {
