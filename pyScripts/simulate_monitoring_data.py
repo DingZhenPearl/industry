@@ -9,7 +9,7 @@ import io
 import time
 import random
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # 设置输出编码
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -37,10 +37,9 @@ def get_db_connection():
 # =============================================
 def generate_equipment_status(equipment_id, runtime_base):
     """生成模拟的设备状态数据"""
-    # 添加一些随机波动
-    noise = random.uniform(-0.1, 0.1)
-    runtime_hours = runtime_base + noise
-    
+    # 直接使用传入的运行时间，不再添加大的随机波动
+    runtime_hours = runtime_base
+
     # 生成模拟的传感器数据
     sensor_data = {
         "temperature": round(random.uniform(60, 90), 1),  # 温度在60-90°C之间波动
@@ -48,12 +47,12 @@ def generate_equipment_status(equipment_id, runtime_base):
         "speed": round(random.uniform(800, 900)),         # 转速在800-900rpm之间波动
         "vibration": round(random.uniform(0.02, 0.08), 3) # 振动在0.02-0.08mm/s之间波动
     }
-    
+
     # 根据温度和振动计算故障概率
     temp_factor = max(0, (sensor_data["temperature"] - 70) / 30)  # 温度超过70°C开始增加故障概率
     vibration_factor = max(0, (sensor_data["vibration"] - 0.05) / 0.05)  # 振动超过0.05mm/s开始增加故障概率
     fault_probability = round(min(0.9, 0.1 + 0.4 * temp_factor + 0.5 * vibration_factor), 3)
-    
+
     return {
         "runtime_hours": runtime_hours,
         "sensor_data": sensor_data,
@@ -65,14 +64,13 @@ def generate_equipment_status(equipment_id, runtime_base):
 # =============================================
 def generate_production_line_status(line_id, runtime_base, theoretical_capacity):
     """生成模拟的产线状态数据"""
-    # 添加一些随机波动
-    noise = random.uniform(-0.1, 0.1)
-    runtime_hours = runtime_base + noise
-    
+    # 直接使用传入的运行时间，不再添加大的随机波动
+    runtime_hours = runtime_base
+
     # 生成模拟的实时产能，在理论产能的70%-95%之间波动
     efficiency = random.uniform(0.7, 0.95)
     real_time_capacity = round(theoretical_capacity * efficiency)
-    
+
     return {
         "runtime_hours": runtime_hours,
         "real_time_capacity": real_time_capacity
@@ -234,27 +232,52 @@ def main():
     # 设备ID和产线ID
     equipment_id = 6  # 包装机H-01的ID
     line_id = 3       # 三号产线的ID
-    
+
+    # 设置时间比例常量，表示模拟时间与现实时间的比例
+    # 例如，TIME_RATIO = 6 表示现实世界的1分钟相当于模拟世界的6分钟
+    TIME_RATIO = 6
+
     print(f"开始模拟监控数据生成，目标设备ID: {equipment_id}，产线ID: {line_id}")
+    print(f"时间比例: 现实时间 1 分钟 = 模拟时间 {TIME_RATIO} 分钟")
     print(f"按Ctrl+C停止模拟")
-    
+
+    # 记录上次更新的时间
+    last_update_time = datetime.now()
+
     try:
         while True:
+            # 计算实际经过的时间（小时）
+            current_time = datetime.now()
+            elapsed_time = (current_time - last_update_time).total_seconds() / 3600.0  # 转换为小时
+
+            # 根据时间比例计算运行时间的增加量
+            runtime_increment = elapsed_time * TIME_RATIO
+
+            # 更新上次更新时间
+            last_update_time = current_time
+
             # 获取最新的运行时间作为基准
             equipment_runtime_base = get_latest_runtime("equipment_status", "equipment_id", equipment_id)
             line_runtime_base = get_latest_runtime("production_line_status", "line_id", line_id)
-            
+
             # 获取产线理论产能
             theoretical_capacity = get_production_line_capacity(line_id)
-            
-            # 生成并更新设备状态
-            equipment_status = generate_equipment_status(equipment_id, equipment_runtime_base + 0.003)  # 每10秒增加约0.003小时
+
+            # 生成并更新设备状态，添加一些随机波动
+            noise = random.uniform(-0.0005, 0.0005)  # 减小随机波动范围
+            equipment_status = generate_equipment_status(equipment_id, equipment_runtime_base + runtime_increment + noise)
             update_equipment_status(equipment_id, equipment_status)
-            
-            # 生成并更新产线状态
-            line_status = generate_production_line_status(line_id, line_runtime_base + 0.003, theoretical_capacity)
+
+            # 生成并更新产线状态，添加一些随机波动
+            noise = random.uniform(-0.0005, 0.0005)  # 减小随机波动范围
+            line_status = generate_production_line_status(line_id, line_runtime_base + runtime_increment + noise, theoretical_capacity)
             update_production_line_status(line_id, line_status)
-            
+
+            # 输出当前运行时间和增量
+            print(f"[{current_time.strftime('%Y-%m-%d %H:%M:%S')}] 运行时间增量: {runtime_increment:.6f} 小时")
+            print(f"设备运行时间: {equipment_runtime_base:.6f} -> {equipment_runtime_base + runtime_increment:.6f} 小时")
+            print(f"产线运行时间: {line_runtime_base:.6f} -> {line_runtime_base + runtime_increment:.6f} 小时")
+
             # 等待10秒
             time.sleep(10)
     except KeyboardInterrupt:

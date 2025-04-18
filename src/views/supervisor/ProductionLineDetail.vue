@@ -190,7 +190,7 @@ export default {
       // 自动刷新相关
       autoRefresh: true,
       refreshInterval: null,
-      refreshRate: 5000, // 5秒更新一次
+      refreshRate: 10000, // 10秒更新一次
       lastUpdateTime: '',
 
       startDate: new Date().toISOString().split('T')[0],
