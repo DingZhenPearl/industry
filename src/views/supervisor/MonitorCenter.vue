@@ -43,9 +43,20 @@
       <div class="production-lines">
         <div class="section-header">
           <h3 class="section-title">产线运行状态</h3>
-          <button class="config-btn" @click="showConfigModal = true">
-            <i class="settings-icon"></i> 产线配置
-          </button>
+          <div class="header-actions">
+            <div class="refresh-control">
+              <span class="last-update" v-if="lastUpdateTime">上次更新: {{ lastUpdateTime }}</span>
+              <button class="refresh-btn" :class="{ 'auto-refresh': autoRefresh }" @click="toggleAutoRefresh">
+                {{ autoRefresh ? '自动刷新中' : '自动刷新' }}
+              </button>
+              <button class="refresh-btn" @click="fetchProductionLines">
+                <i class="refresh-icon"></i> 刷新
+              </button>
+            </div>
+            <button class="config-btn" @click="showConfigModal = true">
+              <i class="settings-icon"></i> 产线配置
+            </button>
+          </div>
         </div>
 
         <!-- 加载中提示 -->
@@ -306,7 +317,12 @@ export default {
       cachedData: {
         equipments: null,
         timestamp: null
-      }
+      },
+      // 自动刷新相关
+      autoRefresh: true,
+      refreshInterval: null,
+      refreshRate: 10000, // 10秒更新一次
+      lastUpdateTime: ''
     }
   },
   computed: {
@@ -375,9 +391,52 @@ export default {
     this.fetchProductionLines();
     this.fetchEquipments();
     this.fetchForemen();
+
+    // 如果启用了自动刷新，则启动
+    if (this.autoRefresh) {
+      this.startAutoRefresh();
+    }
+  },
+  beforeDestroy() {
+    // 清除定时器
+    this.stopAutoRefresh();
   },
   methods: {
     // 获取产线数据
+    // 开始自动刷新
+    startAutoRefresh() {
+      if (this.refreshInterval) {
+        clearInterval(this.refreshInterval);
+      }
+
+      if (this.autoRefresh) {
+        console.log('开始自动刷新，间隔:', this.refreshRate, '毫秒');
+        this.refreshInterval = setInterval(() => {
+          console.log('触发自动刷新事件');
+          this.fetchProductionLines();
+          this.fetchEquipments();
+        }, this.refreshRate);
+      }
+    },
+
+    // 停止自动刷新
+    stopAutoRefresh() {
+      if (this.refreshInterval) {
+        clearInterval(this.refreshInterval);
+        this.refreshInterval = null;
+      }
+    },
+
+    // 切换自动刷新状态
+    toggleAutoRefresh() {
+      this.autoRefresh = !this.autoRefresh;
+      if (this.autoRefresh) {
+        this.startAutoRefresh();
+      } else {
+        this.stopAutoRefresh();
+      }
+    },
+
     async fetchProductionLines() {
       this.loading.productionLines = true;
       this.error.productionLines = null;
@@ -464,6 +523,9 @@ export default {
 
           // 更新状态卡片的数据
           this.updateStatusCards();
+
+          // 更新最后更新时间
+          this.lastUpdateTime = new Date().toLocaleTimeString();
         } else {
           throw new Error(result.error || '未知错误');
         }
@@ -515,6 +577,8 @@ export default {
       // 跳转到产线详情页面
       this.$router.push(`/supervisor/production-line-detail/${line.id}`);
     },
+
+
     async confirmAssign() {
       try {
         // 调用API分配工长到产线
@@ -987,6 +1051,51 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.refresh-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.last-update {
+  font-size: 14px;
+  color: #666;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.refresh-btn.auto-refresh {
+  background-color: #e3f2fd;
+  color: #2196F3;
+  border-color: #2196F3;
+}
+
+.refresh-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 5px;
+  background-color: #666;
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>');
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
 }
 
 .config-btn {

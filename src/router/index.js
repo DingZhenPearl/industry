@@ -91,6 +91,7 @@ const supervisorRoutes = [
     name: 'ProductionLineDetail',
     component: () => import('../views/supervisor/ProductionLineDetail.vue')
   },
+
   {
     path: '/supervisor/profile',
     name: 'SupervisorProfile',
