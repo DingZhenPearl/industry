@@ -12,10 +12,7 @@
       <i class="nav-icon inspection-icon"></i>
       <span>安全巡检</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/safety/statistics' }" @click="$router.push('/safety/statistics')">
-      <i class="nav-icon statistics-icon"></i>
-      <span>安全统计</span>
-    </div>
+
     <div class="nav-item" :class="{ active: $route.path === '/safety/profile' || $route.path === '/safety/account' }" @click="$router.push('/safety/profile')">
       <i class="nav-icon profile-icon"></i>
       <span>我的</span>

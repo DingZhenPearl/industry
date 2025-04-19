@@ -130,11 +130,7 @@ const safetyRoutes = [
     name: 'SafetyProductionLineDetail',
     component: () => import('../views/safety/ProductionLineDetail.vue')
   },
-  {
-    path: '/safety/statistics',
-    name: 'SafetyStatistics',
-    component: () => import('../views/safety/Statistics.vue')
-  },
+
   {
     path: '/safety/profile',
     name: 'SafetyProfile',
