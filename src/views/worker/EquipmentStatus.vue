@@ -197,7 +197,7 @@ export default {
               } else if (device.status === '维修中') {
                 status = 'stopped';
                 dbStatus = '维修中';
-              } else if (device.status === '预警' || device.fault_probability > 0.3) {
+              } else if (device.status === '预警') {
                 status = 'warning';
                 dbStatus = '预警';
               } else if (device.status === '正常') {
@@ -318,11 +318,31 @@ export default {
 
               // 更新设备状态
               let status = 'running';
-              if (latestData.fault_probability > 0.3) status = 'warning';
+              let dbStatus = latestData.status || '正常';
+
+              if (latestData.status === '故障') {
+                status = 'stopped';
+                dbStatus = '故障';
+              } else if (latestData.status === '预警') {
+                status = 'warning';
+                dbStatus = '预警';
+              } else if (latestData.status === '停机') {
+                status = 'stopped';
+                dbStatus = '停机';
+              } else if (latestData.status === '维修中') {
+                status = 'stopped';
+                dbStatus = '维修中';
+              }
+
               this.currentDevice.status = status;
+              this.currentDevice.dbStatus = dbStatus;
 
               let statusText = '运行中';
-              if (status === 'warning') statusText = '预警';
+              if (latestData.status === '故障') statusText = '故障';
+              else if (latestData.status === '预警') statusText = '预警';
+              else if (latestData.status === '停机') statusText = '已停机';
+              else if (latestData.status === '维修中') statusText = '维修中';
+
               this.currentDevice.statusText = statusText;
             }
           }

@@ -1193,7 +1193,7 @@ export default {
             if (device.status === '故障') status = 'stopped';
             else if (device.status === '停机') status = 'stopped';
             else if (device.status === '维修中') status = 'warning';
-            else if (device.status === '预警' || device.fault_probability > 0.3) status = 'warning';
+            else if (device.status === '预警') status = 'warning';
 
             // 获取设备状态文本
             let statusText = '运行中';
@@ -1201,8 +1201,6 @@ export default {
             else if (device.status === '维修中') statusText = '维修中';
             else if (device.status === '故障') statusText = '故障';
             else if (device.status === '停机') statusText = '已停机';
-            else if (status === 'warning') statusText = '异常';
-            else if (status === 'stopped') statusText = '已停机';
 
             // 获取设备类型
             let type = 'production';
