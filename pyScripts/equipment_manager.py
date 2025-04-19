@@ -113,6 +113,10 @@ def add_equipment(equipment_data):
         connection = get_db_connection()
         cursor = connection.cursor()
 
+        # 处理JSON字段
+        if 'sensor_projects' in equipment_data and isinstance(equipment_data['sensor_projects'], dict):
+            equipment_data['sensor_projects'] = json.dumps(equipment_data['sensor_projects'], ensure_ascii=False)
+            
         # 构建插入语句
         fields = []
         placeholders = []

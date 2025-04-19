@@ -372,6 +372,119 @@
                 </option>
               </select>
             </div>
+
+            <div class="form-group">
+              <label>传感器项目</label>
+              <div class="sensor-projects-container">
+                <h4>基本参数</h4>
+                <div class="sensor-projects-group">
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="temperature" v-model="newEquipment.sensorProjects.temperature">
+                    <label for="temperature">温度</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="pressure" v-model="newEquipment.sensorProjects.pressure">
+                    <label for="pressure">压力</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="vibration" v-model="newEquipment.sensorProjects.vibration">
+                    <label for="vibration">振动</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="speed" v-model="newEquipment.sensorProjects.speed">
+                    <label for="speed">转速</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="noise" v-model="newEquipment.sensorProjects.noise">
+                    <label for="noise">噪音</label>
+                  </div>
+                </div>
+
+                <h4>电气参数</h4>
+                <div class="sensor-projects-group">
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="voltage" v-model="newEquipment.sensorProjects.voltage">
+                    <label for="voltage">电压</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="current" v-model="newEquipment.sensorProjects.current">
+                    <label for="current">电流</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="power" v-model="newEquipment.sensorProjects.power">
+                    <label for="power">功率</label>
+                  </div>
+                </div>
+
+                <h4>环境参数</h4>
+                <div class="sensor-projects-group">
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="humidity" v-model="newEquipment.sensorProjects.humidity">
+                    <label for="humidity">湿度</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="air_pressure" v-model="newEquipment.sensorProjects.air_pressure">
+                    <label for="air_pressure">气压</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="light_intensity" v-model="newEquipment.sensorProjects.light_intensity">
+                    <label for="light_intensity">光强</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="radiation" v-model="newEquipment.sensorProjects.radiation">
+                    <label for="radiation">辐射</label>
+                  </div>
+                </div>
+
+                <h4>液体参数</h4>
+                <div class="sensor-projects-group">
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="flow_rate" v-model="newEquipment.sensorProjects.flow_rate">
+                    <label for="flow_rate">流量</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="liquid_level" v-model="newEquipment.sensorProjects.liquid_level">
+                    <label for="liquid_level">液位</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="concentration" v-model="newEquipment.sensorProjects.concentration">
+                    <label for="concentration">浓度</label>
+                  </div>
+                </div>
+
+                <h4>机械参数</h4>
+                <div class="sensor-projects-group">
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="torque" v-model="newEquipment.sensorProjects.torque">
+                    <label for="torque">扭矩</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="displacement" v-model="newEquipment.sensorProjects.displacement">
+                    <label for="displacement">位移</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="weight" v-model="newEquipment.sensorProjects.weight">
+                    <label for="weight">重量</label>
+                  </div>
+                </div>
+
+
+                <h4>自定义传感器项目</h4>
+                <div class="custom-sensor-projects">
+                  <div class="custom-sensor-input">
+                    <input type="text" v-model="customSensorKey" placeholder="项目英文名称（如custom_temp）" class="form-input">
+                    <input type="text" v-model="customSensorValue" placeholder="项目中文名称（如自定义温度）" class="form-input">
+                    <button class="btn add-sensor" @click="addCustomSensor">添加</button>
+                  </div>
+                  <div class="custom-sensors-list" v-if="Object.keys(customSensors).length > 0">
+                    <div v-for="(value, key) in customSensors" :key="key" class="custom-sensor-item">
+                      <span>{{ key }}: {{ value }}</span>
+                      <button class="btn remove-sensor" @click="removeCustomSensor(key)">删除</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="modal-footer">
             <button class="btn cancel" @click="showAddEquipmentModal = false">取消</button>
@@ -395,6 +508,10 @@ export default {
   },
   data() {
     return {
+      // 自定义传感器项目
+      customSensorKey: '',
+      customSensorValue: '',
+      customSensors: {},
       productionLines: [],
       showConfigModal: false,
       showAssignModal: false,
@@ -416,7 +533,29 @@ export default {
         code: '',
         type: '生产设备',
         line_id: '',
-        worker_id: ''
+        worker_id: '',
+        sensorProjects: {
+          temperature: true,
+          pressure: false,
+          vibration: false,
+          speed: false,
+          voltage: false,
+          current: false,
+          power: false,
+          noise: false,
+          humidity: false,
+          flow_rate: false,
+          liquid_level: false,
+          air_pressure: false,
+          torque: false,
+          displacement: false,
+          weight: false,
+          concentration: false,
+          light_intensity: false,
+          radiation: false,
+          runtime: false,
+          output: false
+        }
       },
       // 设备监控相关数据
       equipmentFilter: {
@@ -722,14 +861,86 @@ export default {
       };
     },
 
+    // 添加自定义传感器项目
+    addCustomSensor() {
+      if (!this.customSensorKey || !this.customSensorValue) {
+        alert('请输入项目英文名称和中文名称');
+        return;
+      }
+
+      // 检查英文名称格式
+      if (!/^[a-z][a-z0-9_]*$/.test(this.customSensorKey)) {
+        alert('项目英文名称必须以小写字母开头，只能包含小写字母、数字和下划线');
+        return;
+      }
+
+      // 检查是否与预设项目重名
+      const presetKeys = [
+        'temperature', 'pressure', 'vibration', 'speed', 'voltage', 'current', 'power',
+        'noise', 'humidity', 'flow_rate', 'liquid_level', 'air_pressure', 'torque',
+        'displacement', 'weight', 'concentration', 'light_intensity', 'radiation',
+        'runtime', 'output'
+      ];
+
+      if (presetKeys.includes(this.customSensorKey)) {
+        alert('项目英文名称与预设项目重名，请使用其他名称');
+        return;
+      }
+
+      // 检查是否与已添加的自定义项目重名
+      if (this.customSensors[this.customSensorKey]) {
+        alert('项目英文名称已存在，请使用其他名称');
+        return;
+      }
+
+      // 添加自定义传感器项目
+      this.$set(this.customSensors, this.customSensorKey, this.customSensorValue);
+
+      // 清空输入框
+      this.customSensorKey = '';
+      this.customSensorValue = '';
+    },
+
+    // 删除自定义传感器项目
+    removeCustomSensor(key) {
+      this.$delete(this.customSensors, key);
+    },
+
     // 重置新增设备表单
     resetNewEquipmentForm() {
+      // 清空自定义传感器项目
+      this.customSensors = {};
+      this.customSensorKey = '';
+      this.customSensorValue = '';
+
       this.newEquipment = {
         name: '',
         code: '',
         type: '生产设备',
         line_id: '',
-        worker_id: ''
+        worker_id: '',
+        sensorProjects: {
+          temperature: true,
+          pressure: false,
+          vibration: false,
+          speed: false,
+          voltage: false,
+          current: false,
+          power: false,
+          noise: false,
+          humidity: false,
+          flow_rate: false,
+          liquid_level: false,
+          air_pressure: false,
+          torque: false,
+          displacement: false,
+          weight: false,
+          concentration: false,
+          light_intensity: false,
+          radiation: false,
+          runtime: false,
+          output: false
+        }
       };
     },
 
@@ -803,13 +1014,52 @@ export default {
 
       try {
         // 准备设备数据
+        // 处理传感器项目数据
+        const sensorProjects = {};
+        const sensorNameMap = {
+          temperature: '温度',
+          pressure: '压力',
+          vibration: '振动',
+          speed: '转速',
+          voltage: '电压',
+          current: '电流',
+          power: '功率',
+          noise: '噪音',
+          humidity: '湿度',
+          flow_rate: '流量',
+          liquid_level: '液位',
+          air_pressure: '气压',
+          torque: '扭矩',
+          displacement: '位移',
+          weight: '重量',
+          concentration: '浓度',
+          light_intensity: '光强',
+          radiation: '辐射',
+          runtime: '运行时间',
+          output: '产量'
+        };
+
+        // 处理预设传感器项目
+        for (const [key, value] of Object.entries(this.newEquipment.sensorProjects)) {
+          if (value && sensorNameMap[key]) {
+            // 只保存选中的传感器项目
+            sensorProjects[key] = sensorNameMap[key];
+          }
+        }
+
+        // 处理自定义传感器项目
+        for (const [key, value] of Object.entries(this.customSensors)) {
+          sensorProjects[key] = value;
+        }
+
         const equipmentData = {
           equipment_name: this.newEquipment.name,
           equipment_code: this.newEquipment.code,
           equipment_type: this.newEquipment.type,
           line_id: this.newEquipment.line_id,
           worker_id: this.newEquipment.worker_id || null,
-          status: '正常' // 默认状态为正常
+          status: '正常', // 默认状态为正常
+          sensor_projects: sensorProjects // 添加传感器项目数据
         };
 
         // 调用API添加设备
@@ -1923,5 +2173,107 @@ export default {
 .status-tag.stopped {
   background-color: #ffebee;
   color: #f44336;
+}
+
+/* 传感器项目选择区域样式 */
+.sensor-projects-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 5px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+
+.sensor-projects-container h4 {
+  margin: 10px 0 5px 0;
+  font-size: 14px;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
+}
+
+.sensor-projects-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+.sensor-project-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 100px;
+}
+
+.sensor-project-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.sensor-project-item label {
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* 自定义传感器项目样式 */
+.custom-sensor-projects {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.custom-sensor-input {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.custom-sensor-input .form-input {
+  flex: 1;
+  height: 32px;
+}
+
+.custom-sensor-input .btn.add-sensor {
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.custom-sensors-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px dashed #ddd;
+  border-radius: 4px;
+}
+
+.custom-sensor-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+
+.custom-sensor-item .btn.remove-sensor {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
 }
 </style>
