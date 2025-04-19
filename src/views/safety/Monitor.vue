@@ -58,11 +58,7 @@
       <div class="production-lines">
         <h3 class="section-title">产线安全状态</h3>
 
-        <!-- 加载中提示 -->
-        <div class="loading-container" v-if="loading.productionLines">
-          <div class="loading-spinner"></div>
-          <p>正在加载产线数据...</p>
-        </div>
+
 
         <!-- 错误提示 -->
         <div class="error-container" v-if="error.productionLines">
@@ -71,16 +67,39 @@
         </div>
 
         <!-- 空数据提示 -->
-        <div class="empty-container" v-if="!loading.productionLines && !error.productionLines && productionLines.length === 0">
+        <div class="empty-container" v-if="!error.productionLines && productionLines.length === 0">
           <p>没有找到产线数据</p>
         </div>
 
         <!-- 产线列表 -->
-        <div class="line-list" v-if="!loading.productionLines && !error.productionLines && productionLines.length > 0">
+        <div class="line-list" v-if="!error.productionLines && productionLines.length > 0">
           <div class="line-item" v-for="line in productionLines" :key="line.id">
             <div class="line-header">
               <span class="line-name">{{ line.name }}</span>
-              <span class="line-status" :class="line.status">{{ line.statusText }}</span>
+              <div class="status-control">
+                <span class="line-status" :class="line.status">{{ line.statusText }}</span>
+                <div class="status-buttons">
+                  <button
+                    class="status-btn"
+                    :class="{ 'active': line.dbStatus === '正常' }"
+                    @click="setLineStatus(line, '正常')"
+                    :disabled="line.dbStatus === '故障' || line.dbStatus === '维修中'"
+                  >正常</button>
+                  <button
+                    class="status-btn"
+                    :class="{ 'active': line.dbStatus === '停机' }"
+                    @click="setLineStatus(line, '停机')"
+                  >停机</button>
+                  <button
+                    class="status-btn"
+                    :class="{ 'active': line.dbStatus === '维修中' }"
+                    @click="setLineStatus(line, '维修中')"
+                  >维修中</button>
+                </div>
+                <span class="status-note" v-if="line.dbStatus === '故障' || line.dbStatus === '预警'">
+                  {{ getStatusNote(line) }}
+                </span>
+              </div>
             </div>
             <div class="line-body">
               <div class="metric-item">
@@ -106,6 +125,7 @@
               <button class="action-btn" @click="viewLineDetail(line)">查看详情</button>
               <button class="action-btn" @click="startInspection(line)">开始巡检</button>
               <button class="action-btn" @click="viewHistory(line)">历史记录</button>
+              <button class="action-btn status-btn" @click="openStatusModal(line, false)">修改状态</button>
             </div>
           </div>
         </div>
@@ -157,11 +177,7 @@
       <div class="equipment-safety">
         <h3 class="section-title">设备安全状态监控</h3>
 
-        <!-- 加载中提示 -->
-        <div class="loading-container" v-if="loading.equipments">
-          <div class="loading-spinner"></div>
-          <p>正在加载设备数据...</p>
-        </div>
+
 
         <!-- 错误提示 -->
         <div class="error-container" v-if="error.equipments">
@@ -170,12 +186,12 @@
         </div>
 
         <!-- 空数据提示 -->
-        <div class="empty-container" v-if="!loading.equipments && !error.equipments && equipments.length === 0">
+        <div class="empty-container" v-if="!error.equipments && equipments.length === 0">
           <p>没有找到设备数据</p>
         </div>
 
         <!-- 设备列表 -->
-        <div v-if="!loading.equipments && !error.equipments && equipments.length > 0">
+        <div v-if="!error.equipments && equipments.length > 0">
           <div class="filter-bar">
             <select v-model="equipmentFilter.line" class="filter-select">
               <option value="">全部产线</option>
@@ -209,7 +225,30 @@
                   <td>{{ device.name }}</td>
                   <td>{{ device.productionLine }}</td>
                   <td>
-                    <span :class="['risk-level', device.safetyStatus === 'error' ? 'high' : device.riskLevel]">{{ device.safetyStatus === 'error' ? '故障' : device.riskLevelText }}</span>
+                    <div class="status-control">
+                      <span :class="['status-tag', device.safetyStatus]">{{ device.statusText }}</span>
+                      <div class="status-buttons">
+                        <button
+                          class="status-btn"
+                          :class="{ 'active': device.dbStatus === '正常' }"
+                          @click="setDeviceStatus(device, '正常')"
+                          :disabled="device.dbStatus === '故障' || device.dbStatus === '维修中'"
+                        >正常</button>
+                        <button
+                          class="status-btn"
+                          :class="{ 'active': device.dbStatus === '停机' }"
+                          @click="setDeviceStatus(device, '停机')"
+                        >停机</button>
+                        <button
+                          class="status-btn"
+                          :class="{ 'active': device.dbStatus === '维修中' }"
+                          @click="setDeviceStatus(device, '维修中')"
+                        >维修中</button>
+                      </div>
+                      <span class="status-note" v-if="device.dbStatus === '故障' || device.dbStatus === '预警'">
+                        {{ getDeviceStatusNote(device) }}
+                      </span>
+                    </div>
                   </td>
                   <td>
                     <div class="safety-params">
@@ -219,10 +258,10 @@
                   </td>
                   <td>{{ device.lastCheck }}</td>
                   <td>
-                    <button class="action-btn" @click="viewDeviceDetail(device)">查看详情</button>
-                    <button class="action-btn" @click="startInspectionForDevice(device)">开始巡检</button>
-                    <button class="action-btn error" v-if="device.safetyStatus === 'error'" @click="createMaintenanceOrder(device)">维修工单</button>
-                    <button class="action-btn warning" v-else-if="device.safetyStatus === 'warning'" @click="createSafetyAlert(device)">安全预警</button>
+                    <button class="op-btn" @click="viewDeviceDetail(device)">查看</button>
+                    <button class="op-btn" @click="startInspectionForDevice(device)">巡检</button>
+                    <button class="op-btn warning" v-if="device.safetyStatus === 'error'" @click="createMaintenanceOrder(device)">维修</button>
+                    <button class="op-btn warning" v-else-if="device.safetyStatus === 'warning'" @click="createSafetyAlert(device)">预警</button>
                   </td>
                 </tr>
               </tbody>
@@ -271,6 +310,8 @@
         </div>
       </div>
     </div>
+
+
 
     <SafetyNav />
   </div>
@@ -424,6 +465,8 @@ export default {
         }
       ],
       inspectionNote: '',
+
+
 
       // 新增设备安全监控相关数据
       equipmentFilter: {
@@ -679,7 +722,8 @@ export default {
 
     // 从后端获取产线数据
     async fetchProductionLines() {
-      this.loading.productionLines = true;
+      // 不设置加载状态，避免显示加载界面
+      // this.loading.productionLines = true;
       this.error.productionLines = null;
 
       try {
@@ -733,8 +777,6 @@ export default {
       } catch (error) {
         console.error('获取产线数据出错:', error);
         this.error.productionLines = error.message || '获取产线数据出错';
-      } finally {
-        this.loading.productionLines = false;
       }
     },
 
@@ -745,12 +787,21 @@ export default {
         let status = 'normal';
         let statusText = '正常';
 
-        if (line.status === '故障' || line.status === 'fault') {
+        // 保存原始数据库状态值供下拉菜单使用
+        const dbStatus = line.status || '正常';
+
+        if (dbStatus === '故障' || dbStatus === 'fault') {
           status = 'error';
           statusText = '故障';
-        } else if (line.status === '预警' || line.status === 'warning') {
+        } else if (dbStatus === '预警' || dbStatus === 'warning') {
           status = 'warning';
           statusText = '预警';
+        } else if (dbStatus === '停机') {
+          status = 'stopped';
+          statusText = '已停机';
+        } else if (dbStatus === '维修中') {
+          status = 'warning';
+          statusText = '维修中';
         }
 
         // 解析传感器数据
@@ -792,6 +843,7 @@ export default {
           name: line.line_name,
           status: status,
           statusText: statusText,
+          dbStatus: dbStatus, // 原始数据库状态值
           noise: noise,
           temperature: temperature,
           airQuality: airQuality,
@@ -824,7 +876,8 @@ export default {
 
     // 从后端获取设备数据
     async fetchEquipments() {
-      this.loading.equipments = true;
+      // 不设置加载状态，避免显示加载界面
+      // this.loading.equipments = true;
       this.error.equipments = null;
 
       try {
@@ -876,8 +929,144 @@ export default {
       } catch (error) {
         console.error('获取设备数据出错:', error);
         this.error.equipments = error.message || '获取设备数据出错';
-      } finally {
-        this.loading.equipments = false;
+      }
+    },
+
+    // 获取状态提示
+    getStatusNote(line) {
+      if (line.dbStatus === '故障') {
+        return '当前产线处于故障状态，需要维修后才能恢复正常';
+      } else if (line.dbStatus === '预警') {
+        return '产线存在异常，可以停机或进行维修';
+      }
+      return '';
+    },
+
+    // 获取设备状态提示
+    getDeviceStatusNote(device) {
+      if (device.dbStatus === '故障') {
+        return '当前设备处于故障状态，需要维修后才能恢复正常';
+      } else if (device.dbStatus === '预警') {
+        return '设备存在异常，可以停机或进行维修';
+      }
+      return '';
+    },
+
+    // 设置产线状态
+    async setLineStatus(line, status) {
+      // 检查当前状态是否允许修改
+      if (line.dbStatus === '故障' && status !== '维修中') {
+        alert(`故障状态下只能将产线设置为维修中状态。`);
+        return;
+      }
+
+      // 如果当前状态是预警，只能改为停机或维修中
+      if (line.dbStatus === '预警' && status === '正常') {
+        alert('预警状态下只能将产线设置为停机或维修中状态。');
+        return;
+      }
+
+      try {
+        console.log(`更新产线 ${line.id} 状态为: ${status}`);
+
+        // 准备状态数据
+        const lineData = {
+          status: status
+        };
+
+        // 调用API更新产线状态
+        const response = await fetch('/api/production_line/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            line_id: line.id,
+            line_data: lineData
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 更新成功，强制刷新数据
+          await this.fetchProductionLines();
+          await this.fetchEquipments(true); // 使用forceRefresh参数强制刷新设备数据
+          alert(`产线 ${line.name} 状态已更新为 ${status}`);
+        } else {
+          alert(`更新产线状态失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('更新产线状态出错:', error);
+        alert(`更新产线状态出错: ${error.message || '未知错误'}`);
+      }
+    },
+
+    // 设置设备状态
+    async setDeviceStatus(device, status) {
+      // 检查当前状态是否允许修改
+      if (device.dbStatus === '故障' && status !== '维修中') {
+        alert(`故障状态下只能将设备设置为维修中状态。`);
+        return;
+      }
+
+      // 如果当前状态是预警，只能改为停机或维修中
+      if (device.dbStatus === '预警' && status === '正常') {
+        alert('预警状态下只能将设备设置为停机或维修中状态。');
+        return;
+      }
+
+      try {
+        console.log(`更新设备 ${device.id} 状态为: ${status}`);
+
+        // 准备状态数据
+        const equipmentData = {
+          status: status
+        };
+
+        // 调用API更新设备状态
+        const response = await fetch('/api/equipment/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            equipment_id: device.id,
+            equipment_data: equipmentData
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 更新成功，强制刷新数据
+          await this.fetchEquipments(true); // 使用forceRefresh参数强制刷新设备数据
+
+          // 直接更新当前设备的状态显示，确保界面立即反映变化
+          const updatedDevice = this.equipments.find(d => d.id === device.id);
+          if (updatedDevice) {
+            // 更新状态文本和样式类
+            if (status === '停机') {
+              updatedDevice.safetyStatus = 'stopped';
+              updatedDevice.statusText = '已停机';
+            } else if (status === '正常') {
+              updatedDevice.safetyStatus = 'normal';
+              updatedDevice.statusText = '正常';
+            } else if (status === '维修中') {
+              updatedDevice.safetyStatus = 'warning';
+              updatedDevice.statusText = '维修中';
+            }
+          }
+
+          alert(`设备 ${device.name} 状态已更新为 ${status}`);
+        } else {
+          alert(`更新设备状态失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('更新设备状态出错:', error);
+        alert(`更新设备状态出错: ${error.message || '未知错误'}`);
       }
     },
 
@@ -932,12 +1121,24 @@ export default {
 
         // 设置安全状态
         let safetyStatus = 'normal';
+        let statusText = '正常';
+
+        // 保存原始数据库状态值供下拉菜单使用
+        const dbStatus = equipment.status || '正常';
 
         // 检查设备状态
-        if (equipment.status === '故障' || equipment.status === 'fault') {
+        if (dbStatus === '故障' || dbStatus === 'fault') {
           safetyStatus = 'error';
-        } else if (equipment.status === '预警' || equipment.status === 'warning' || riskLevel === 'high' || temperature > 85) {
+          statusText = '故障';
+        } else if (dbStatus === '预警' || dbStatus === 'warning' || riskLevel === 'high' || temperature > 85) {
           safetyStatus = 'warning';
+          statusText = '预警';
+        } else if (dbStatus === '停机') {
+          safetyStatus = 'stopped';
+          statusText = '已停机';
+        } else if (dbStatus === '维修中') {
+          safetyStatus = 'warning';
+          statusText = '维修中';
         }
 
         // 格式化最后检查时间
@@ -954,6 +1155,8 @@ export default {
           temperature: temperature,
           noise: noise,
           safetyStatus: safetyStatus,
+          statusText: statusText,
+          dbStatus: dbStatus, // 原始数据库状态值
           lastCheck: lastCheck,
           // 保存原始数据
           original: equipment
@@ -1118,6 +1321,86 @@ export default {
 
 .line-status.error {
   background: #ffebee;
+  color: #f44336;
+}
+
+.line-status.stopped {
+  background: #ffebee;
+  color: #f44336;
+}
+
+/* 状态控制样式 */
+.status-control {
+  display: flex;
+  align-items: center;
+}
+
+.status-buttons {
+  display: flex;
+  gap: 8px;
+  margin: 0 10px;
+}
+
+.status-btn {
+  padding: 4px 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.status-btn:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.status-btn.active {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  color: white;
+}
+
+.status-btn:disabled {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #bfbfbf;
+  cursor: not-allowed;
+}
+
+.status-note {
+  font-size: 12px;
+  color: #ff4d4f;
+  margin-left: 10px;
+  font-style: italic;
+}
+
+/* 设备状态标签样式 */
+.status-tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-tag.normal {
+  background-color: #e8f5e9;
+  color: #4CAF50;
+}
+
+.status-tag.warning {
+  background-color: #fff3e0;
+  color: #ff9800;
+}
+
+.status-tag.error {
+  background-color: #ffebee;
+  color: #f44336;
+}
+
+.status-tag.stopped {
+  background-color: #ffebee;
   color: #f44336;
 }
 
@@ -1362,6 +1645,48 @@ export default {
   background: #ffebee;
   color: #f44336;
 }
+
+.action-btn.status-btn {
+  background: #e8eaf6;
+  color: #3f51b5;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.status-tag.normal {
+  background: #e8f5e9;
+  color: #4CAF50;
+}
+
+.status-tag.warning {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.status-tag.error {
+  background: #ffebee;
+  color: #f44336;
+}
+
+.op-btn {
+  padding: 4px 8px;
+  margin-right: 5px;
+  border: none;
+  border-radius: 4px;
+  background: #e3f2fd;
+  color: #2196F3;
+  cursor: pointer;
+}
+
+.op-btn.warning {
+  background: #fff3e0;
+  color: #ff9800;
+}
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -1484,5 +1809,35 @@ export default {
 .action-btn.primary {
   background-color: #2196F3;
   color: white;
+}
+
+/* 表单样式 */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #333;
+}
+
+.form-group .value {
+  padding: 8px 0;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-input:focus {
+  border-color: #2196F3;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
 }
 </style>
