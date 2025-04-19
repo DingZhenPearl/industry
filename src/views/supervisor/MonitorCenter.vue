@@ -145,6 +145,9 @@
                 <option value="auxiliary">辅助设备</option>
               </select>
             </div>
+            <button class="config-btn" @click="showEquipmentConfigModal = true">
+              <i class="config-icon"></i> 设备配置
+            </button>
             <button class="config-btn" @click="showAddEquipmentModal = true">
               <i class="add-icon"></i> 新增设备
             </button>
@@ -259,7 +262,7 @@
                 <span class="line-name">{{ line.name }}</span>
                 <div class="config-actions">
                   <button class="btn" @click="editLine(line)">编辑</button>
-                  <button class="btn danger" @click="deleteLine(line)">停用</button>
+                  <button class="btn danger" @click="deleteLine(line)">删除</button>
                 </div>
               </div>
             </div>
@@ -326,6 +329,28 @@
           <div class="modal-footer">
             <button class="btn cancel" @click="showAddLineModal = false">取消</button>
             <button class="btn submit" @click="confirmAddLine">确定添加</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 设备配置模态框 -->
+      <div class="modal" v-if="showEquipmentConfigModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>设备配置</h3>
+            <span class="close-btn" @click="showEquipmentConfigModal = false">&times;</span>
+          </div>
+          <div class="modal-body">
+            <div class="config-list">
+              <div class="config-item" v-for="device in equipments" :key="device.id">
+                <span class="device-name">{{ device.name }}</span>
+                <div class="config-actions">
+                  <button class="btn" @click="viewDeviceDetail(device)">查看</button>
+                  <button class="btn danger" @click="deleteDevice(device)">删除</button>
+                </div>
+              </div>
+            </div>
+            <button class="btn primary add-device" @click="showAddEquipmentModal = true">新增设备</button>
           </div>
         </div>
       </div>
@@ -514,6 +539,7 @@ export default {
       customSensors: {},
       productionLines: [],
       showConfigModal: false,
+      showEquipmentConfigModal: false,
       showAssignModal: false,
       showAddLineModal: false,
       showAddEquipmentModal: false,
@@ -843,12 +869,66 @@ export default {
     },
 
     deleteLine(line) {
-      if(confirm(`确定要停用${line.name}吗？`)) {
-        // 停用产线的逻辑
-        this.updateLineStatus({
-          ...line,
-          dbStatus: '停用'
+      if(confirm(`确定要删除产线 ${line.name} 吗？删除后无法恢复，且产线上不能有设备。`)) {
+        this.deleteProductionLine(line);
+      }
+    },
+
+    async deleteProductionLine(line) {
+      try {
+        // 调用API删除产线
+        const response = await fetch(`/api/production_line/delete/${line.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
         });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert(`产线 ${line.name} 删除成功！`);
+          // 重新加载产线数据
+          this.fetchProductionLines();
+        } else {
+          alert(`删除失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('删除产线出错:', error);
+        alert(`删除产线出错: ${error.message || '未知错误'}`);
+      }
+    },
+
+    deleteDevice(device) {
+      if(confirm(`确定要删除设备 ${device.name} 吗？删除后无法恢复。`)) {
+        this.deleteEquipment(device);
+      }
+    },
+
+    async deleteEquipment(device) {
+      try {
+        // 调用API删除设备
+        const response = await fetch(`/api/equipment/delete/${device.id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert(`设备 ${device.name} 删除成功！`);
+          // 重新加载设备数据
+          this.fetchEquipments(true);
+          // 关闭模态框
+          this.showEquipmentConfigModal = false;
+        } else {
+          alert(`删除失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('删除设备出错:', error);
+        alert(`删除设备出错: ${error.message || '未知错误'}`);
       }
     },
 
@@ -1846,7 +1926,8 @@ export default {
   cursor: pointer;
 }
 
-.settings-icon {
+.settings-icon,
+.config-icon {
   display: inline-block;
   width: 16px;
   height: 16px;
@@ -1898,7 +1979,8 @@ export default {
   border-bottom: none;
 }
 
-.line-name {
+.line-name,
+.device-name {
   font-weight: bold;
 }
 

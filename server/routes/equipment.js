@@ -219,15 +219,36 @@ router.post('/assign-worker', authMiddleware, async (req, res) => {
   }
 });
 
-// 创建设备表（仅管理员可用）
-router.post('/create-tables', authMiddleware, async (req, res) => {
-  // 检查用户角色，仅允许管理员执行此操作
-  if (req.session.user.role !== 'supervisor') {
-    return res.status(403).json({
+// 删除设备
+router.delete('/delete/:equipment_id', authMiddleware, async (req, res) => {
+  const { equipment_id } = req.params;
+
+  // 不限制用户角色，任何用户都可以执行删除操作
+
+  if (!equipment_id) {
+    return res.status(400).json({
       success: false,
-      error: '权限不足，仅管理员可执行此操作'
+      error: '缺少设备ID'
     });
   }
+
+  try {
+    const result = await runPythonScript(
+      'pyScripts/delete_equipment.py',
+      ['--equipment-id', equipment_id],
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('删除设备出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
+// 创建设备表
+router.post('/create-tables', authMiddleware, async (req, res) => {
+  // 不限制用户角色，任何用户都可以执行创建表操作
 
   try {
     const result = await runPythonScript(

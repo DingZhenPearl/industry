@@ -71,11 +71,7 @@ const supervisorRoutes = [
     name: 'MonitorCenter',
     component: () => import('../views/supervisor/MonitorCenter.vue')
   },
-  {
-    path: '/supervisor/efficiency',
-    name: 'EfficiencyAnalysis',
-    component: () => import('../views/supervisor/EfficiencyAnalysis.vue')
-  },
+
   {
     path: '/supervisor/team',
     name: 'TeamManagement',

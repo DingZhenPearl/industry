@@ -4,10 +4,7 @@
       <i class="nav-icon monitor-icon"></i>
       <span>监控中心</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/supervisor/efficiency' }" @click="$router.push('/supervisor/efficiency')">
-      <i class="nav-icon efficiency-icon"></i>
-      <span>效率分析</span>
-    </div>
+
     <div class="nav-item" :class="{ active: $route.path === '/supervisor/team' }" @click="$router.push('/supervisor/team')">
       <i class="nav-icon team-icon"></i>
       <span>团队管理</span>
