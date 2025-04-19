@@ -103,6 +103,7 @@
               </div>
             </div>
             <div class="action-bar">
+              <button class="action-btn" @click="viewLineDetail(line)">查看详情</button>
               <button class="action-btn" @click="startInspection(line)">开始巡检</button>
               <button class="action-btn" @click="viewHistory(line)">历史记录</button>
             </div>
@@ -545,10 +546,32 @@ export default {
     this.fetchEquipments();
   },
   methods: {
+    // 查看产线详情
+    viewLineDetail(line) {
+      console.log('查看产线详情:', line);
+      // 确保产线 ID 存在
+      if (!line || !line.id) {
+        console.error('产线 ID 不存在');
+        alert('无法查看产线详情，产线 ID 不存在');
+        return;
+      }
+
+      // 输出详细信息便于调试
+      console.log('产线详细信息:', {
+        id: line.id,
+        name: line.name,
+        original: line.original
+      });
+
+      // 跳转到产线详情页面
+      this.$router.push(`/safety/production-line-detail/${line.id}`);
+    },
+
     startInspection(line) {
       this.selectedLine = line;
       this.showInspectionModal = true;
     },
+
     viewHistory(line) {
       console.log('查看历史记录:', line);
     },

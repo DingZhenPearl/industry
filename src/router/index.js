@@ -126,6 +126,11 @@ const safetyRoutes = [
     component: () => import('../views/safety/EquipmentDetail.vue')
   },
   {
+    path: '/safety/production-line-detail/:id',
+    name: 'SafetyProductionLineDetail',
+    component: () => import('../views/safety/ProductionLineDetail.vue')
+  },
+  {
     path: '/safety/statistics',
     name: 'SafetyStatistics',
     component: () => import('../views/safety/Statistics.vue')
