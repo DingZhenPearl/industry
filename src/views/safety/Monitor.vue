@@ -209,7 +209,7 @@
                   <td>{{ device.name }}</td>
                   <td>{{ device.productionLine }}</td>
                   <td>
-                    <span :class="['risk-level', device.riskLevel]">{{ device.riskLevelText }}</span>
+                    <span :class="['risk-level', device.safetyStatus === 'error' ? 'high' : device.riskLevel]">{{ device.safetyStatus === 'error' ? '故障' : device.riskLevelText }}</span>
                   </td>
                   <td>
                     <div class="safety-params">
@@ -221,7 +221,8 @@
                   <td>
                     <button class="action-btn" @click="viewDeviceDetail(device)">查看详情</button>
                     <button class="action-btn" @click="startInspectionForDevice(device)">开始巡检</button>
-                    <button class="action-btn warning" v-if="device.riskLevel === 'high'" @click="createSafetyAlert(device)">安全预警</button>
+                    <button class="action-btn error" v-if="device.safetyStatus === 'error'" @click="createMaintenanceOrder(device)">维修工单</button>
+                    <button class="action-btn warning" v-else-if="device.safetyStatus === 'warning'" @click="createSafetyAlert(device)">安全预警</button>
                   </td>
                 </tr>
               </tbody>
@@ -627,6 +628,20 @@ export default {
       alert('已创建安全预警并添加到隐患列表');
     },
 
+    // 创建维修工单
+    createMaintenanceOrder(device) {
+      console.log('创建维修工单:', device);
+
+      // 跳转到安全预警处理页面
+      this.$router.push({
+        path: '/safety/warning',
+        query: {
+          device_id: device.id,
+          type: 'maintenance'
+        }
+      });
+    },
+
     // 处理预警
     handleWarning(warning) {
       console.log('处理预警:', warning);
@@ -731,6 +746,9 @@ export default {
         let statusText = '正常';
 
         if (line.status === '故障' || line.status === 'fault') {
+          status = 'error';
+          statusText = '故障';
+        } else if (line.status === '预警' || line.status === 'warning') {
           status = 'warning';
           statusText = '预警';
         }
@@ -786,14 +804,22 @@ export default {
 
     // 更新监控项目
     updateMonitorItems() {
-      this.monitorItems = this.productionLines.map(line => ({
-        area: line.name,
-        status: line.status,
-        statusText: line.statusText,
-        detail: line.status === 'warning'
-          ? `${line.name}存在异常情况，请检查`
-          : '设备运行正常，无安全隐患'
-      }));
+      this.monitorItems = this.productionLines.map(line => {
+        let detail = '设备运行正常，无安全隐患';
+
+        if (line.status === 'error') {
+          detail = `${line.name}存在故障，需要立即处理`;
+        } else if (line.status === 'warning') {
+          detail = `${line.name}存在异常情况，请检查`;
+        }
+
+        return {
+          area: line.name,
+          status: line.status,
+          statusText: line.statusText,
+          detail: detail
+        };
+      });
     },
 
     // 从后端获取设备数据
@@ -906,7 +932,11 @@ export default {
 
         // 设置安全状态
         let safetyStatus = 'normal';
-        if (riskLevel === 'high' || temperature > 85) {
+
+        // 检查设备状态
+        if (equipment.status === '故障' || equipment.status === 'fault') {
+          safetyStatus = 'error';
+        } else if (equipment.status === '预警' || equipment.status === 'warning' || riskLevel === 'high' || temperature > 85) {
           safetyStatus = 'warning';
         }
 
@@ -1033,6 +1063,11 @@ export default {
   color: #ff9800;
 }
 
+.area-status.error {
+  background: #ffebee;
+  color: #f44336;
+}
+
 .detail {
   color: #666;
   font-size: 14px;
@@ -1069,6 +1104,21 @@ export default {
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
+}
+
+.line-status.normal {
+  background: #e8f5e9;
+  color: #4CAF50;
+}
+
+.line-status.warning {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.line-status.error {
+  background: #ffebee;
+  color: #f44336;
 }
 
 .line-body {
@@ -1304,6 +1354,11 @@ export default {
 }
 
 .action-btn.warning {
+  background: #fff3e0;
+  color: #ff9800;
+}
+
+.action-btn.error {
   background: #ffebee;
   color: #f44336;
 }
