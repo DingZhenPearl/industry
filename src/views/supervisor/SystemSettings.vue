@@ -3,7 +3,7 @@
     <header class="header">
       <h1>我的</h1>
     </header>
-    
+
     <div class="content">
       <!-- 用户信息卡片 -->
       <div class="user-profile-card">
@@ -15,7 +15,7 @@
           <div class="role-badge">厂长</div>
         </div>
       </div>
-      
+
       <!-- 个人信息卡片 -->
       <div class="info-card">
         <h3 class="card-title">个人信息</h3>
@@ -43,50 +43,9 @@
         </div>
       </div>
 
-      <!-- 管理统计卡片 -->
-      <div class="info-card">
-        <h3 class="card-title">管理统计</h3>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <div class="stat-value">3</div>
-            <div class="stat-label">生产线</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">42</div>
-            <div class="stat-label">员工数量</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">95%</div>
-            <div class="stat-label">生产效率</div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- 系统设置区域 -->
-      <div class="info-card">
-        <h3 class="card-title">系统设置</h3>
-        <div class="info-item">
-          <label>系统通知</label>
-          <label class="switch">
-            <input type="checkbox" v-model="settings.notifications">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="info-item">
-          <label>数据自动同步</label>
-          <label class="switch">
-            <input type="checkbox" v-model="settings.autoSync">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="info-item">
-          <label>双因素认证</label>
-          <label class="switch">
-            <input type="checkbox" v-model="settings.twoFactorAuth">
-            <span class="slider"></span>
-          </label>
-        </div>
-      </div>
+
+
+
 
       <!-- 操作按钮列表 -->
       <div class="action-list">
@@ -143,11 +102,7 @@ export default {
       showDialog: false,
       newUsername: '',
       updateError: '',
-      settings: {
-        notifications: true,
-        autoSync: false,
-        twoFactorAuth: false
-      }
+
     }
   },
   methods: {
@@ -179,7 +134,7 @@ export default {
         }
       }).catch(() => {});
     },
-    
+
     updatePhone() {
       this.$prompt('请输入新手机号', '更新手机号', {
         inputPattern: /^1[3-9]\d{9}$/,
@@ -198,7 +153,7 @@ export default {
             }),
             credentials: 'include'
           });
-          
+
           const data = await response.json();
           if (data.success) {
             this.userInfo.phone = phone;
@@ -523,51 +478,9 @@ export default {
   color: #666;
 }
 
-/* 开关样式 */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 60px;
-  height: 34px;
-}
 
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
 
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: .4s;
-  border-radius: 34px;
-}
 
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 26px;
-  width: 26px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  transition: .4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #4CAF50;
-}
-
-input:checked + .slider:before {
-  transform: translateX(26px);
-}
 
 /* 操作按钮样式 */
 .action-list {

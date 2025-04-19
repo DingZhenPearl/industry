@@ -51,24 +51,7 @@
         </div>
       </div>
 
-      <!-- 团队管理统计 -->
-      <div class="info-card">
-        <h3 class="card-title">团队管理</h3>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <div class="stat-value">8</div>
-            <div class="stat-label">团队成员</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">15</div>
-            <div class="stat-label">待分配工单</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">92%</div>
-            <div class="stat-label">团队效率</div>
-          </div>
-        </div>
-      </div>
+
 
       <!-- 操作按钮列表 -->
       <div class="action-list">

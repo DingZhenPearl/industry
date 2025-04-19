@@ -51,24 +51,7 @@
         </div>
       </div>
 
-      <!-- 安全工作统计 -->
-      <div class="info-card">
-        <h3 class="card-title">安全工作统计</h3>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <div class="stat-value">24</div>
-            <div class="stat-label">本月巡检次数</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">5</div>
-            <div class="stat-label">待处理隐患</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">98%</div>
-            <div class="stat-label">安全指数</div>
-          </div>
-        </div>
-      </div>
+
 
       <!-- 操作按钮列表 -->
       <div class="action-list">

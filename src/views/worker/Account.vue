@@ -51,24 +51,7 @@
         </div>
       </div>
 
-      <!-- 工作统计卡片 -->
-      <div class="info-card">
-        <h3 class="card-title">工作统计</h3>
-        <div class="stats-grid">
-          <div class="stat-item">
-            <div class="stat-value">12</div>
-            <div class="stat-label">本月完成工单</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">98%</div>
-            <div class="stat-label">工单完成率</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">2</div>
-            <div class="stat-label">进行中工单</div>
-          </div>
-        </div>
-      </div>
+
 
       <!-- 操作按钮列表 -->
       <div class="action-list">
