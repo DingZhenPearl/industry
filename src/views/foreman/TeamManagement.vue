@@ -28,6 +28,9 @@
               <span class="value">{{ getLineCompletionRate(line.id) }}%</span>
             </div>
           </div>
+          <div class="dept-actions">
+            <button class="action-btn" @click="viewLineDetail(line)">查看产线详情</button>
+          </div>
         </div>
       </div>
 
@@ -482,6 +485,13 @@ export default {
       return '无';
     },
 
+    // 查看产线详情
+    viewLineDetail(line) {
+      console.log('查看产线详情:', line);
+      // 跳转到产线详情页面
+      this.$router.push(`/foreman/production-line-detail/${line.id}`);
+    },
+
     // 查看员工详情
     viewEmployeeDetail(employee) {
       this.selectedEmployee = { ...employee };
@@ -605,6 +615,14 @@ export default {
 .dept-stats {
   display: flex;
   justify-content: space-between;
+}
+
+.dept-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
 }
 
 .stat-item {

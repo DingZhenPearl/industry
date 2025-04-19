@@ -21,6 +21,11 @@ const foremanRoutes = [
     component: () => import('../views/foreman/EquipmentDetail.vue')
   },
   {
+    path: '/foreman/production-line-detail/:id',
+    name: 'ForemanProductionLineDetail',
+    component: () => import('../views/foreman/ProductionLineDetail.vue')
+  },
+  {
     path: '/foreman/team',
     name: 'Team',
     component: () => import('../views/foreman/TeamManagement.vue')

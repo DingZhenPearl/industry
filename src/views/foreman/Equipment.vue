@@ -29,6 +29,7 @@
             </div>
           </div>
           <div class="line-actions">
+            <button class="action-btn" @click="viewLineDetail(line)">查看详情</button>
             <button class="action-btn" @click="manageDevices(line)">管理设备</button>
             <button class="action-btn" @click="scheduleMaintenace(line)">排程维护</button>
           </div>
@@ -368,6 +369,13 @@ export default {
       if (!dateString) return '未知';
       const date = new Date(dateString);
       return date.toISOString().split('T')[0];
+    },
+
+    // 查看产线详情
+    viewLineDetail(line) {
+      console.log('查看产线详情:', line);
+      // 跳转到产线详情页面
+      this.$router.push(`/foreman/production-line-detail/${line.id}`);
     },
 
     // 管理产线设备
