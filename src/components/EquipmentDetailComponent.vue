@@ -24,7 +24,23 @@
       <div class="info-card">
         <div class="device-header">
           <h3>设备状态</h3>
-          <span :class="['status-tag', equipment.status]">{{ equipment.statusText }}</span>
+          <div class="status-control">
+            <span :class="['status-tag', equipment.status]">{{ equipment.statusText }}</span>
+            <div class="status-buttons" v-if="showStatusControl">
+              <button
+                class="status-btn"
+                :class="{ 'active': equipment.dbStatus === '正常' }"
+                @click="changeStatus('正常')"
+                :disabled="!canChangeToNormal"
+              >正常</button>
+              <button
+                class="status-btn"
+                :class="{ 'active': equipment.dbStatus === '停机' }"
+                @click="changeStatus('停机')"
+                :disabled="!canChangeToStopped"
+              >停机</button>
+            </div>
+          </div>
         </div>
         <div class="device-body">
           <div class="info-row">
@@ -125,6 +141,11 @@ export default {
       type: Boolean,
       default: true
     },
+    // 是否显示状态控制按钮
+    showStatusControl: {
+      type: Boolean,
+      default: false
+    },
     // 是否自动刷新
     autoRefreshEnabled: {
       type: Boolean,
@@ -155,6 +176,37 @@ export default {
       }
     }
   },
+  computed: {
+    // 是否可以切换到正常状态
+    canChangeToNormal() {
+      if (!this.equipment) return false;
+
+      // 如果当前是故障或维修中状态，不能切换到正常
+      if (this.equipment.dbStatus === '故障' || this.equipment.dbStatus === '维修中') {
+        return false;
+      }
+
+      // 如果当前是预警状态，不能切换到正常
+      if (this.equipment.dbStatus === '预警') {
+        return false;
+      }
+
+      return true;
+    },
+
+    // 是否可以切换到停机状态
+    canChangeToStopped() {
+      if (!this.equipment) return false;
+
+      // 如果当前是故障或维修中状态，不能切换到停机
+      if (this.equipment.dbStatus === '故障' || this.equipment.dbStatus === '维修中') {
+        return false;
+      }
+
+      return true;
+    }
+  },
+
   watch: {
     equipment(newEquipment) {
       if (newEquipment) {
@@ -437,6 +489,28 @@ export default {
       return unitMap[this.selectedParameter] || '';
     },
 
+    // 修改设备状态
+    changeStatus(status) {
+      if (!this.equipment) return;
+
+      // 检查当前状态是否允许修改
+      if (status === '正常' && !this.canChangeToNormal) {
+        alert('当前状态不允许切换到正常状态');
+        return;
+      }
+
+      if (status === '停机' && !this.canChangeToStopped) {
+        alert('当前状态不允许切换到停机状态');
+        return;
+      }
+
+      // 触发状态修改事件
+      this.$emit('status-change', {
+        equipmentId: this.equipment.id,
+        newStatus: status
+      });
+    },
+
     // 获取参数颜色
     getParameterColor(alpha = 1) {
       const colorMap = {
@@ -548,6 +622,46 @@ export default {
 .status-tag.normal {
   background: #e8f5e9;
   color: #4CAF50;
+}
+
+/* 状态控制样式 */
+.status-control {
+  display: flex;
+  align-items: center;
+}
+
+.status-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: 10px;
+}
+
+.status-btn {
+  padding: 4px 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.status-btn:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.status-btn.active {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  color: white;
+}
+
+.status-btn:disabled {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #bfbfbf;
+  cursor: not-allowed;
 }
 
 .info-row {

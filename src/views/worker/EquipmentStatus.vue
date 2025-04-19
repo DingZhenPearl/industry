@@ -30,9 +30,11 @@
         :error="error"
         :auto-refresh-enabled="autoRefresh"
         :refresh-rate="refreshRate"
+        :show-status-control="true"
         @retry="fetchMyDevices"
         @refresh-data="fetchLatestDeviceData"
         @fetch-history="fetchDeviceHistory"
+        @status-change="updateEquipmentStatus"
       >
         <!-- 自定义操作按钮 -->
         <template v-slot:actions>
@@ -183,13 +185,33 @@ export default {
             .map(device => {
               // 获取设备状态
               let status = 'running';
-              if (device.status === '故障') status = 'stopped';
-              else if (device.fault_probability > 0.3) status = 'warning';
+              // 保存原始数据库状态值供状态修改使用
+              let dbStatus = device.status || '正常';
+
+              if (device.status === '故障') {
+                status = 'stopped';
+                dbStatus = '故障';
+              } else if (device.status === '停机') {
+                status = 'stopped';
+                dbStatus = '停机';
+              } else if (device.status === '维修中') {
+                status = 'stopped';
+                dbStatus = '维修中';
+              } else if (device.status === '预警' || device.fault_probability > 0.3) {
+                status = 'warning';
+                dbStatus = '预警';
+              } else if (device.status === '正常') {
+                dbStatus = '正常';
+              }
 
               // 获取设备状态文本
               let statusText = '运行中';
               if (status === 'warning') statusText = '预警';
-              else if (status === 'stopped') statusText = '已停机';
+              else if (status === 'stopped') {
+                if (dbStatus === '故障') statusText = '故障';
+                else if (dbStatus === '维修中') statusText = '维修中';
+                else statusText = '已停机';
+              }
 
               // 创建设备对象
               const deviceObj = {
@@ -200,6 +222,7 @@ export default {
                 productionLine: device.line_name || '未知产线',
                 status: status,
                 statusText: statusText,
+                dbStatus: dbStatus, // 原始数据库状态值
                 runtime: device.runtime_hours || 0,
                 faultProbability: device.fault_probability || 0,
                 sensorData: device.sensor_data || {}
@@ -372,6 +395,59 @@ export default {
     // 查看操作手册
     viewManual() {
       console.log('查看设备操作手册');
+    },
+
+    // 更新设备状态
+    async updateEquipmentStatus(data) {
+      try {
+        console.log(`更新设备 ${data.equipmentId} 状态为: ${data.newStatus}`);
+
+        // 准备状态数据
+        const equipmentData = {
+          status: data.newStatus
+        };
+
+        // 调用API更新设备状态
+        const response = await fetch('/api/equipment/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            equipment_id: data.equipmentId,
+            equipment_data: equipmentData
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 更新成功，刷新设备数据
+          await this.fetchMyDevices();
+
+          // 直接更新当前设备的状态显示，确保界面立即反映变化
+          if (this.currentDevice && this.currentDevice.id === data.equipmentId) {
+            // 更新状态文本和样式类
+            if (data.newStatus === '停机') {
+              this.currentDevice.status = 'stopped';
+              this.currentDevice.statusText = '已停机';
+              this.currentDevice.dbStatus = '停机';
+            } else if (data.newStatus === '正常') {
+              this.currentDevice.status = 'running';
+              this.currentDevice.statusText = '运行中';
+              this.currentDevice.dbStatus = '正常';
+            }
+          }
+
+          alert(`设备状态已更新为 ${data.newStatus}`);
+        } else {
+          alert(`更新设备状态失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('更新设备状态出错:', error);
+        alert(`更新设备状态出错: ${error.message || '未知错误'}`);
+      }
     },
 
 
