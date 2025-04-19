@@ -53,11 +53,7 @@ const workerRoutes = [
     name: 'EquipmentStatus',
     component: () => import('../views/worker/EquipmentStatus.vue')
   },
-  {
-    path: '/worker/knowledge',
-    name: 'Knowledge',
-    component: () => import('../views/worker/Knowledge.vue')
-  },
+
   {
     path: '/worker/profile',
     name: 'WorkerProfile',
