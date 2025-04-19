@@ -256,9 +256,13 @@ export default {
             sensorId: deviceData.equipment_code,
             description: deviceData.description || '暂无详细信息',
             status: deviceData.status === '故障' ? 'error' :
-                   deviceData.fault_probability > 0.3 ? 'warning' : 'normal',
+                   deviceData.status === '预警' ? 'warning' :
+                   deviceData.status === '停机' ? 'stopped' :
+                   deviceData.status === '维修中' ? 'warning' : 'normal',
             statusText: deviceData.status === '故障' ? '故障' :
-                       deviceData.fault_probability > 0.3 ? '预警' : '正常'
+                       deviceData.status === '预警' ? '预警' :
+                       deviceData.status === '停机' ? '已停机' :
+                       deviceData.status === '维修中' ? '维修中' : '正常'
           };
 
           console.log('设备产线名称:', deviceData.line_name);
@@ -414,9 +418,13 @@ export default {
 
           // 更新设备状态
           this.equipment.status = latestData.status === '故障' ? 'error' :
-                                 latestData.fault_probability > 0.3 ? 'warning' : 'normal';
+                                 latestData.status === '预警' ? 'warning' :
+                                 latestData.status === '停机' ? 'stopped' :
+                                 latestData.status === '维修中' ? 'warning' : 'normal';
           this.equipment.statusText = latestData.status === '故障' ? '故障' :
-                                     latestData.fault_probability > 0.3 ? '预警' : '正常';
+                                     latestData.status === '预警' ? '预警' :
+                                     latestData.status === '停机' ? '已停机' :
+                                     latestData.status === '维修中' ? '维修中' : '正常';
         }
       } catch (error) {
         console.error('获取设备最新数据出错:', error);

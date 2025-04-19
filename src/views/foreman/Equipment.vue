@@ -60,7 +60,25 @@
           <div class="equipment-item" v-for="device in filteredDevices" :key="device.id">
             <div class="device-header">
               <span class="device-name">{{ device.name }}</span>
-              <span :class="['device-status', device.status]">{{ device.statusText }}</span>
+              <div class="status-control">
+                <span :class="['device-status', device.status]">{{ device.statusText }}</span>
+                <div class="status-buttons">
+                  <button
+                    class="status-btn"
+                    :class="{ 'active': device.dbStatus === '正常' }"
+                    @click="setDeviceStatus(device, '正常')"
+                    :disabled="device.dbStatus === '故障' || device.dbStatus === '维修中'"
+                  >正常</button>
+                  <button
+                    class="status-btn"
+                    :class="{ 'active': device.dbStatus === '停机' }"
+                    @click="setDeviceStatus(device, '停机')"
+                  >停机</button>
+                </div>
+                <span class="status-note" v-if="device.dbStatus === '故障' || device.dbStatus === '维修中' || device.dbStatus === '预警'">
+                  {{ getDeviceStatusNote(device) }}
+                </span>
+              </div>
             </div>
             <div class="device-info">
               <div class="info-row">
@@ -293,6 +311,8 @@ export default {
           this.devices = data.data.map(device => {
             // 获取设备状态
             const status = this.getDeviceStatus(device);
+            // 保存原始数据库状态值供状态修改使用
+            const dbStatus = device.status || '正常';
 
             // 更新产线的设备统计
             this.updateLineDeviceStats(device.line_id, status);
@@ -304,6 +324,7 @@ export default {
               productionLine: device.line_name || this.lineNameMap[device.line_id] || '未知产线',
               status: status,
               statusText: this.getDeviceStatusText(status),
+              dbStatus: dbStatus, // 原始数据库状态值
               runtime: device.runtime_hours || 0,
               manager: device.worker_id || '未分配',
               lastMaintenance: this.formatDate(device.updated_at),
@@ -335,7 +356,9 @@ export default {
     // 根据设备数据判断状态
     getDeviceStatus(device) {
       if (device.status === '故障') return 'stopped';
-      if (device.fault_probability > 0.3) return 'warning';
+      if (device.status === '预警') return 'warning';
+      if (device.status === '停机') return 'stopped';
+      if (device.status === '维修中') return 'warning';
       return 'running';
     },
 
@@ -405,6 +428,91 @@ export default {
     // 开始维护
     startMaintenance(device) {
       console.log('开始维护设备:', device);
+    },
+
+    // 设置设备状态
+    async setDeviceStatus(device, status) {
+      // 检查当前状态是否允许修改
+      if (device.dbStatus === '故障' || device.dbStatus === '维修中') {
+        alert(`无法将设备状态修改为 ${status}，当前状态不允许手动设置。`);
+        return;
+      }
+
+      // 如果当前状态是预警，只能改为停机
+      if (device.dbStatus === '预警' && status !== '停机') {
+        alert('预警状态下只能将设备设置为停机状态。');
+        return;
+      }
+
+      // 设置新状态
+      device.dbStatus = status;
+
+      // 调用更新方法
+      this.updateDeviceStatus(device);
+    },
+
+    // 获取设备状态说明
+    getDeviceStatusNote(device) {
+      if (device.dbStatus === '故障') {
+        return '故障状态由系统自动检测，无法手动修改';
+      } else if (device.dbStatus === '预警') {
+        return '预警状态由系统自动检测，可停机处理';
+      } else if (device.dbStatus === '维修中') {
+        return '维修中状态由安全员设置，无法手动修改';
+      }
+      return '';
+    },
+
+    // 更新设备状态
+    async updateDeviceStatus(device) {
+      try {
+        console.log(`更新设备 ${device.id} 状态为: ${device.dbStatus}`);
+
+        // 准备状态数据
+        const equipmentData = {
+          status: device.dbStatus
+        };
+
+        // 调用API更新设备状态
+        const response = await fetch('/api/equipment/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            equipment_id: device.id,
+            equipment_data: equipmentData
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 更新成功，刷新设备数据
+          await this.fetchEquipmentWithStatus();
+
+          // 直接更新当前设备的状态显示，确保界面立即反映变化
+          const updatedDevice = this.devices.find(d => d.id === device.id);
+          if (updatedDevice) {
+            // 更新状态文本和样式类
+            if (device.dbStatus === '停机') {
+              updatedDevice.status = 'stopped';
+              updatedDevice.statusText = '已停机';
+            } else if (device.dbStatus === '正常') {
+              updatedDevice.status = 'running';
+              updatedDevice.statusText = '运行中';
+            }
+          }
+
+          alert(`设备 ${device.name} 状态已更新为 ${device.dbStatus}`);
+        } else {
+          alert(`更新设备状态失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('更新设备状态出错:', error);
+        alert(`更新设备状态出错: ${error.message || '未知错误'}`);
+      }
     },
 
     // 提交维护排程
@@ -580,6 +688,53 @@ export default {
 .device-status.stopped {
   background: #ffebee;
   color: #f44336;
+}
+
+/* 状态控制样式 */
+.status-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.status-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.status-btn {
+  padding: 4px 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.status-btn:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.status-btn.active {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  color: white;
+}
+
+.status-btn:disabled {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #bfbfbf;
+  cursor: not-allowed;
+}
+
+.status-note {
+  font-size: 12px;
+  color: #ff9800;
+  margin-left: 8px;
 }
 
 .device-info {

@@ -7,7 +7,25 @@
         <h1>{{ productionLine.name }} - 详细信息</h1>
       </div>
       <div class="header-right">
-        <span :class="['status-tag', productionLine.status]">{{ productionLine.statusText }}</span>
+        <div class="status-control">
+          <span :class="['status-tag', productionLine.status]">{{ productionLine.statusText }}</span>
+          <div class="status-buttons">
+            <button
+              class="status-btn"
+              :class="{ 'active': productionLine.dbStatus === '正常' }"
+              @click="setLineStatus(productionLine, '正常')"
+              :disabled="productionLine.dbStatus === '故障' || productionLine.dbStatus === '维修中'"
+            >正常</button>
+            <button
+              class="status-btn"
+              :class="{ 'active': productionLine.dbStatus === '停机' }"
+              @click="setLineStatus(productionLine, '停机')"
+            >停机</button>
+          </div>
+          <span class="status-note" v-if="productionLine.dbStatus === '故障' || productionLine.dbStatus === '维修中' || productionLine.dbStatus === '预警'">
+            {{ getStatusNote(productionLine) }}
+          </span>
+        </div>
       </div>
     </header>
 
@@ -85,6 +103,7 @@ export default {
         name: '加载中...',
         status: '',
         statusText: '加载中',
+        dbStatus: '', // 原始数据库状态值
         utilization: 0,
         output: 0,
         target: 0,
@@ -184,16 +203,24 @@ export default {
           // 根据状态设置状态文本
           let statusText = '未知';
           let status = '';
+          // 保存原始数据库状态值供状态修改使用
+          const dbStatus = lineData.status || '正常';
 
           if (lineData.status === '正常') {
             statusText = '运行中';
             status = 'running';
-          } else if (lineData.status === '异常') {
-            statusText = '异常';
+          } else if (lineData.status === '异常' || lineData.status === '预警') {
+            statusText = lineData.status === '预警' ? '预警' : '异常';
             status = 'warning';
           } else if (lineData.status === '停机') {
             statusText = '已停机';
             status = 'stopped';
+          } else if (lineData.status === '故障') {
+            statusText = '故障';
+            status = 'stopped';
+          } else if (lineData.status === '维修中') {
+            statusText = '维修中';
+            status = 'warning';
           }
 
           // 计算产能利用率
@@ -207,6 +234,7 @@ export default {
             name: lineData.line_name,
             status: status,
             statusText: statusText,
+            dbStatus: dbStatus, // 原始数据库状态值
             utilization: utilization,
             output: lineData.real_time_capacity || 0,
             target: lineData.theoretical_capacity || 0,
@@ -364,16 +392,24 @@ export default {
           // 根据状态设置状态文本
           let statusText = '未知';
           let status = '';
+          // 保存原始数据库状态值供状态修改使用
+          const dbStatus = lineData.status || '正常';
 
           if (lineData.status === '正常') {
             statusText = '运行中';
             status = 'running';
-          } else if (lineData.status === '异常') {
-            statusText = '异常';
+          } else if (lineData.status === '异常' || lineData.status === '预警') {
+            statusText = lineData.status === '预警' ? '预警' : '异常';
             status = 'warning';
           } else if (lineData.status === '停机') {
             statusText = '已停机';
             status = 'stopped';
+          } else if (lineData.status === '故障') {
+            statusText = '故障';
+            status = 'stopped';
+          } else if (lineData.status === '维修中') {
+            statusText = '维修中';
+            status = 'warning';
           }
 
           // 计算产能利用率
@@ -394,6 +430,7 @@ export default {
             ...this.productionLine,
             status: status,
             statusText: statusText,
+            dbStatus: dbStatus, // 原始数据库状态值
             utilization: utilization,
             output: lineData.real_time_capacity || 0,
             target: lineData.theoretical_capacity || 1000, // 如果没有理论产能，使用默认值1000
@@ -509,6 +546,87 @@ export default {
     assignMaintenance(device) {
       // 这里可以添加分配维护任务的逻辑
       alert(`为设备 ${device.name} 分配维护任务`);
+    },
+
+    // 设置产线状态
+    async setLineStatus(line, status) {
+      // 检查当前状态是否允许修改
+      if (line.dbStatus === '故障' || line.dbStatus === '维修中') {
+        alert(`无法将产线状态修改为 ${status}，当前状态不允许手动设置。`);
+        return;
+      }
+
+      // 如果当前状态是预警，只能改为停机
+      if (line.dbStatus === '预警' && status !== '停机') {
+        alert('预警状态下只能将产线设置为停机状态。');
+        return;
+      }
+
+      // 设置新状态
+      line.dbStatus = status;
+
+      // 调用更新方法
+      this.updateLineStatus(line);
+    },
+
+    // 获取状态说明
+    getStatusNote(line) {
+      if (line.dbStatus === '故障') {
+        return '故障状态由系统自动检测，无法手动修改';
+      } else if (line.dbStatus === '预警') {
+        return '预警状态由系统自动检测，可停机处理';
+      } else if (line.dbStatus === '维修中') {
+        return '维修中状态由安全员设置，无法手动修改';
+      }
+      return '';
+    },
+
+    // 更新产线状态
+    async updateLineStatus(line) {
+      try {
+        console.log(`更新产线 ${line.id} 状态为: ${line.dbStatus}`);
+
+        // 准备状态数据
+        const lineData = {
+          status: line.dbStatus
+        };
+
+        // 调用API更新产线状态
+        const response = await fetch('/api/production_line/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            line_id: line.id,
+            line_data: lineData
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 更新成功，刷新产线数据
+          await this.fetchProductionLineDetail(line.id);
+
+          // 直接更新当前产线的状态显示，确保界面立即反映变化
+          if (line.dbStatus === '停机') {
+            line.status = 'stopped';
+            line.statusText = '已停机';
+          } else if (line.dbStatus === '正常') {
+            line.status = 'running';
+            line.statusText = '运行中';
+          }
+
+          alert(`产线状态已更新为 ${line.dbStatus}`);
+        } else {
+          alert(`更新产线状态失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('更新产线状态出错:', error);
+        alert(`更新产线状态出错: ${error.message || '未知错误'}`);
+      }
     },
 
     // 获取最新的单个数据点
@@ -653,6 +771,52 @@ export default {
 .status-tag.stopped {
   background-color: #f5f5f5;
   color: #8c8c8c;
+}
+
+/* 状态控制样式 */
+.status-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.status-btn {
+  padding: 4px 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.status-btn:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.status-btn.active {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  color: white;
+}
+
+.status-btn:disabled {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #bfbfbf;
+  cursor: not-allowed;
+}
+
+.status-note {
+  font-size: 12px;
+  color: #ff9800;
+  margin-left: 8px;
 }
 
 .content {
