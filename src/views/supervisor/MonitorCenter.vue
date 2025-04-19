@@ -124,25 +124,30 @@
       <div class="equipment-monitor">
         <div class="section-header">
           <h3 class="section-title">全厂设备状态</h3>
-          <div class="filter-bar">
-            <select v-model="equipmentFilter.line" class="filter-select">
-              <option value="">全部产线</option>
-              <option v-for="line in productionLines" :key="line.id" :value="line.id">
-                {{ line.name }}
-              </option>
-            </select>
-            <select v-model="equipmentFilter.status" class="filter-select">
-              <option value="">全部状态</option>
-              <option value="running">运行中</option>
-              <option value="warning">异常</option>
-              <option value="stopped">已停机</option>
-            </select>
-            <select v-model="equipmentFilter.type" class="filter-select">
-              <option value="">全部类型</option>
-              <option value="production">生产设备</option>
-              <option value="inspection">检测设备</option>
-              <option value="auxiliary">辅助设备</option>
-            </select>
+          <div class="header-actions">
+            <div class="filter-bar">
+              <select v-model="equipmentFilter.line" class="filter-select">
+                <option value="">全部产线</option>
+                <option v-for="line in productionLines" :key="line.id" :value="line.id">
+                  {{ line.name }}
+                </option>
+              </select>
+              <select v-model="equipmentFilter.status" class="filter-select">
+                <option value="">全部状态</option>
+                <option value="running">运行中</option>
+                <option value="warning">异常</option>
+                <option value="stopped">已停机</option>
+              </select>
+              <select v-model="equipmentFilter.type" class="filter-select">
+                <option value="">全部类型</option>
+                <option value="production">生产设备</option>
+                <option value="inspection">检测设备</option>
+                <option value="auxiliary">辅助设备</option>
+              </select>
+            </div>
+            <button class="config-btn" @click="showAddEquipmentModal = true">
+              <i class="add-icon"></i> 新增设备
+            </button>
           </div>
         </div>
 
@@ -258,7 +263,7 @@
                 </div>
               </div>
             </div>
-            <button class="btn primary add-line" @click="addNewLine">新增产线</button>
+            <button class="btn primary add-line" @click="showAddLineModal = true">新增产线</button>
           </div>
         </div>
       </div>
@@ -291,6 +296,89 @@
           </div>
         </div>
       </div>
+
+      <!-- 新增产线模态框 -->
+      <div class="modal" v-if="showAddLineModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>新增产线</h3>
+            <span class="close-btn" @click="showAddLineModal = false">&times;</span>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>产线名称</label>
+              <input type="text" v-model="newLine.name" class="form-input" placeholder="请输入产线名称">
+            </div>
+            <div class="form-group">
+              <label>理论产能</label>
+              <input type="number" v-model="newLine.theoretical_capacity" class="form-input" placeholder="请输入理论产能">
+            </div>
+            <div class="form-group">
+              <label>选择管理工长</label>
+              <select v-model="newLine.foreman_id" class="form-input">
+                <option value="">请选择工长</option>
+                <option v-for="manager in foremen" :key="manager.id" :value="manager.id">
+                  {{ manager.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn cancel" @click="showAddLineModal = false">取消</button>
+            <button class="btn submit" @click="confirmAddLine">确定添加</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 新增设备模态框 -->
+      <div class="modal" v-if="showAddEquipmentModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>新增设备</h3>
+            <span class="close-btn" @click="showAddEquipmentModal = false">&times;</span>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>设备名称</label>
+              <input type="text" v-model="newEquipment.name" class="form-input" placeholder="请输入设备名称">
+            </div>
+            <div class="form-group">
+              <label>设备编码</label>
+              <input type="text" v-model="newEquipment.code" class="form-input" placeholder="请输入设备编码">
+            </div>
+            <div class="form-group">
+              <label>设备类型</label>
+              <select v-model="newEquipment.type" class="form-input">
+                <option value="生产设备">生产设备</option>
+                <option value="检测设备">检测设备</option>
+                <option value="辅助设备">辅助设备</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>所属产线</label>
+              <select v-model="newEquipment.line_id" class="form-input">
+                <option value="">请选择产线</option>
+                <option v-for="line in productionLines" :key="line.id" :value="line.id">
+                  {{ line.name }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>负责人</label>
+              <select v-model="newEquipment.worker_id" class="form-input">
+                <option value="">请选择负责人</option>
+                <option v-for="worker in workers" :key="worker.id" :value="worker.id">
+                  {{ worker.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn cancel" @click="showAddEquipmentModal = false">取消</button>
+            <button class="btn submit" @click="confirmAddEquipment">确定添加</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <SupervisorNav />
@@ -310,9 +398,26 @@ export default {
       productionLines: [],
       showConfigModal: false,
       showAssignModal: false,
+      showAddLineModal: false,
+      showAddEquipmentModal: false,
       selectedLine: {},
       selectedManager: '',
       foremen: [],
+      workers: [],
+      // 新增产线相关数据
+      newLine: {
+        name: '',
+        theoretical_capacity: 1000,
+        foreman_id: ''
+      },
+      // 新增设备相关数据
+      newEquipment: {
+        name: '',
+        code: '',
+        type: '生产设备',
+        line_id: '',
+        worker_id: ''
+      },
       // 设备监控相关数据
       equipmentFilter: {
         line: '',
@@ -330,12 +435,14 @@ export default {
       loading: {
         productionLines: false,
         equipments: false,
-        foremen: false
+        foremen: false,
+        workers: false
       },
       error: {
         productionLines: null,
         equipments: null,
-        foremen: null
+        foremen: null,
+        workers: null
       },
       // 缓存数据
       cachedData: {
@@ -415,6 +522,7 @@ export default {
     this.fetchProductionLines();
     this.fetchEquipments();
     this.fetchForemen();
+    this.fetchWorkers();
 
     // 如果启用了自动刷新，则启动
     if (this.autoRefresh) {
@@ -590,16 +698,146 @@ export default {
       if (stoppedCard) stoppedCard.textContent = stoppedLines;
     },
 
-    editLine() {
-      // 这里添加编辑产线的逻辑
+    editLine(line) {
+      // 编辑产线的逻辑
+      alert(`编辑产线 ${line.name} 的功能尚未实现`);
     },
+
     deleteLine(line) {
       if(confirm(`确定要停用${line.name}吗？`)) {
-        // 这里添加停用产线的逻辑
+        // 停用产线的逻辑
+        this.updateLineStatus({
+          ...line,
+          dbStatus: '停用'
+        });
       }
     },
-    addNewLine() {
-      // 这里添加新增产线的逻辑
+
+    // 重置新增产线表单
+    resetNewLineForm() {
+      this.newLine = {
+        name: '',
+        theoretical_capacity: 1000,
+        foreman_id: ''
+      };
+    },
+
+    // 重置新增设备表单
+    resetNewEquipmentForm() {
+      this.newEquipment = {
+        name: '',
+        code: '',
+        type: '生产设备',
+        line_id: '',
+        worker_id: ''
+      };
+    },
+
+    // 确认添加产线
+    async confirmAddLine() {
+      // 验证表单
+      if (!this.newLine.name) {
+        alert('请输入产线名称');
+        return;
+      }
+
+      if (!this.newLine.theoretical_capacity || this.newLine.theoretical_capacity <= 0) {
+        alert('请输入有效的理论产能');
+        return;
+      }
+
+      try {
+        // 准备产线数据
+        const lineData = {
+          line_name: this.newLine.name,
+          theoretical_capacity: this.newLine.theoretical_capacity,
+          foreman_id: this.newLine.foreman_id || null,
+          status: '正常' // 默认状态为正常
+        };
+
+        // 调用API添加产线
+        const response = await fetch('/api/production_line/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(lineData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('产线添加成功！');
+          // 重新加载产线数据
+          this.fetchProductionLines();
+          // 重置表单并关闭模态框
+          this.resetNewLineForm();
+          this.showAddLineModal = false;
+        } else {
+          alert(`添加失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('添加产线出错:', error);
+        alert(`添加产线出错: ${error.message || '未知错误'}`);
+      }
+    },
+
+    // 确认添加设备
+    async confirmAddEquipment() {
+      // 验证表单
+      if (!this.newEquipment.name) {
+        alert('请输入设备名称');
+        return;
+      }
+
+      if (!this.newEquipment.code) {
+        alert('请输入设备编码');
+        return;
+      }
+
+      if (!this.newEquipment.line_id) {
+        alert('请选择所属产线');
+        return;
+      }
+
+      try {
+        // 准备设备数据
+        const equipmentData = {
+          equipment_name: this.newEquipment.name,
+          equipment_code: this.newEquipment.code,
+          equipment_type: this.newEquipment.type,
+          line_id: this.newEquipment.line_id,
+          worker_id: this.newEquipment.worker_id || null,
+          status: '正常' // 默认状态为正常
+        };
+
+        // 调用API添加设备
+        const response = await fetch('/api/equipment/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(equipmentData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('设备添加成功！');
+          // 重新加载设备数据
+          this.fetchEquipments(true);
+          // 重置表单并关闭模态框
+          this.resetNewEquipmentForm();
+          this.showAddEquipmentModal = false;
+        } else {
+          alert(`添加失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('添加设备出错:', error);
+        alert(`添加设备出错: ${error.message || '未知错误'}`);
+      }
     },
     assignManager(line) {
       this.selectedLine = line;
@@ -848,6 +1086,40 @@ export default {
         this.foremen = []; // 清空工长列表
       } finally {
         this.loading.foremen = false;
+      }
+    },
+
+    // 获取工人列表
+    async fetchWorkers() {
+      this.loading.workers = true;
+      this.error.workers = null;
+
+      try {
+        const response = await fetch('/api/users/workers', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取工人列表失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data) {
+          this.workers = result.data.map(worker => ({
+            id: worker.id,  // 这里的id是employee_id
+            name: worker.name
+          }));
+        } else {
+          throw new Error(result.error || '获取工人列表失败');
+        }
+      } catch (error) {
+        this.error.workers = error.message || '获取工人列表出错';
+        this.workers = []; // 清空工人列表
+      } finally {
+        this.loading.workers = false;
       }
     },
 
@@ -1332,6 +1604,16 @@ export default {
   height: 16px;
   background-color: white;
   mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg>');
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+.add-icon {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: white;
+  mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>');
   mask-repeat: no-repeat;
   mask-position: center;
 }
