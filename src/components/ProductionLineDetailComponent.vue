@@ -83,8 +83,8 @@
               <option value="20">最近20条</option>
               <option value="50">最近50条</option>
             </select>
-            <button 
-              :class="['auto-refresh-btn', { active: autoRefresh }]" 
+            <button
+              :class="['auto-refresh-btn', { active: autoRefresh }]"
               @click="toggleAutoRefresh"
             >
               {{ autoRefresh ? '自动刷新中' : '自动刷新' }}
@@ -205,7 +205,7 @@ export default {
   mounted() {
     window.addEventListener('resize', this.resizeChart);
     this.initChart();
-    
+
     // 如果启用了自动刷新，则启动
     if (this.autoRefreshEnabled) {
       this.autoRefresh = true;
@@ -256,6 +256,7 @@ export default {
 
     // 获取产线历史数据
     fetchLineHistory() {
+      console.log('组件请求获取历史数据，条数:', this.historyLimit);
       this.$emit('fetch-history', this.historyLimit);
     },
 
@@ -285,7 +286,7 @@ export default {
         console.log('产线历史数据为空，不更新图表');
         return;
       }
-      
+
       console.log('开始处理图表数据，数据长度:', this.lineHistory.length);
 
       const xAxisData = [];
@@ -299,13 +300,34 @@ export default {
         xAxisData.push(timeStr);
 
         // 获取数据值
-        if (this.selectedParameter === 'utilization' && item.real_time_capacity && item.theoretical_capacity) {
-          // 如果是产能利用率，计算百分比
-          const utilization = (item.real_time_capacity / item.theoretical_capacity * 100).toFixed(2);
-          seriesData.push(utilization);
+        if (this.selectedParameter === 'utilization') {
+          // 如果是产能利用率，直接使用预处理的利用率数据
+          if (item.utilization !== null && item.utilization !== undefined && !isNaN(item.utilization)) {
+            console.log(`使用预处理的产能利用率数据:`, item.utilization, '%');
+            seriesData.push(parseFloat(item.utilization));
+          } else {
+            // 如果没有预处理的利用率数据，尝试计算
+            const realCapacity = parseFloat(item.real_time_capacity);
+            const theoreticalCapacity = parseFloat(item.theoretical_capacity);
+
+            // 检查数据有效性
+            if (!isNaN(realCapacity) && !isNaN(theoreticalCapacity) && theoreticalCapacity > 0) {
+              // 计算产能利用率
+              const utilization = (realCapacity / theoreticalCapacity * 100).toFixed(2);
+              console.log(`实时计算产能利用率:`, realCapacity, '/', theoreticalCapacity, '=', utilization, '%');
+              seriesData.push(parseFloat(utilization));
+            } else {
+              // 数据无效，使用 null
+              console.warn(`数据无效，无法计算产能利用率，使用 null`);
+              if (isNaN(realCapacity)) console.warn(`  实际产量无效: ${item.real_time_capacity}`);
+              if (isNaN(theoreticalCapacity)) console.warn(`  理论产量无效: ${item.theoretical_capacity}`);
+              if (theoreticalCapacity <= 0) console.warn(`  理论产量小于等于 0: ${theoreticalCapacity}`);
+              seriesData.push(null);
+            }
+          }
         } else if (item[this.selectedParameter] !== undefined) {
           // 如果是其他数据，直接使用
-          seriesData.push(item[this.selectedParameter]);
+          seriesData.push(parseFloat(item[this.selectedParameter]) || 0);
         } else {
           // 如果没有数据，使用null
           seriesData.push(null);
@@ -383,7 +405,7 @@ export default {
       };
 
       console.log('设置图表选项，数据长度:', seriesData.length);
-      this.chartInstance.setOption(option);
+      this.chartInstance.setOption(option, true); // 添加 true 参数，强制刷新
       console.log('图表更新完成');
     },
 

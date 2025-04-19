@@ -127,6 +127,10 @@ export default {
     if (this.autoRefresh) {
       this.startAutoRefresh();
     }
+
+    // 记录当前页面加载时间，用于调试
+    console.log('产线详情页面加载时间:', new Date().toLocaleString());
+    console.log('当前历史数据限制:', this.historyLimit);
   },
   beforeDestroy() {
     // 清除定时器
@@ -275,26 +279,50 @@ export default {
         console.log('产线历史数据:', result);
 
         if (result.success && result.data) {
-          // 保持历史数据，将新数据合并到现有数据中
-          if (this.lineHistory.length > 0) {
-            // 获取最新的数据点
-            const latestData = result.data[result.data.length - 1];
-            // 检查是否已存在该数据点
-            const existingIndex = this.lineHistory.findIndex(item =>
-              item.collection_time === latestData.collection_time);
+          // 处理历史数据
+          const sortedData = [...result.data].sort((a, b) => {
+            return new Date(a.collection_time) - new Date(b.collection_time);
+          });
 
-            if (existingIndex === -1) {
-              // 如果是新数据点，添加到历史数据中
-              this.lineHistory.push(latestData);
-              // 保持数组长度不超过限制
-              if (this.lineHistory.length > limit) {
-                this.lineHistory.shift(); // 移除最早的数据点
-              }
+          // 预处理数据，确保产能利用率可以正确计算
+          const processedData = sortedData.map(item => {
+            // 获取产线的理论产能（如果单条数据中没有，则使用产线基本信息中的理论产能）
+            const theoreticalCapacity = item.theoretical_capacity !== undefined ?
+              parseFloat(item.theoretical_capacity) :
+              parseFloat(this.productionLine.target);
+
+            // 确保实际产能是数字
+            const realCapacity = parseFloat(item.real_time_capacity);
+
+            // 计算产能利用率
+            let utilization = null;
+            if (!isNaN(realCapacity) && !isNaN(theoreticalCapacity) && theoreticalCapacity > 0) {
+              utilization = Math.round((realCapacity / theoreticalCapacity) * 100);
+              console.log('计算产能利用率:', realCapacity, '/', theoreticalCapacity, '=', utilization, '%');
+            } else {
+              console.warn('无法计算产能利用率:',
+                '实际产能=', item.real_time_capacity,
+                '理论产能=', item.theoretical_capacity || this.productionLine.target);
             }
-          } else {
-            // 如果没有历史数据，直接设置
-            this.lineHistory = result.data;
-          }
+
+            return {
+              ...item,
+              real_time_capacity: realCapacity,
+              theoretical_capacity: theoreticalCapacity,
+              utilization: utilization
+            };
+          });
+
+          // 输出处理后的数据信息
+          console.log('处理后的数据:', processedData.map(item => ({
+            time: new Date(item.collection_time).toLocaleTimeString(),
+            real: item.real_time_capacity,
+            theoretical: item.theoretical_capacity,
+            utilization: item.utilization
+          })));
+
+          // 设置处理后的数据
+          this.lineHistory = processedData;
 
           this.lastUpdateTime = new Date().toLocaleTimeString();
         } else {
@@ -350,8 +378,15 @@ export default {
 
           // 计算产能利用率
           let utilization = 0;
-          if (lineData.theoretical_capacity && lineData.theoretical_capacity > 0 && lineData.real_time_capacity) {
-            utilization = Math.round((lineData.real_time_capacity / lineData.theoretical_capacity) * 100);
+          const realCapacity = parseFloat(lineData.real_time_capacity);
+          const theoreticalCapacity = parseFloat(lineData.theoretical_capacity);
+
+          // 检查数据有效性
+          if (!isNaN(realCapacity) && !isNaN(theoreticalCapacity) && theoreticalCapacity > 0) {
+            utilization = Math.round((realCapacity / theoreticalCapacity) * 100);
+            console.log('产线基本信息中计算产能利用率:', realCapacity, '/', theoreticalCapacity, '=', utilization, '%');
+          } else {
+            console.warn('产线基本信息中数据无效，无法计算产能利用率');
           }
 
           // 更新产线数据，保持ID和名称不变
@@ -361,10 +396,20 @@ export default {
             statusText: statusText,
             utilization: utilization,
             output: lineData.real_time_capacity || 0,
-            target: lineData.theoretical_capacity || 0,
+            target: lineData.theoretical_capacity || 1000, // 如果没有理论产能，使用默认值1000
             runtime: lineData.runtime_hours || 0,
             manager: lineData.foreman_name || '未分配'
           };
+
+          console.log('产线基本信息:', {
+            id: this.productionLine.id,
+            name: this.productionLine.name,
+            status: status,
+            utilization: utilization,
+            output: lineData.real_time_capacity,
+            target: lineData.theoretical_capacity,
+            runtime: lineData.runtime_hours
+          });
 
           // 处理设备数据
           if (result.data.equipment) {
@@ -399,7 +444,13 @@ export default {
 
         // 获取最新历史数据点
         if (this.lineHistory && this.lineHistory.length > 0) {
+          // 获取单个最新数据点并添加到现有历史数据中
+          await this.fetchLatestDataPoint();
+          console.log('已获取最新数据点，当前数据长度:', this.lineHistory.length);
+        } else {
+          // 如果没有历史数据，则获取完整的历史数据
           await this.fetchLineHistory(this.historyLimit);
+          console.log('初始化历史数据，数据长度:', this.lineHistory.length);
         }
 
         this.lastUpdateTime = new Date().toLocaleTimeString();
@@ -458,6 +509,88 @@ export default {
     assignMaintenance(device) {
       // 这里可以添加分配维护任务的逻辑
       alert(`为设备 ${device.name} 分配维护任务`);
+    },
+
+    // 获取最新的单个数据点
+    async fetchLatestDataPoint() {
+      if (!this.productionLine || !this.productionLine.id) return;
+
+      try {
+        // 获取最新的单个数据点，使用status-history端点并设置limit=1
+        const response = await fetch(`/api/production_line/status-history?line_id=${this.productionLine.id}&limit=1`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        console.log('请求最新数据点URL:', `/api/production_line/status-history?line_id=${this.productionLine.id}&limit=1`);
+
+        if (!response.ok) {
+          throw new Error(`获取最新数据点失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('最新数据点:', result);
+
+        if (result.success && result.data && result.data.length > 0) {
+          // 处理最新数据点，注意返回的是数组
+          const latestData = result.data[0];
+          console.log('获取到最新数据点:', latestData);
+
+          // 获取产线的理论产能
+          const theoreticalCapacity = latestData.theoretical_capacity !== undefined ?
+            parseFloat(latestData.theoretical_capacity) :
+            parseFloat(this.productionLine.target);
+
+          // 确保实际产能是数字
+          const realCapacity = parseFloat(latestData.real_time_capacity);
+
+          // 计算产能利用率
+          let utilization = null;
+          if (!isNaN(realCapacity) && !isNaN(theoreticalCapacity) && theoreticalCapacity > 0) {
+            utilization = Math.round((realCapacity / theoreticalCapacity) * 100);
+            console.log('计算最新数据点产能利用率:', realCapacity, '/', theoreticalCapacity, '=', utilization, '%');
+          }
+
+          // 创建处理后的数据点
+          const processedDataPoint = {
+            ...latestData,
+            real_time_capacity: realCapacity,
+            theoretical_capacity: theoreticalCapacity,
+            utilization: utilization
+          };
+
+          // 检查是否已存在该数据点
+          const existingIndex = this.lineHistory.findIndex(item =>
+            item.collection_time === latestData.collection_time);
+
+          if (existingIndex === -1) {
+            // 如果是新数据点，添加到历史数据中
+            this.lineHistory.push(processedDataPoint);
+            console.log('添加新数据点，时间:', new Date(latestData.collection_time).toLocaleString());
+
+            // 保持数组长度不超过当前限制
+            const currentLimit = parseInt(this.historyLimit);
+            if (this.lineHistory.length > currentLimit) {
+              // 移除最早的数据点
+              this.lineHistory.shift();
+              console.log('移除最早数据点，保持数据长度为', currentLimit);
+            }
+          } else {
+            console.log('数据点已存在，不添加');
+          }
+        }
+      } catch (error) {
+        console.error('获取最新数据点出错:', error);
+
+        // 如果获取最新数据点失败，尝试获取完整的历史数据
+        if (this.lineHistory.length === 0) {
+          console.log('获取最新数据点失败，尝试获取完整的历史数据');
+          this.fetchLineHistory(this.historyLimit).catch(err => {
+            console.error('获取历史数据也失败:', err);
+          });
+        }
+      }
     }
   }
 }
