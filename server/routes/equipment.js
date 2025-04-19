@@ -169,6 +169,31 @@ router.post('/update-status', authMiddleware, async (req, res) => {
   }
 });
 
+// 更新设备静态信息
+router.post('/update', authMiddleware, async (req, res) => {
+  const { equipment_id, equipment_data } = req.body;
+
+  if (!equipment_id || !equipment_data) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少设备ID或更新数据'
+    });
+  }
+
+  try {
+    const result = await runPythonScript(
+      'pyScripts/update_equipment.py',
+      ['--equipment-id', equipment_id, '--data', JSON.stringify(equipment_data)],
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('更新设备信息出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
 // 分配工人到设备
 router.post('/assign-worker', authMiddleware, async (req, res) => {
   const { equipment_id, worker_id } = req.body;

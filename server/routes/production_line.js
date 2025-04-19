@@ -191,6 +191,31 @@ router.post('/update-status', authMiddleware, async (req, res) => {
   }
 });
 
+// 更新产线静态信息
+router.post('/update', authMiddleware, async (req, res) => {
+  const { line_id, line_data } = req.body;
+
+  if (!line_id || !line_data) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少产线ID或更新数据'
+    });
+  }
+
+  try {
+    const result = await runPythonScript(
+      'pyScripts/update_production_line.py',
+      ['--line-id', line_id, '--data', JSON.stringify(line_data)],
+      { debug: true }
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('更新产线信息出错:', error);
+    res.status(500).json({ success: false, error: '服务器错误' });
+  }
+});
+
 // 创建产线表（仅管理员可用）
 router.post('/create-tables', authMiddleware, async (req, res) => {
   // 检查用户角色，仅允许管理员执行此操作

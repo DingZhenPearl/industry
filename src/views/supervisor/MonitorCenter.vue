@@ -59,23 +59,35 @@
           </div>
         </div>
 
-        <!-- 加载中提示 -->
-        <div class="loading-container" v-if="loading.productionLines">
-          <div class="loading-spinner"></div>
-          <div class="loading-text">正在加载产线数据...</div>
-        </div>
-
         <!-- 错误提示 -->
         <div class="error-container" v-if="error.productionLines">
           <div class="error-message">加载产线数据出错: {{ error.productionLines }}</div>
           <button class="retry-btn" @click="fetchProductionLines">重试</button>
         </div>
 
-        <div class="line-list" v-if="!loading.productionLines && !error.productionLines && productionLines.length > 0">
+        <div class="line-list" v-if="!error.productionLines && productionLines.length > 0">
           <div class="line-item" v-for="line in productionLines" :key="line.id">
             <div class="line-header">
               <span class="line-name">{{ line.name }}</span>
-              <span class="line-status" :class="line.status">{{ line.statusText }}</span>
+              <div class="status-control">
+                <span class="line-status" :class="line.status">{{ line.statusText }}</span>
+                <div class="status-buttons">
+                  <button
+                    class="status-btn"
+                    :class="{ 'active': line.dbStatus === '正常' }"
+                    @click="setLineStatus(line, '正常')"
+                    :disabled="line.dbStatus === '故障' || line.dbStatus === '维修中'"
+                  >正常</button>
+                  <button
+                    class="status-btn"
+                    :class="{ 'active': line.dbStatus === '停机' }"
+                    @click="setLineStatus(line, '停机')"
+                  >停机</button>
+                </div>
+                <span class="status-note" v-if="line.dbStatus === '故障' || line.dbStatus === '维修中' || line.dbStatus === '预警'">
+                  {{ getStatusNote(line) }}
+                </span>
+              </div>
             </div>
             <div class="line-details">
               <div class="detail-item">
@@ -153,19 +165,13 @@
           </div>
         </div>
 
-        <!-- 加载中提示 -->
-        <div class="loading-container" v-if="loading.equipments">
-          <div class="loading-spinner"></div>
-          <div class="loading-text">正在加载设备数据...</div>
-        </div>
-
         <!-- 错误提示 -->
         <div class="error-container" v-if="error.equipments">
           <div class="error-message">加载设备数据出错: {{ error.equipments }}</div>
           <button class="retry-btn" @click="fetchEquipments">重试</button>
         </div>
 
-        <div class="equipment-table" v-if="!loading.equipments && !error.equipments && equipments.length > 0">
+        <div class="equipment-table" v-if="!error.equipments && equipments.length > 0">
           <table>
             <thead>
               <tr>
@@ -185,7 +191,25 @@
                 <td>{{ device.productionLine }}</td>
                 <td>{{ device.manager }}</td>
                 <td>
-                  <span :class="['status-tag', device.status]">{{ device.statusText }}</span>
+                  <div class="status-control">
+                    <span :class="['status-tag', device.status]">{{ device.statusText }}</span>
+                    <div class="status-buttons">
+                      <button
+                        class="status-btn"
+                        :class="{ 'active': device.dbStatus === '正常' }"
+                        @click="setDeviceStatus(device, '正常')"
+                        :disabled="device.dbStatus === '故障' || device.dbStatus === '维修中'"
+                      >正常</button>
+                      <button
+                        class="status-btn"
+                        :class="{ 'active': device.dbStatus === '停机' }"
+                        @click="setDeviceStatus(device, '停机')"
+                      >停机</button>
+                    </div>
+                    <span class="status-note" v-if="device.dbStatus === '故障' || device.dbStatus === '维修中' || device.dbStatus === '预警'">
+                      {{ getDeviceStatusNote(device) }}
+                    </span>
+                  </div>
                 </td>
                 <td>{{ device.runtime }}</td>
                 <td>
@@ -438,7 +462,8 @@ export default {
     },
 
     async fetchProductionLines() {
-      this.loading.productionLines = true;
+      // 不设置loading状态，避免显示加载界面
+      // this.loading.productionLines = true;
       this.error.productionLines = null;
 
       try {
@@ -456,7 +481,7 @@ export default {
 
         if (result.success && result.data) {
           // 处理产线数据
-          this.productionLines = result.data.map(line => {
+          const updatedLines = result.data.map(line => {
             // 根据实时产能和理论产能计算利用率
             const utilization = line.theoretical_capacity ?
               Math.round((line.real_time_capacity / line.theoretical_capacity) * 100) : 0;
@@ -479,6 +504,8 @@ export default {
               status = 'warning';
               statusText = '预警';
             }
+
+            // 保存原始数据库状态值供下拉菜单使用
 
             // 如果产线状态正常，但利用率过低，也显示为预警
             if (status === 'running' && utilization < 80) {
@@ -512,6 +539,7 @@ export default {
               name: lineName,
               status: status,
               statusText: statusText,
+              dbStatus: line.status || '正常', // 原始数据库状态值
               utilization: utilization,
               output: Math.round(line.real_time_capacity || 0),
               target: line.theoretical_capacity || 1000,
@@ -520,6 +548,9 @@ export default {
               foreman: foreman
             };
           });
+
+          // 更新产线数据
+          this.productionLines = updatedLines;
 
           // 更新状态卡片的数据
           this.updateStatusCards();
@@ -531,10 +562,15 @@ export default {
         }
       } catch (error) {
         this.error.productionLines = error.message || '获取产线数据出错';
-        this.productionLines = []; // 清空产线数据
-      } finally {
-        this.loading.productionLines = false;
+        // 只在没有产线数据时才清空
+        if (this.productionLines.length === 0) {
+          this.productionLines = [];
+        }
       }
+      // 不需要设置loading状态
+      // finally {
+      //   this.loading.productionLines = false;
+      // }
     },
 
     // 更新状态卡片数据
@@ -616,9 +652,169 @@ export default {
       this.$router.push(`/supervisor/equipment-detail/${device.id}`);
     },
 
+    // 更新产线状态
+    async updateLineStatus(line) {
+      try {
+
+        console.log(`更新产线 ${line.id} 状态为: ${line.dbStatus}`);
+
+        // 准备状态数据
+        const lineData = {
+          status: line.dbStatus
+        };
+
+        // 调用API更新产线状态
+        const response = await fetch('/api/production_line/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            line_id: line.id,
+            line_data: lineData
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 更新成功，强制刷新数据
+          await this.fetchProductionLines();
+          await this.fetchEquipments(true); // 使用forceRefresh参数强制刷新设备数据
+          alert(`产线 ${line.name} 状态已更新为 ${line.dbStatus}`);
+        } else {
+          alert(`更新产线状态失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('更新产线状态出错:', error);
+        alert(`更新产线状态出错: ${error.message || '未知错误'}`);
+      }
+    },
+
+    // 更新设备状态
+    async updateDeviceStatus(device) {
+      try {
+
+        console.log(`更新设备 ${device.id} 状态为: ${device.dbStatus}`);
+
+        // 准备状态数据
+        const equipmentData = {
+          status: device.dbStatus
+        };
+
+        // 调用API更新设备状态
+        const response = await fetch('/api/equipment/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            equipment_id: device.id,
+            equipment_data: equipmentData
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 更新成功，强制刷新数据
+          await this.fetchEquipments(true); // 使用forceRefresh参数强制刷新设备数据
+
+          // 直接更新当前设备的状态显示，确保界面立即反映变化
+          const updatedDevice = this.equipments.find(d => d.id === device.id);
+          if (updatedDevice) {
+            // 更新状态文本和样式类
+            if (device.dbStatus === '停机') {
+              updatedDevice.status = 'stopped';
+              updatedDevice.statusText = '已停机';
+            } else if (device.dbStatus === '正常') {
+              updatedDevice.status = 'running';
+              updatedDevice.statusText = '运行中';
+            }
+          }
+
+          alert(`设备 ${device.name} 状态已更新为 ${device.dbStatus}`);
+        } else {
+          alert(`更新设备状态失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('更新设备状态出错:', error);
+        alert(`更新设备状态出错: ${error.message || '未知错误'}`);
+      }
+    },
+
+    // 设置产线状态
+    setLineStatus(line, status) {
+      // 检查当前状态是否允许修改
+      if (line.dbStatus === '故障' || line.dbStatus === '维修中') {
+        alert(`无法将产线状态修改为 ${status}，当前状态不允许手动设置。`);
+        return;
+      }
+
+      // 如果当前状态是预警，只能改为停机
+      if (line.dbStatus === '预警' && status !== '停机') {
+        alert('预警状态下只能将产线设置为停机状态。');
+        return;
+      }
+
+      // 设置新状态
+      line.dbStatus = status;
+
+      // 调用更新方法
+      this.updateLineStatus(line);
+    },
+
+    // 设置设备状态
+    setDeviceStatus(device, status) {
+      // 检查当前状态是否允许修改
+      if (device.dbStatus === '故障' || device.dbStatus === '维修中') {
+        alert(`无法将设备状态修改为 ${status}，当前状态不允许手动设置。`);
+        return;
+      }
+
+      // 如果当前状态是预警，只能改为停机
+      if (device.dbStatus === '预警' && status !== '停机') {
+        alert('预警状态下只能将设备设置为停机状态。');
+        return;
+      }
+
+      // 设置新状态
+      device.dbStatus = status;
+
+      // 调用更新方法
+      this.updateDeviceStatus(device);
+    },
+
+    // 获取产线状态说明
+    getStatusNote(line) {
+      if (line.dbStatus === '故障') {
+        return '故障状态由系统自动检测，无法手动修改';
+      } else if (line.dbStatus === '预警') {
+        return '预警状态由系统自动检测，可停机处理';
+      } else if (line.dbStatus === '维修中') {
+        return '维修中状态由安全员设置，无法手动修改';
+      }
+      return '';
+    },
+
+    // 获取设备状态说明
+    getDeviceStatusNote(device) {
+      if (device.dbStatus === '故障') {
+        return '故障状态由系统自动检测，无法手动修改';
+      } else if (device.dbStatus === '预警') {
+        return '预警状态由系统自动检测，可停机处理';
+      } else if (device.dbStatus === '维修中') {
+        return '维修中状态由安全员设置，无法手动修改';
+      }
+      return '';
+    },
+
     // 分配维护任务
-    assignMaintenance() {
+    assignMaintenance(device) {
       // 这里可以增加设备维护任务分配的逻辑
+      alert(`为设备 ${device.name} 分配维护任务`);
     },
 
     // 获取工长列表
@@ -656,17 +852,18 @@ export default {
     },
 
     // 获取设备数据
-    async fetchEquipments() {
-      this.loading.equipments = true;
+    async fetchEquipments(forceRefresh = false) {
+      // 不设置loading状态，避免显示加载界面
+      // this.loading.equipments = true;
       this.error.equipments = null;
 
       try {
         // 检查缓存是否有效（缓存时间30秒）
         const now = Date.now();
-        if (this.cachedData.equipments && this.cachedData.timestamp &&
+        if (!forceRefresh && this.cachedData.equipments && this.cachedData.timestamp &&
             (now - this.cachedData.timestamp < 30000)) {
+          // 使用缓存数据，但不设置loading状态
           this.equipments = this.cachedData.equipments;
-          this.loading.equipments = false;
           return;
         }
 
@@ -722,11 +919,17 @@ export default {
             // 获取设备状态
             let status = 'running';
             if (device.status === '故障') status = 'stopped';
-            else if (device.fault_probability > 0.3) status = 'warning';
+            else if (device.status === '停机') status = 'stopped';
+            else if (device.status === '维修中') status = 'warning';
+            else if (device.status === '预警' || device.fault_probability > 0.3) status = 'warning';
 
             // 获取设备状态文本
             let statusText = '运行中';
-            if (status === 'warning') statusText = '异常';
+            if (device.status === '预警') statusText = '预警';
+            else if (device.status === '维修中') statusText = '维修中';
+            else if (device.status === '故障') statusText = '故障';
+            else if (device.status === '停机') statusText = '已停机';
+            else if (status === 'warning') statusText = '异常';
             else if (status === 'stopped') statusText = '已停机';
 
             // 获取设备类型
@@ -755,6 +958,7 @@ export default {
               productionLine: productionLine,
               status: status,
               statusText: statusText,
+              dbStatus: device.status || '正常', // 原始数据库状态值
               runtime: device.runtime_hours || 0,
               manager: manager,
               lastMaintenance: device.updated_at ? new Date(device.updated_at).toISOString().split('T')[0] : '未知',
@@ -776,10 +980,15 @@ export default {
         }
       } catch (error) {
         this.error.equipments = error.message || '获取设备数据出错';
-        this.equipments = []; // 清空设备数据
-      } finally {
-        this.loading.equipments = false;
+        // 只在没有设备数据时才清空
+        if (this.equipments.length === 0) {
+          this.equipments = [];
+        }
       }
+      // 不需要设置loading状态
+      // finally {
+      //   this.loading.equipments = false;
+      // }
     },
 
     // 切换页面
@@ -935,6 +1144,12 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
+}
+
+.status-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .line-name {
@@ -1350,5 +1565,83 @@ export default {
   border: 1px solid #ddd;
   border-radius: 4px;
   min-width: 120px;
+}
+
+.status-select {
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid #d9d9d9;
+  background-color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.status-select:hover {
+  border-color: #1890ff;
+}
+
+.status-note {
+  font-size: 12px;
+  color: #ff4d4f;
+  margin-left: 10px;
+  font-style: italic;
+}
+
+.status-buttons {
+  display: flex;
+  gap: 8px;
+  margin: 0 10px;
+}
+
+.status-btn {
+  padding: 4px 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.status-btn:hover {
+  border-color: #1890ff;
+  color: #1890ff;
+}
+
+.status-btn.active {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  color: white;
+}
+
+.status-btn:disabled {
+  background-color: #f5f5f5;
+  border-color: #d9d9d9;
+  color: #bfbfbf;
+  cursor: not-allowed;
+}
+
+/* 设备状态标签样式 */
+.status-tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-tag.running {
+  background-color: #e8f5e9;
+  color: #4CAF50;
+}
+
+.status-tag.warning {
+  background-color: #fff3e0;
+  color: #ff9800;
+}
+
+.status-tag.stopped {
+  background-color: #ffebee;
+  color: #f44336;
 }
 </style>
