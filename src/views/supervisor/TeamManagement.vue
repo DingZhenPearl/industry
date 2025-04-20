@@ -29,9 +29,6 @@
             <button class="view-btn" @click="showLeaveManagement = true">
               <i class="calendar-icon"></i> 请假管理
             </button>
-            <button class="add-btn" @click="showAddEmployee = true">
-              <i class="plus-icon">+</i> 添加员工
-            </button>
           </div>
         </div>
 
@@ -95,59 +92,7 @@
       </div>
     </div>
 
-    <!-- 添加员工模态框 -->
-    <div class="modal" v-if="showAddEmployee">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>添加员工</h3>
-          <span class="close-btn" @click="closeModal">&times;</span>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>工号</label>
-            <input type="text" v-model="employeeForm.id" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>姓名</label>
-            <input type="text" v-model="employeeForm.name" class="form-input">
-          </div>
-          <!-- 添加组号输入字段 -->
-          <div class="form-group">
-            <label>组号</label>
-            <input type="text" v-model="employeeForm.group_id" class="form-input" placeholder="请输入组号">
-          </div>
-          <div class="form-group">
-            <label>角色</label>
-            <select v-model="employeeForm.role" class="form-input">
-              <option value="">请选择角色</option>
-              <option v-for="role in roles" :key="role.id" :value="role.id">
-                {{ role.name }}
-              </option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>部门</label>
-            <input type="text" v-model="employeeForm.department" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>联系方式</label>
-            <input type="text" v-model="employeeForm.phone" class="form-input">
-          </div>
-          <div class="form-group">
-            <label>状态</label>
-            <select v-model="employeeForm.status" class="form-input">
-              <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn cancel" @click="closeModal">取消</button>
-          <button class="btn submit" @click="saveEmployee">保存</button>
-        </div>
-      </div>
-    </div>
+
 
     <!-- 分组调整模态框 -->
     <div class="modal" v-if="showGroupChange">
@@ -396,12 +341,10 @@ export default {
       filterRole: '',
       filterGroup: '', // 添加组号筛选数据
       searchKeyword: '',
-      showAddEmployee: false,
       showLeaveManagement: false,
       showUpdateStatus: false,
       showGroupChange: false,
       showEmployeeDetail: false,
-      editingEmployee: null,
       selectedEmployee: {},
       currentManager: {
         id: '',
@@ -413,16 +356,7 @@ export default {
       statusUpdateLoading: false,
       newGroupId: '',
       customGroupId: '',
-      groupUpdateLoading: false,
-      employeeForm: {
-        id: '',
-        name: '',
-        role: '',
-        group_id: '', // 添加组号字段
-        phone: '',
-        status: 'active',
-        statusText: '在职'
-      }
+      groupUpdateLoading: false
     }
   },
   async created() {
@@ -597,53 +531,7 @@ export default {
       };
       return roleNames[role] || role;
     },
-    async saveEmployee() {
-      try {
-        // 如果是编辑现有员工
-        if (this.editingEmployee) {
-          // 更新组号
-          if (this.employeeForm.group_id !== this.editingEmployee.group_id) {
-            const response = await fetch('/api/update-group', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-              },
-              body: JSON.stringify({
-                username: this.editingEmployee.name, // 使用原始用户名
-                role: this.editingEmployee.role,    // 使用原始角色
-                group_id: this.employeeForm.group_id
-              })
-            });
 
-            const data = await response.json();
-            if (data.success) {
-              // 更新本地数据
-              const index = this.employees.findIndex(emp => emp.id === this.editingEmployee.id);
-              if (index !== -1) {
-                this.employees[index] = {
-                  ...this.employees[index],
-                  group_id: this.employeeForm.group_id
-                };
-              }
-            } else {
-              this.$message.error(data.error || '更新组号失败');
-              return;
-            }
-          }
-        }
-
-        // ...existing code for other employee updates...
-
-        this.closeModal();
-        // 重新获取最新的员工列表
-        await this.fetchEmployees();
-
-      } catch (error) {
-        console.error('保存员工信息时出错:', error);
-        this.$message.error('保存失败，请重试');
-      }
-    },
     // 查看员工详情
     viewEmployeeDetail(employee) {
       this.selectedEmployee = { ...employee };
@@ -714,20 +602,6 @@ export default {
       if (confirm('确定要删除该员工吗？')) {
         this.employees = this.employees.filter(emp => emp.id !== employee.id);
       }
-    },
-    closeModal() {
-      this.showAddEmployee = false;
-      this.editingEmployee = null;
-      this.employeeForm = {
-        id: '',
-        name: '',
-        role: '',
-        group_id: '', // 重置组号字段
-        department: '',
-        phone: '',
-        status: '在岗',
-        statusText: '在职'
-      };
     },
 
     // 获取状态类名
@@ -975,17 +849,7 @@ export default {
   flex: 1;
 }
 
-.add-btn {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 8px 16px;
-  background: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
+
 
 .employee-list table {
   width: 100%;

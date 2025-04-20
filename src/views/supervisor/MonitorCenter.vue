@@ -247,7 +247,7 @@
               <div class="config-item" v-for="line in productionLines" :key="line.id">
                 <span class="line-name">{{ line.name }}</span>
                 <div class="config-actions">
-                  <button class="btn" @click="editLine(line)">编辑</button>
+                  <button class="btn" @click="editProductionLine(line)">编辑</button>
                   <button class="btn danger" @click="deleteLine(line)">删除</button>
                 </div>
               </div>
@@ -315,6 +315,39 @@
           <div class="modal-footer">
             <button class="btn cancel" @click="showAddLineModal = false">取消</button>
             <button class="btn submit" @click="confirmAddLine">确定添加</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 编辑产线模态框 -->
+      <div class="modal" v-if="showEditLineModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>编辑产线</h3>
+            <span class="close-btn" @click="showEditLineModal = false">&times;</span>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>产线名称</label>
+              <input type="text" v-model="editLine.name" class="form-input" placeholder="请输入产线名称">
+            </div>
+            <div class="form-group">
+              <label>理论产能</label>
+              <input type="number" v-model="editLine.theoretical_capacity" class="form-input" placeholder="请输入理论产能">
+            </div>
+            <div class="form-group">
+              <label>选择管理工长</label>
+              <select v-model="editLine.foreman_id" class="form-input">
+                <option value="">请选择工长</option>
+                <option v-for="manager in foremen" :key="manager.id" :value="manager.id">
+                  {{ manager.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn cancel" @click="showEditLineModal = false">取消</button>
+            <button class="btn submit" @click="confirmEditLine">确定修改</button>
           </div>
         </div>
       </div>
@@ -685,12 +718,20 @@ export default {
       showAddLineModal: false,
       showAddEquipmentModal: false,
       showEditEquipmentModal: false,
+      showEditLineModal: false,
       selectedLine: {},
       selectedManager: '',
       foremen: [],
       workers: [],
       // 新增产线相关数据
       newLine: {
+        name: '',
+        theoretical_capacity: 1000,
+        foreman_id: ''
+      },
+      // 编辑产线相关数据
+      editLine: {
+        id: '',
         name: '',
         theoretical_capacity: 1000,
         foreman_id: ''
@@ -1036,9 +1077,73 @@ export default {
       if (stoppedCard) stoppedCard.textContent = stoppedLines;
     },
 
-    editLine(line) {
-      // 编辑产线的逻辑
-      alert(`编辑产线 ${line.name} 的功能尚未实现`);
+    editProductionLine(line) {
+      // 初始化编辑表单
+      this.editLine = {
+        id: line.id,
+        name: line.name,
+        theoretical_capacity: line.target || 1000,
+        foreman_id: line.foreman ? line.foreman.id : ''
+      };
+
+      // 显示编辑模态框
+      this.showEditLineModal = true;
+
+      // 确保工长列表已加载
+      if (!this.foremen || this.foremen.length === 0) {
+        this.fetchForemen();
+      }
+    },
+
+    // 确认编辑产线
+    async confirmEditLine() {
+      // 验证表单
+      if (!this.editLine.name) {
+        alert('请输入产线名称');
+        return;
+      }
+
+      if (!this.editLine.theoretical_capacity || this.editLine.theoretical_capacity <= 0) {
+        alert('请输入有效的理论产能');
+        return;
+      }
+
+      try {
+        // 准备产线数据
+        const lineData = {
+          line_name: this.editLine.name,
+          theoretical_capacity: this.editLine.theoretical_capacity,
+          foreman_id: this.editLine.foreman_id || null
+        };
+
+        // 调用API更新产线
+        const response = await fetch('/api/production_line/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            line_id: this.editLine.id,
+            line_data: lineData
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('产线信息更新成功！');
+          // 重新加载产线数据
+          this.fetchProductionLines();
+          // 关闭模态框
+          this.showEditLineModal = false;
+        } else {
+          alert(`更新失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('编辑产线出错:', error);
+        alert(`编辑产线出错: ${error.message || '未知错误'}`);
+      }
     },
 
     deleteLine(line) {
