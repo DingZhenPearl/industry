@@ -243,22 +243,66 @@ export default {
         const data = await response.json();
         console.log('产线数据:', data);
 
+        // 调试日志，查看设备列表数据
+        if (data.success && data.data && data.data.length > 0) {
+          const firstLine = data.data[0];
+          console.log('第一个产线数据:', firstLine);
+          console.log('产线设备列表存在吗?', 'equipment_list' in firstLine);
+          if ('equipment_list' in firstLine) {
+            console.log('产线设备列表类型:', typeof firstLine.equipment_list);
+            console.log('产线设备列表内容:', firstLine.equipment_list);
+            if (Array.isArray(firstLine.equipment_list)) {
+              console.log('设备列表长度:', firstLine.equipment_list.length);
+              if (firstLine.equipment_list.length > 0) {
+                console.log('第一个设备数据:', firstLine.equipment_list[0]);
+              }
+            }
+          }
+        }
+
         if (data.success && data.data) {
           // 处理产线数据
           this.assignedLines = data.data.map(line => {
             // 创建产线名称映射
             this.lineNameMap[line.id] = line.line_name;
 
+            // 获取产线状态
+            const status = this.getStatusFromRunningStatus(line.running_status || line.status);
+            const statusText = this.getStatusTextFromRunningStatus(line.running_status || line.status);
+
+            // 计算产能利用率
+            let utilization = 0;
+            if (line.real_time_capacity && line.theoretical_capacity && line.theoretical_capacity > 0) {
+              utilization = Math.round((line.real_time_capacity / line.theoretical_capacity) * 100);
+            }
+
+            // 获取设备总数和运行设备数
+            let totalDevices = 0;
+            let runningDevices = 0;
+
+            // 如果后端返回了设备列表，直接使用
+            if (line.equipment_list && Array.isArray(line.equipment_list)) {
+              totalDevices = line.equipment_list.length;
+              runningDevices = line.equipment_list.filter(eq => {
+                // 检查设备状态
+                const status = eq.status || eq.running_status;
+                return status === '正常' || status === '运行中';
+              }).length;
+
+              console.log(`产线 ${line.line_name} 设备总数: ${totalDevices}, 运行设备数: ${runningDevices}`);
+            }
+
             return {
               id: line.id,
               name: line.line_name,
-              status: this.getStatusFromRunningStatus(line.running_status),
-              statusText: this.getStatusTextFromRunningStatus(line.running_status),
-              totalDevices: 0, // 将在获取设备后更新
-              runningDevices: 0, // 将在获取设备后更新
-              utilization: line.real_time_capacity ?
-                Math.round((line.real_time_capacity / line.theoretical_capacity) * 100) : 0,
-              assignedTo: line.foreman_id
+              status: status,
+              statusText: statusText,
+              totalDevices: totalDevices,
+              runningDevices: runningDevices,
+              utilization: utilization,
+              assignedTo: line.foreman_id,
+              // 保存原始数据，以便后续使用
+              rawData: line
             };
           });
 
@@ -312,7 +356,10 @@ export default {
             const dbStatus = device.status || '正常';
 
             // 更新产线的设备统计
-            this.updateLineDeviceStats(device.line_id, status);
+            // 将产线ID转换为字符串，确保类型匹配
+            const lineId = device.line_id;
+            console.log(`设备 ${device.equipment_name} (设备ID: ${device.id}) 属于产线ID: ${lineId}, 状态: ${status}`);
+            this.updateLineDeviceStats(lineId, status);
 
             return {
               id: device.id,
@@ -341,12 +388,28 @@ export default {
 
     // 更新产线的设备统计
     updateLineDeviceStats(lineId, deviceStatus) {
-      const line = this.assignedLines.find(line => line.id === lineId);
+      // 将lineId转换为字符串，确保类型匹配
+      const lineIdStr = String(lineId);
+      const line = this.assignedLines.find(line => String(line.id) === lineIdStr);
+
+      // 只在产线卡片没有设备数据时才更新
       if (line) {
-        line.totalDevices++;
-        if (deviceStatus === 'running') {
-          line.runningDevices++;
+        // 检查是否有设备列表数据
+        const hasEquipmentList = line.rawData &&
+                                line.rawData.equipment_list &&
+                                Array.isArray(line.rawData.equipment_list) &&
+                                line.rawData.equipment_list.length > 0;
+
+        if (!hasEquipmentList) {
+          console.log(`更新产线 ${line.name} (产线ID: ${lineIdStr}) 的设备统计，设备状态: ${deviceStatus}`);
+          line.totalDevices++;
+          if (deviceStatus === 'running') {
+            line.runningDevices++;
+          }
+          console.log(`更新后的设备统计: 总数=${line.totalDevices}, 运行数=${line.runningDevices}`);
         }
+      } else {
+        console.log(`未找到产线ID: ${lineIdStr} 的产线数据`);
       }
     },
 
@@ -371,17 +434,42 @@ export default {
 
     // 根据产线运行状态获取状态
     getStatusFromRunningStatus(runningStatus) {
+      if (!runningStatus) return 'running';
+
       switch (runningStatus) {
-        case '运行中': return 'running';
-        case '故障': return 'stopped';
-        case '维护中': return 'warning';
-        default: return 'running';
+        case '运行中':
+        case '正常':
+          return 'running';
+        case '故障':
+        case '停机':
+          return 'stopped';
+        case '维修中':
+        case '预警':
+          return 'warning';
+        default:
+          return 'running';
       }
     },
 
     // 根据产线运行状态获取状态文本
     getStatusTextFromRunningStatus(runningStatus) {
-      return runningStatus || '运行中';
+      if (!runningStatus) return '运行中';
+
+      switch (runningStatus) {
+        case '运行中':
+        case '正常':
+          return '运行中';
+        case '故障':
+          return '故障';
+        case '停机':
+          return '已停机';
+        case '维修中':
+          return '维修中';
+        case '预警':
+          return '预警';
+        default:
+          return runningStatus;
+      }
     },
 
     // 格式化日期
