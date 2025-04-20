@@ -87,7 +87,7 @@
                   </span>
                 </td>
                 <td>
-                  <button class="action-btn edit" @click="editEmployee(emp)">编辑</button>
+                  <button class="action-btn edit" @click="showGroupChangeModal(emp)">分组</button>
                   <button class="action-btn delete" @click="deleteEmployee(emp)">删除</button>
                   <button class="action-btn status" @click="showUpdateStatusModal(emp)">修改状态</button>
                 </td>
@@ -98,11 +98,11 @@
       </div>
     </div>
 
-    <!-- 添加/编辑员工模态框 -->
+    <!-- 添加员工模态框 -->
     <div class="modal" v-if="showAddEmployee">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>{{ editingEmployee ? '编辑员工' : '添加员工' }}</h3>
+          <h3>添加员工</h3>
           <span class="close-btn" @click="closeModal">&times;</span>
         </div>
         <div class="modal-body">
@@ -148,6 +148,76 @@
         <div class="modal-footer">
           <button class="btn cancel" @click="closeModal">取消</button>
           <button class="btn submit" @click="saveEmployee">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分组调整模态框 -->
+    <div class="modal" v-if="showGroupChange">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>调整员工分组</h3>
+          <span class="close-btn" @click="showGroupChange = false">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="employee-info">
+            <div class="info-item">
+              <label>工号：</label>
+              <span>{{ selectedEmployee.id }}</span>
+            </div>
+            <div class="info-item">
+              <label>姓名：</label>
+              <span>{{ selectedEmployee.name }}</span>
+            </div>
+            <div class="info-item">
+              <label>角色：</label>
+              <span>{{ selectedEmployee.roleName }}</span>
+            </div>
+            <div class="info-item">
+              <label>当前分组：</label>
+              <span>{{ selectedEmployee.group_id || '未分组' }}</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>新分组：</label>
+            <div class="group-selection">
+              <div class="group-options">
+                <div
+                  v-for="group in availableGroups"
+                  :key="group"
+                  :class="['group-option', newGroupId === group ? 'selected' : '']"
+                  @click="newGroupId = group"
+                >
+                  {{ group }}
+                </div>
+                <div
+                  :class="['group-option', newGroupId === 'new' ? 'selected' : '']"
+                  @click="newGroupId = 'new'"
+                >
+                  新建分组
+                </div>
+              </div>
+              <div v-if="newGroupId === 'new'" class="new-group-input">
+                <input
+                  type="text"
+                  v-model="customGroupId"
+                  class="form-control"
+                  placeholder="请输入新分组号"
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showGroupChange = false">取消</button>
+          <button
+            class="confirm-btn"
+            :disabled="!isValidGroupSelection || groupUpdateLoading"
+            @click="updateEmployeeGroup"
+          >
+            {{ groupUpdateLoading ? '更新中...' : '确认更新' }}
+          </button>
         </div>
       </div>
     </div>
@@ -321,6 +391,7 @@ export default {
       showAddEmployee: false,
       showLeaveManagement: false,
       showUpdateStatus: false,
+      showGroupChange: false,
       editingEmployee: null,
       selectedEmployee: {},
       currentManager: {
@@ -331,6 +402,9 @@ export default {
       activeLeaveTab: 'pending',
       newStatus: '',
       statusUpdateLoading: false,
+      newGroupId: '',
+      customGroupId: '',
+      groupUpdateLoading: false,
       employeeForm: {
         id: '',
         name: '',
@@ -368,6 +442,14 @@ export default {
         }
       });
       return Array.from(groups).sort();
+    },
+
+    // 检查分组选择是否有效
+    isValidGroupSelection() {
+      if (this.newGroupId === 'new') {
+        return this.customGroupId && this.customGroupId.trim() !== '';
+      }
+      return this.newGroupId && this.newGroupId !== this.selectedEmployee.group_id;
     },
 
     filteredEmployees() {
@@ -468,10 +550,59 @@ export default {
         this.$message.error('保存失败，请重试');
       }
     },
-    editEmployee(employee) {
-      this.editingEmployee = { ...employee }; // 保存完整的原始员工信息
-      this.employeeForm = { ...employee };
-      this.showAddEmployee = true;
+    // 显示分组调整模态框
+    showGroupChangeModal(employee) {
+      this.selectedEmployee = { ...employee };
+      this.newGroupId = '';
+      this.customGroupId = '';
+      this.showGroupChange = true;
+    },
+
+    // 更新员工分组
+    async updateEmployeeGroup() {
+      if (!this.isValidGroupSelection || this.groupUpdateLoading) return;
+
+      this.groupUpdateLoading = true;
+
+      // 确定要使用的组号
+      const groupId = this.newGroupId === 'new' ? this.customGroupId.trim() : this.newGroupId;
+
+      try {
+        const response = await fetch('/api/update-group', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            employee_id: this.selectedEmployee.id,
+            group_id: groupId
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('员工分组更新成功');
+          this.showGroupChange = false;
+
+          // 更新本地数据
+          const index = this.employees.findIndex(emp => emp.id === this.selectedEmployee.id);
+          if (index !== -1) {
+            this.$set(this.employees[index], 'group_id', groupId);
+          }
+
+          // 刷新员工列表
+          await this.fetchEmployees();
+        } else {
+          alert(`更新员工分组失败: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('更新员工分组出错:', error);
+        alert('更新员工分组失败，请重试');
+      } finally {
+        this.groupUpdateLoading = false;
+      }
     },
     deleteEmployee(employee) {
       if (confirm('确定要删除该员工吗？')) {
@@ -942,6 +1073,48 @@ export default {
 .approval-notes {
   font-style: italic;
   color: #666;
+}
+
+.group-selection {
+  margin-top: 10px;
+}
+
+.group-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.group-option {
+  padding: 8px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.group-option:hover {
+  border-color: #2196F3;
+  color: #2196F3;
+}
+
+.group-option.selected {
+  background-color: #e3f2fd;
+  border-color: #2196F3;
+  color: #2196F3;
+  font-weight: 500;
+}
+
+.new-group-input {
+  margin-top: 10px;
+}
+
+.new-group-input input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 }
 
 .info-item {

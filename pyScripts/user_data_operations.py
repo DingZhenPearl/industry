@@ -937,7 +937,7 @@ def update_password(username, role, new_password):
             connection.close()
 
 def update_group(username, role, group_id):
-    """更新用户组号"""
+    """根据用户名和角色更新用户组号"""
     connection = None
     try:
         connection = get_db_connection()
@@ -968,6 +968,47 @@ def update_group(username, role, group_id):
         print(json.dumps({
             'success': False,
             'error': f'组号更新失败: {str(e)}'
+        }, ensure_ascii=False))
+        if connection:
+            connection.rollback()
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+def update_group_by_id(employee_id, group_id):
+    """根据工号更新用户组号"""
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        # 更新组号
+        cursor.execute("""
+            UPDATE users SET group_id = %s
+            WHERE employee_id = %s
+        """, (group_id, employee_id))
+
+        if cursor.rowcount == 0:
+            print(json.dumps({
+                'success': False,
+                'error': '未找到员工或无权限修改'
+            }, ensure_ascii=False))
+            return
+
+        connection.commit()
+
+        print(json.dumps({
+            'success': True,
+            'message': '员工分组更新成功',
+            'employee_id': employee_id,
+            'group_id': group_id
+        }, ensure_ascii=False))
+
+    except Exception as e:
+        print(json.dumps({
+            'success': False,
+            'error': f'员工分组更新失败: {str(e)}'
         }, ensure_ascii=False))
         if connection:
             connection.rollback()
@@ -1133,6 +1174,11 @@ def main():
     update_group_parser.add_argument('role', help='角色')
     update_group_parser.add_argument('group_id', help='组号')
 
+    # 根据工号更新组号命令
+    update_group_by_id_parser = subparsers.add_parser('update-group-by-id', help='根据工号更新组号')
+    update_group_by_id_parser.add_argument('employee_id', help='工号')
+    update_group_by_id_parser.add_argument('group_id', help='组号')
+
     # 更新用户命令
     update_user_parser = subparsers.add_parser('update-user', help='更新用户')
     update_user_parser.add_argument('username', help='用户名')
@@ -1180,6 +1226,8 @@ def main():
         update_password(args.username, args.role, args.new_password)
     elif args.command == 'update-group':
         update_group(args.username, args.role, args.group_id)
+    elif args.command == 'update-group-by-id':
+        update_group_by_id(args.employee_id, args.group_id)
     elif args.command == 'increase-username-length':
         increase_username_length()
     else:

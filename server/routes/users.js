@@ -143,12 +143,19 @@ router.post('/update-user', authMiddleware, async (req, res) => {
 
 // 更新用户组号
 router.post('/update-group', authMiddleware, async (req, res) => {
-  const { username, role, group_id } = req.body;
+  const { employee_id, group_id } = req.body;
+
+  if (!employee_id || !group_id) {
+    return res.status(400).json({
+      success: false,
+      error: '缺少必要参数：员工ID或组号'
+    });
+  }
 
   try {
     const result = await runPythonScript(
       'pyScripts/user_data_operations.py',
-      ['update-group', username, role, group_id]
+      ['update-group-by-id', employee_id, group_id]
     );
 
     res.json(result);
