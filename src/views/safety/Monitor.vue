@@ -10,16 +10,6 @@
           <h3>今日安全状况</h3>
           <div class="status good">良好</div>
         </div>
-
-        <div class="monitor-card">
-          <h3>预警数量</h3>
-          <div class="count">2</div>
-        </div>
-
-        <div class="monitor-card">
-          <h3>待处理隐患</h3>
-          <div class="count">1</div>
-        </div>
       </div>
 
       <div class="monitor-list">
@@ -128,47 +118,7 @@
         </div>
       </div>
 
-      <!-- 预警和安全隐患列表 -->
-      <div class="hazard-list">
-        <h3 class="section-title">预警和安全隐患</h3>
 
-        <!-- 预警列表 -->
-        <div class="warning-list">
-          <div class="warning-item" v-for="(item, index) in warnings" :key="'warning-'+index">
-            <div class="warning-header">
-              <span class="warning-type">{{ item.type }}</span>
-              <span class="warning-time">{{ item.time }}</span>
-            </div>
-            <div class="warning-content">
-              <p>{{ item.description }}</p>
-              <div class="warning-location">位置：{{ item.location }}</div>
-            </div>
-            <div class="warning-actions">
-              <button class="action-btn primary" @click="handleWarning(item)">处理</button>
-              <button class="action-btn" @click="ignoreWarning(item)">忽略</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 隐患列表 -->
-        <div class="hazard-item" v-for="hazard in hazards" :key="'hazard-'+hazard.id">
-          <div class="hazard-header">
-            <span class="hazard-type">{{ hazard.type }}</span>
-            <span class="hazard-level" :class="hazard.level">{{ hazard.levelText }}</span>
-          </div>
-          <div class="hazard-content">
-            <p>{{ hazard.description }}</p>
-            <div class="hazard-info">
-              <span>位置：{{ hazard.location }}</span>
-              <span>发现时间：{{ hazard.time }}</span>
-            </div>
-          </div>
-          <div class="hazard-actions">
-            <button class="handle-btn" @click="handleHazard(hazard)">处理</button>
-            <button class="detail-btn" @click="viewHazardDetail(hazard)">详情</button>
-          </div>
-        </div>
-      </div>
 
       <!-- 新增设备安全监控模块 -->
       <div class="equipment-safety">
@@ -294,7 +244,6 @@ export default {
         productionLines: null,
         equipments: null
       },
-      warnings: [],
       // 原始模拟数据
       /*
       monitorItems: [
@@ -370,9 +319,6 @@ export default {
         }
       ],
       */
-      hazards: [],
-
-
 
       // 新增设备安全监控相关数据
       equipmentFilter: {
@@ -494,8 +440,6 @@ export default {
   created() {
     this.fetchProductionLines();
     this.fetchEquipments();
-    this.fetchWarnings();
-    this.fetchHazards();
   },
   methods: {
     // 查看产线详情
@@ -520,39 +464,7 @@ export default {
     },
 
 
-    // 处理隐患
-    async handleHazard(hazard) {
-      console.log('处理安全隐患:', hazard);
-      try {
-        // 调用API处理安全隐患
-        const response = await fetch(`/api/safety/hazards/${hazard.id}/resolve`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
 
-        const result = await response.json();
-
-        if (result.success) {
-          // 刷新隐患列表
-          this.fetchHazards();
-          alert('隐患已处理并关闭');
-        } else {
-          alert(`处理隐患失败: ${result.error || '未知错误'}`);
-        }
-      } catch (error) {
-        console.error('处理隐患出错:', error);
-        alert(`处理隐患出错: ${error.message || '未知错误'}`);
-      }
-    },
-
-    // 查看隐患详情
-    viewHazardDetail(hazard) {
-      console.log('查看隐患详情:', hazard);
-      alert(`隐患详情\n\n类型: ${hazard.type}\n级别: ${hazard.levelText}\n描述: ${hazard.description}\n位置: ${hazard.location}\n时间: ${hazard.time}`);
-    },
 
 
     // 查看设备详情
@@ -589,9 +501,7 @@ export default {
         const result = await response.json();
 
         if (result.success) {
-          // 刷新隐患列表
-          this.fetchHazards();
-          alert('已创建安全预警并添加到隐患列表');
+          alert('已创建安全预警');
         } else {
           alert(`创建安全预警失败: ${result.error || '未知错误'}`);
         }
@@ -615,71 +525,7 @@ export default {
       });
     },
 
-    // 处理预警
-    async handleWarning(warning) {
-      console.log('处理预警:', warning);
-      try {
-        // 调用API处理预警
-        const response = await fetch(`/api/safety/warnings/${warning.id}/handle`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            convert_to_hazard: true,
-            hazard_data: {
-              type: warning.type + '隐患',
-              level: 'medium',
-              description: warning.description,
-              location: warning.location
-            }
-          })
-        });
 
-        const result = await response.json();
-
-        if (result.success) {
-          // 刷新预警和隐患列表
-          this.fetchWarnings();
-          this.fetchHazards();
-          alert('预警已处理并转为隐患进行跟踪');
-        } else {
-          alert(`处理预警失败: ${result.error || '未知错误'}`);
-        }
-      } catch (error) {
-        console.error('处理预警出错:', error);
-        alert(`处理预警出错: ${error.message || '未知错误'}`);
-      }
-    },
-
-    // 忽略预警
-    async ignoreWarning(warning) {
-      console.log('忽略预警:', warning);
-      try {
-        // 调用API忽略预警
-        const response = await fetch(`/api/safety/warnings/${warning.id}/ignore`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          // 刷新预警列表
-          this.fetchWarnings();
-          alert('预警已忽略');
-        } else {
-          alert(`忽略预警失败: ${result.error || '未知错误'}`);
-        }
-      } catch (error) {
-        console.error('忽略预警出错:', error);
-        alert(`忽略预警出错: ${error.message || '未知错误'}`);
-      }
-    },
 
     // 从后端获取产线数据
     async fetchProductionLines() {
@@ -1125,75 +971,7 @@ export default {
       });
     },
 
-    // 获取预警数据
-    async fetchWarnings() {
-      try {
-        // 获取当前登录用户的组号
-        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-        const groupId = userInfo.group_id;
 
-        if (!groupId) {
-          console.error('未找到组号信息');
-          return;
-        }
-
-        const response = await fetch(`/api/safety/warnings?group_id=${groupId}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`获取预警数据失败: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('预警数据:', result);
-
-        if (result.success) {
-          this.warnings = result.data || [];
-        } else {
-          console.error('获取预警数据失败:', result.error || '未知错误');
-        }
-      } catch (error) {
-        console.error('获取预警数据出错:', error);
-      }
-    },
-
-    // 获取隐患数据
-    async fetchHazards() {
-      try {
-        // 获取当前登录用户的组号
-        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-        const groupId = userInfo.group_id;
-
-        if (!groupId) {
-          console.error('未找到组号信息');
-          return;
-        }
-
-        const response = await fetch(`/api/safety/hazards?group_id=${groupId}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`获取隐患数据失败: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('隐患数据:', result);
-
-        if (result.success) {
-          this.hazards = result.data || [];
-        } else {
-          console.error('获取隐患数据失败:', result.error || '未知错误');
-        }
-      } catch (error) {
-        console.error('获取隐患数据出错:', error);
-      }
-    },
 
 
   }
