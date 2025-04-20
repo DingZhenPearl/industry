@@ -19,6 +19,7 @@
         :error="error"
         :auto-refresh-enabled="autoRefresh"
         :refresh-rate="refreshRate"
+        :sensor-projects="sensorProjects"
         @retry="fetchEquipmentDetail"
         @refresh-data="fetchLatestDeviceData"
         @fetch-history="fetchDeviceHistory"
@@ -162,7 +163,8 @@ export default {
       },
       selectedWorker: '',
       teamMembers: [],
-      maintenanceRecords: []
+      maintenanceRecords: [],
+      sensorProjects: {}
     }
   },
   computed: {
@@ -282,6 +284,24 @@ export default {
             if (this.sensors.length > 0) {
               this.currentSensor = this.sensors[0];
             }
+          }
+
+          // 获取传感器项目数据
+          if (deviceData.sensor_projects) {
+            try {
+              // 处理传感器项目数据，确保是对象
+              if (typeof deviceData.sensor_projects === 'string') {
+                this.sensorProjects = JSON.parse(deviceData.sensor_projects);
+              } else {
+                this.sensorProjects = deviceData.sensor_projects;
+              }
+            } catch (e) {
+              console.error('解析传感器项目数据失败:', e);
+              this.sensorProjects = {};
+            }
+          } else {
+            // 如果没有传感器项目数据，尝试从专门的API获取
+            this.fetchSensorProjects(deviceData.id);
           }
 
           // 获取设备历史数据
@@ -636,6 +656,44 @@ export default {
         'current': 'A'
       };
       return unitMap[key] || '';
+    },
+
+    // 获取设备的传感器项目列表
+    async fetchSensorProjects(equipmentId) {
+      if (!equipmentId) return;
+
+      try {
+        const response = await fetch(`/api/sensor-projects/${equipmentId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          console.error(`获取传感器项目列表失败: ${response.status}`);
+          return;
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data && result.data.sensor_projects) {
+          // 处理传感器项目数据
+          let sensorProjects = result.data.sensor_projects;
+          if (typeof sensorProjects === 'string') {
+            try {
+              sensorProjects = JSON.parse(sensorProjects);
+            } catch (e) {
+              console.error('解析传感器项目数据失败:', e);
+              sensorProjects = {};
+            }
+          }
+
+          // 保存传感器项目数据
+          this.sensorProjects = sensorProjects;
+        }
+      } catch (error) {
+        console.error('获取传感器项目列表出错:', error);
+      }
     }
   }
 }

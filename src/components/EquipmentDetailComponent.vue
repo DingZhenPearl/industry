@@ -80,6 +80,12 @@
         <div class="chart-header">
           <h3>参数变化图表</h3>
           <div class="chart-controls">
+            <select v-model="selectedParameter" class="parameter-select" @change="updateChart">
+              <option value="fault_probability">故障概率</option>
+              <option v-for="(label, key) in availableSensors" :key="key" :value="key">
+                {{ label }}
+              </option>
+            </select>
             <button
               class="auto-refresh-btn"
               :class="{ active: autoRefresh }"
@@ -142,6 +148,11 @@ export default {
     refreshRate: {
       type: Number,
       default: 10000
+    },
+    // 传感器项目列表
+    sensorProjects: {
+      type: Object,
+      default: () => ({})
     }
   },
   data() {
@@ -159,7 +170,19 @@ export default {
         'noise': '噪音',
         'humidity': '湿度',
         'voltage': '电压',
-        'current': '电流'
+        'current': '电流',
+        'power': '功率',
+        'flow_rate': '流量',
+        'liquid_level': '液位',
+        'air_pressure': '气压',
+        'torque': '扭矩',
+        'displacement': '位移',
+        'weight': '重量',
+        'concentration': '浓度',
+        'light_intensity': '光强',
+        'radiation': '辐射',
+        'runtime': '运行时间',
+        'output': '产量'
       }
     }
   },
@@ -191,6 +214,27 @@ export default {
       }
 
       return true;
+    },
+
+    // 可用的传感器参数列表
+    availableSensors() {
+      // 首先检查设备是否有传感器数据
+      if (this.equipment && this.equipment.sensorData && Object.keys(this.equipment.sensorData).length > 0) {
+        // 从设备的实时传感器数据中获取可用参数
+        const availableSensors = {};
+        for (const key in this.equipment.sensorData) {
+          availableSensors[key] = this.getSensorLabel(key);
+        }
+        return availableSensors;
+      }
+
+      // 如果没有传感器数据，则使用传感器项目列表
+      if (this.sensorProjects && Object.keys(this.sensorProjects).length > 0) {
+        return this.sensorProjects;
+      }
+
+      // 如果都没有，则使用默认的传感器标签
+      return this.sensorLabels;
     }
   },
 
@@ -198,6 +242,15 @@ export default {
     equipment(newEquipment) {
       if (newEquipment) {
         this.$emit('equipment-changed', newEquipment);
+
+        // 如果设备变更，检查是否需要更新选中的参数
+        if (newEquipment.sensorData) {
+          // 如果当前选中的参数在新设备中不存在，则选择第一个可用参数
+          const availableParams = Object.keys(newEquipment.sensorData);
+          if (availableParams.length > 0 && !availableParams.includes(this.selectedParameter)) {
+            this.selectedParameter = availableParams[0];
+          }
+        }
       }
     },
     deviceHistory(newHistory, oldHistory) {
@@ -214,6 +267,19 @@ export default {
       } else {
         this.stopAutoRefresh();
       }
+    },
+    sensorProjects: {
+      handler(newProjects) {
+        // 当传感器项目列表变化时，可能需要更新选中的参数
+        if (newProjects && Object.keys(newProjects).length > 0) {
+          // 如果当前选中的参数不在新的项目列表中，则选择第一个可用参数
+          const availableParams = Object.keys(newProjects);
+          if (availableParams.length > 0 && !availableParams.includes(this.selectedParameter) && this.selectedParameter !== 'fault_probability') {
+            this.selectedParameter = availableParams[0];
+          }
+        }
+      },
+      deep: true
     }
   },
   mounted() {
@@ -237,17 +303,13 @@ export default {
   methods: {
     // 获取传感器标签
     getSensorLabel(key) {
-      const labelMap = {
-        'temperature': '温度',
-        'pressure': '压力',
-        'speed': '转速',
-        'vibration': '振动',
-        'noise': '噪音',
-        'humidity': '湿度',
-        'voltage': '电压',
-        'current': '电流'
-      };
-      return labelMap[key] || key;
+      // 首先检查传感器项目列表
+      if (this.sensorProjects && this.sensorProjects[key]) {
+        return this.sensorProjects[key];
+      }
+
+      // 然后检查默认标签映射
+      return this.sensorLabels[key] || key;
     },
 
     // 格式化传感器值
@@ -260,7 +322,19 @@ export default {
         'noise': 'dB',
         'humidity': '%',
         'voltage': 'V',
-        'current': 'A'
+        'current': 'A',
+        'power': 'W',
+        'flow_rate': 'm³/h',
+        'liquid_level': 'mm',
+        'air_pressure': 'kPa',
+        'torque': 'N·m',
+        'displacement': 'mm',
+        'weight': 'kg',
+        'concentration': 'ppm',
+        'light_intensity': 'lux',
+        'radiation': 'μSv/h',
+        'runtime': 'h',
+        'output': 'pcs'
       };
       return `${value}${unitMap[key] || ''}`;
     },
@@ -470,7 +544,19 @@ export default {
         'noise': 'dB',
         'humidity': '%',
         'voltage': 'V',
-        'current': 'A'
+        'current': 'A',
+        'power': 'W',
+        'flow_rate': 'm³/h',
+        'liquid_level': 'mm',
+        'air_pressure': 'kPa',
+        'torque': 'N·m',
+        'displacement': 'mm',
+        'weight': 'kg',
+        'concentration': 'ppm',
+        'light_intensity': 'lux',
+        'radiation': 'μSv/h',
+        'runtime': 'h',
+        'output': 'pcs'
       };
 
       return unitMap[this.selectedParameter] || '';
@@ -509,6 +595,18 @@ export default {
         'humidity': `rgba(0, 191, 255, ${alpha})`,    // 湿度用浅蓝色
         'voltage': `rgba(255, 215, 0, ${alpha})`,     // 电压用金色
         'current': `rgba(139, 69, 19, ${alpha})`,     // 电流用棕色
+        'power': `rgba(106, 90, 205, ${alpha})`,      // 功率用紫罗兰色
+        'flow_rate': `rgba(0, 128, 128, ${alpha})`,   // 流量用青色
+        'liquid_level': `rgba(70, 130, 180, ${alpha})`, // 液位用钢蓝色
+        'air_pressure': `rgba(100, 149, 237, ${alpha})`, // 气压用矢车菊蓝
+        'torque': `rgba(210, 105, 30, ${alpha})`,     // 扭矩用巧克力色
+        'displacement': `rgba(46, 139, 87, ${alpha})`, // 位移用海绿色
+        'weight': `rgba(188, 143, 143, ${alpha})`,    // 重量用玫瑰褐色
+        'concentration': `rgba(60, 179, 113, ${alpha})`, // 浓度用春绿色
+        'light_intensity': `rgba(255, 215, 0, ${alpha})`, // 光强用金色
+        'radiation': `rgba(178, 34, 34, ${alpha})`,   // 辐射用砖红色
+        'runtime': `rgba(47, 79, 79, ${alpha})`,      // 运行时间用暗青色
+        'output': `rgba(85, 107, 47, ${alpha})`,      // 产量用暗橄榄绿
         'fault_probability': `rgba(220, 20, 60, ${alpha})` // 故障概率用深红色
       };
 

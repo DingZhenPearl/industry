@@ -31,6 +31,7 @@
         :auto-refresh-enabled="autoRefresh"
         :refresh-rate="refreshRate"
         :show-status-control="true"
+        :sensor-projects="currentDeviceSensorProjects"
         @retry="fetchMyDevices"
         @refresh-data="fetchLatestDeviceData"
         @fetch-history="fetchDeviceHistory"
@@ -83,7 +84,8 @@ export default {
       deviceHistory: [],
       autoRefresh: true,
       refreshRate: 10000, // 10秒更新一次
-      operationLogs: []
+      operationLogs: [],
+      sensorProjects: {} // 存储设备的传感器项目列表
     }
   },
   computed: {
@@ -92,6 +94,11 @@ export default {
       if (!this.myDevices.length) return null;
       if (!this.selectedDeviceId) return this.myDevices[0];
       return this.myDevices.find(device => device.id === this.selectedDeviceId) || this.myDevices[0];
+    },
+    // 当前设备的传感器项目列表
+    currentDeviceSensorProjects() {
+      if (!this.currentDevice) return {};
+      return this.sensorProjects[this.currentDevice.id] || {};
     }
   },
   created() {
@@ -115,6 +122,7 @@ export default {
     currentDevice(newDevice) {
       if (newDevice) {
         this.fetchDeviceHistory();
+        this.fetchSensorProjects(newDevice.id);
       }
     }
   },
@@ -212,6 +220,22 @@ export default {
               };
 
               console.log('设备产线名称:', device.line_name);
+
+              // 如果设备有传感器项目数据，保存到传感器项目列表中
+              if (device.sensor_projects) {
+                try {
+                  // 处理传感器项目数据，确保是对象
+                  let sensorProjects = device.sensor_projects;
+                  if (typeof sensorProjects === 'string') {
+                    sensorProjects = JSON.parse(sensorProjects);
+                  }
+
+                  // 保存传感器项目数据
+                  this.$set(this.sensorProjects, device.id, sensorProjects);
+                } catch (e) {
+                  console.error('解析传感器项目数据失败:', e);
+                }
+              }
 
               return deviceObj;
             });
@@ -471,6 +495,44 @@ export default {
     },
 
 
+  },
+
+  // 获取设备的传感器项目列表
+  async fetchSensorProjects(equipmentId) {
+    if (!equipmentId) return;
+
+    try {
+      const response = await fetch(`/api/sensor-projects/${equipmentId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        console.error(`获取传感器项目列表失败: ${response.status}`);
+        return;
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data && result.data.sensor_projects) {
+        // 处理传感器项目数据
+        let sensorProjects = result.data.sensor_projects;
+        if (typeof sensorProjects === 'string') {
+          try {
+            sensorProjects = JSON.parse(sensorProjects);
+          } catch (e) {
+            console.error('解析传感器项目数据失败:', e);
+            sensorProjects = {};
+          }
+        }
+
+        // 保存传感器项目数据
+        this.$set(this.sensorProjects, equipmentId, sensorProjects);
+      }
+    } catch (error) {
+      console.error('获取传感器项目列表出错:', error);
+    }
   }
 }
 </script>
