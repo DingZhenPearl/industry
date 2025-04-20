@@ -71,25 +71,7 @@
         <div ref="chartContainer" class="chart-container"></div>
       </div>
 
-      <!-- 甘特图区域 -->
-      <div class="gantt-section">
-        <div class="section-header">
-          <h2>生产计划甘特图</h2>
-          <div class="gantt-controls">
-            <div class="date-range">
-              <input type="date" v-model="startDate" @change="updateGantt">
-              <span>至</span>
-              <input type="date" v-model="endDate" @change="updateGantt">
-            </div>
-            <div class="zoom-controls">
-              <button @click="zoomLevel = 'day'">日</button>
-              <button @click="zoomLevel = 'week'">周</button>
-              <button @click="zoomLevel = 'month'">月</button>
-            </div>
-          </div>
-        </div>
-        <div class="gantt-container" ref="ganttContainer"></div>
-      </div>
+
 
       <!-- 设备状态列表 -->
       <div class="equipment-section">
@@ -130,7 +112,7 @@
 </template>
 
 <script>
-import 'dhtmlx-gantt/codebase/dhtmlxgantt.css'
+
 import * as echarts from 'echarts/core';
 import { LineChart } from 'echarts/charts';
 import {
@@ -192,9 +174,7 @@ export default {
       refreshRate: 10000, // 10秒更新一次
       lastUpdateTime: '',
 
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      zoomLevel: 'day'
+
     }
   },
   created() {
@@ -208,7 +188,6 @@ export default {
     }
   },
   mounted() {
-    this.initGantt();
     this.initChart();
 
     // 如果启用了自动刷新，则启动
@@ -683,35 +662,6 @@ export default {
       } else {
         this.stopAutoRefresh();
       }
-    },
-    initGantt() {
-      // 使用window.gantt访问甘特图对象
-      const gantt = window.gantt
-      gantt.init(this.$refs.ganttContainer)
-
-      // 配置甘特图
-      gantt.config.date_format = '%Y-%m-%d %H:%i'
-      gantt.config.scale_height = 60
-
-      // 示例数据
-      const tasks = {
-        data: [
-          { id: 1, text: '产品A生产', start_date: '2023-07-10 08:00', end_date: '2023-07-12 18:00', progress: 0.6 },
-          { id: 2, text: '产品B生产', start_date: '2023-07-13 08:00', end_date: '2023-07-15 18:00', progress: 0.3 }
-        ],
-        links: [
-          { id: 1, source: 1, target: 2, type: '0' }
-        ]
-      }
-
-      gantt.parse(tasks)
-    },
-    updateGantt() {
-      // 更新甘特图时间范围
-      const gantt = window.gantt
-      gantt.config.start_date = new Date(this.startDate)
-      gantt.config.end_date = new Date(this.endDate)
-      gantt.render()
     },
 
     // 初始化图表
@@ -1366,42 +1316,11 @@ export default {
   height: 300px;
 }
 
-.gantt-section {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
-}
-
-.gantt-controls {
-  display: flex;
-  gap: 20px;
-}
-
-.date-range {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.zoom-controls button {
-  padding: 6px 12px;
-  background: #f5f5f5;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.gantt-container {
-  height: 400px;
-  width: 100%;
 }
 
 .equipment-section {
