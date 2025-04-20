@@ -5,6 +5,26 @@
     </header>
 
     <div class="content">
+      <!-- 日期筛选 -->
+      <div class="date-filter-container">
+        <div class="date-filter">
+          <button
+            class="date-filter-btn"
+            :class="{ active: !showAllWorkorders }"
+            @click="toggleWorkorderDateFilter(false)"
+          >
+            仅显示今日工单
+          </button>
+          <button
+            class="date-filter-btn"
+            :class="{ active: showAllWorkorders }"
+            @click="toggleWorkorderDateFilter(true)"
+          >
+            显示全部工单
+          </button>
+        </div>
+      </div>
+
       <div class="task-filter">
         <select v-model="filterStatus" class="filter-select">
           <option value="all">全部工单</option>
@@ -209,6 +229,8 @@ export default {
       tasks: [],
       loading: false,
       error: null,
+      // 工单日期筛选
+      showAllWorkorders: false,
       // 用户名缓存
       usernameCache: {},
       // 完成巡检模态框
@@ -230,6 +252,14 @@ export default {
     }
   },
   methods: {
+    // 切换工单日期筛选
+    toggleWorkorderDateFilter(showAll) {
+      if (this.showAllWorkorders !== showAll) {
+        this.showAllWorkorders = showAll;
+        this.fetchWorkorders();
+      }
+    },
+
     // 从后端获取工单数据
     async fetchWorkorders() {
       this.loading = true;
@@ -247,7 +277,8 @@ export default {
         }
 
         // 获取安全员组的产线巡检工单
-        const response = await fetch(`/api/workorders/safety-inspection-workorders?group_id=${groupId}`, {
+        const showAllParam = this.showAllWorkorders ? '&showAll=true' : '';
+        const response = await fetch(`/api/workorders/safety-inspection-workorders?group_id=${groupId}${showAllParam}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -504,6 +535,37 @@ export default {
   100% {
     opacity: 1;
   }
+}
+
+/* 日期筛选按钮样式 */
+.date-filter-container {
+  margin-bottom: 15px;
+}
+
+.date-filter {
+  display: flex;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+  width: fit-content;
+}
+
+.date-filter-btn {
+  padding: 8px 12px;
+  background-color: #f5f5f5;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.date-filter-btn.active {
+  background-color: #2196F3;
+  color: white;
+}
+
+.date-filter-btn:hover:not(.active) {
+  background-color: #e0e0e0;
 }
 
 .inspection {

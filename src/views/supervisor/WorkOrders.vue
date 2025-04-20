@@ -24,6 +24,22 @@
       <!-- 工单筛选区和操作区 -->
       <div class="filter-action-bar">
         <div class="filter-bar">
+          <div class="date-filter">
+            <button
+              class="date-filter-btn"
+              :class="{ active: !showAllWorkorders }"
+              @click="toggleWorkorderDateFilter(false)"
+            >
+              仅显示今日工单
+            </button>
+            <button
+              class="date-filter-btn"
+              :class="{ active: showAllWorkorders }"
+              @click="toggleWorkorderDateFilter(true)"
+            >
+              显示全部工单
+            </button>
+          </div>
           <select v-model="filterType" class="filter-select">
             <option value="all">全部工单</option>
             <option value="设备维护">设备维护</option>
@@ -400,6 +416,8 @@ export default {
       showDetailModal: false,
       selectedWorkOrder: null,
       detailLoading: false,
+      // 工单日期筛选
+      showAllWorkorders: false,
       // 用户名缓存
       usernameCache: {},
       // 产线列表
@@ -499,11 +517,20 @@ export default {
     }
   },
   methods: {
+    // 切换工单日期筛选
+    toggleWorkorderDateFilter(showAll) {
+      if (this.showAllWorkorders !== showAll) {
+        this.showAllWorkorders = showAll;
+        this.fetchAllWorkorders();
+      }
+    },
+
     // 获取所有工单
     async fetchAllWorkorders() {
       try {
         this.loading = true;
-        const response = await fetch('/api/workorders/all-workorders', {
+        const url = `/api/workorders/all-workorders${this.showAllWorkorders ? '?showAll=true' : ''}`;
+        const response = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -2161,5 +2188,32 @@ textarea.form-control {
   color: #999;
   margin-top: 5px;
   font-style: italic;
+}
+
+/* 日期筛选按钮样式 */
+.date-filter {
+  display: flex;
+  margin-right: 10px;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.date-filter-btn {
+  padding: 8px 12px;
+  background-color: #f5f5f5;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.date-filter-btn.active {
+  background-color: #2196F3;
+  color: white;
+}
+
+.date-filter-btn:hover:not(.active) {
+  background-color: #e0e0e0;
 }
 </style>

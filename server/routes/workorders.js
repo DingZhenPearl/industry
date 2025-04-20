@@ -6,7 +6,8 @@ const { authMiddleware } = require('../middleware');
 // 获取工长组的工单列表
 router.get('/foreman-workorders', authMiddleware, async (req, res) => {
   const group_id = req.query.group_id;
-  console.log('获取工长组工单,组号:', group_id);
+  const showAll = req.query.showAll === 'true';
+  console.log('获取工长组工单,组号:', group_id, '显示全部:', showAll);
 
   if (!group_id) {
     return res.status(400).json({
@@ -16,9 +17,21 @@ router.get('/foreman-workorders', authMiddleware, async (req, res) => {
   }
 
   try {
+    // 获取今天的日期
+    const today = new Date().toISOString().split('T')[0];
+
+    // 构建命令参数
+    const args = ['list', '--team', group_id];
+
+    // 如果不是显示全部，则只显示今天的工单
+    if (!showAll) {
+      args.push('--start-date', today);
+      args.push('--end-date', today);
+    }
+
     const result = await runPythonScript(
       'pyScripts/workorder_manager.py',
-      ['list', '--team', group_id],
+      args,
       { debug: true }
     );
 
@@ -106,12 +119,25 @@ router.get('/workorder-detail', authMiddleware, async (req, res) => {
 
 // 获取所有工单（厂长使用）
 router.get('/all-workorders', authMiddleware, async (req, res) => {
-  console.log('获取所有工单');
+  const showAll = req.query.showAll === 'true';
+  console.log('获取所有工单, 显示全部:', showAll);
 
   try {
+    // 获取今天的日期
+    const today = new Date().toISOString().split('T')[0];
+
+    // 构建命令参数
+    const args = ['list'];
+
+    // 如果不是显示全部，则只显示今天的工单
+    if (!showAll) {
+      args.push('--start-date', today);
+      args.push('--end-date', today);
+    }
+
     const result = await runPythonScript(
       'pyScripts/workorder_manager.py',
-      ['list'],  // 不指定组号，获取所有工单
+      args,  // 不指定组号，获取所有工单
       { debug: true }
     );
 
@@ -151,7 +177,8 @@ router.delete('/delete-workorder/:workorder_number', authMiddleware, async (req,
 // 获取工人负责的工单
 router.get('/worker-responsible-workorders', authMiddleware, async (req, res) => {
   const employee_id = req.query.employee_id;
-  console.log('获取工人负责的工单,工号:', employee_id);
+  const showAll = req.query.showAll === 'true';
+  console.log('获取工人负责的工单,工号:', employee_id, '显示全部:', showAll);
 
   if (!employee_id) {
     return res.status(400).json({
@@ -161,10 +188,22 @@ router.get('/worker-responsible-workorders', authMiddleware, async (req, res) =>
   }
 
   try {
+    // 获取今天的日期
+    const today = new Date().toISOString().split('T')[0];
+
+    // 构建命令参数
+    const args = ['list', '--team-member', employee_id];
+
+    // 如果不是显示全部，则只显示今天的工单
+    if (!showAll) {
+      args.push('--start-date', today);
+      args.push('--end-date', today);
+    }
+
     // 使用team_members参数查询工人负责的工单
     const result = await runPythonScript(
       'pyScripts/workorder_manager.py',
-      ['list', '--team-member', employee_id],
+      args,
       { debug: true }
     );
 
@@ -178,7 +217,8 @@ router.get('/worker-responsible-workorders', authMiddleware, async (req, res) =>
 // 获取工人提交的工单
 router.get('/worker-submitted-workorders', authMiddleware, async (req, res) => {
   const employee_id = req.query.employee_id;
-  console.log('获取工人提交的工单,工号:', employee_id);
+  const showAll = req.query.showAll === 'true';
+  console.log('获取工人提交的工单,工号:', employee_id, '显示全部:', showAll);
 
   if (!employee_id) {
     return res.status(400).json({
@@ -188,10 +228,22 @@ router.get('/worker-submitted-workorders', authMiddleware, async (req, res) => {
   }
 
   try {
+    // 获取今天的日期
+    const today = new Date().toISOString().split('T')[0];
+
+    // 构建命令参数
+    const args = ['list', '--creator', employee_id];
+
+    // 如果不是显示全部，则只显示今天的工单
+    if (!showAll) {
+      args.push('--start-date', today);
+      args.push('--end-date', today);
+    }
+
     // 使用creator参数查询工人提交的工单
     const result = await runPythonScript(
       'pyScripts/workorder_manager.py',
-      ['list', '--creator', employee_id],
+      args,
       { debug: true }
     );
 
@@ -205,7 +257,8 @@ router.get('/worker-submitted-workorders', authMiddleware, async (req, res) => {
 // 获取安全员的产线巡检类型工单
 router.get('/safety-inspection-workorders', authMiddleware, async (req, res) => {
   const group_id = req.query.group_id;
-  console.log('获取安全员组的产线巡检工单,组号:', group_id);
+  const showAll = req.query.showAll === 'true';
+  console.log('获取安全员组的产线巡检工单,组号:', group_id, '显示全部:', showAll);
 
   if (!group_id) {
     return res.status(400).json({
@@ -215,10 +268,22 @@ router.get('/safety-inspection-workorders', authMiddleware, async (req, res) => 
   }
 
   try {
+    // 获取今天的日期
+    const today = new Date().toISOString().split('T')[0];
+
+    // 构建命令参数
+    const args = ['list', '--team', group_id, '--type', '产线巡检'];
+
+    // 如果不是显示全部，则只显示今天的工单
+    if (!showAll) {
+      args.push('--start-date', today);
+      args.push('--end-date', today);
+    }
+
     // 使用team参数查询安全员组的工单，并指定类型为产线巡检
     const result = await runPythonScript(
       'pyScripts/workorder_manager.py',
-      ['list', '--team', group_id, '--type', '产线巡检'],
+      args,
       { debug: true }
     );
 
@@ -232,7 +297,8 @@ router.get('/safety-inspection-workorders', authMiddleware, async (req, res) => 
 // 获取安全员的设备维护类型工单
 router.get('/safety-maintenance-workorders', authMiddleware, async (req, res) => {
   const group_id = req.query.group_id;
-  console.log('获取安全员组的设备维护工单,组号:', group_id);
+  const showAll = req.query.showAll === 'true';
+  console.log('获取安全员组的设备维护工单,组号:', group_id, '显示全部:', showAll);
 
   if (!group_id) {
     return res.status(400).json({
@@ -242,10 +308,22 @@ router.get('/safety-maintenance-workorders', authMiddleware, async (req, res) =>
   }
 
   try {
+    // 获取今天的日期
+    const today = new Date().toISOString().split('T')[0];
+
+    // 构建命令参数
+    const args = ['list', '--team', group_id, '--type', '设备维护'];
+
+    // 如果不是显示全部，则只显示今天的工单
+    if (!showAll) {
+      args.push('--start-date', today);
+      args.push('--end-date', today);
+    }
+
     // 使用team参数查询安全员组的工单，并指定类型为设备维护
     const result = await runPythonScript(
       'pyScripts/workorder_manager.py',
-      ['list', '--team', group_id, '--type', '设备维护'],
+      args,
       { debug: true }
     );
 

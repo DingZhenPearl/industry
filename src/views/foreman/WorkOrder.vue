@@ -13,6 +13,26 @@
       <div class="workorder-content">
         <!-- 筛选和操作区 -->
         <div class="filter-bar">
+          <!-- 日期筛选 -->
+          <div class="date-filter-container">
+            <div class="date-filter">
+              <button
+                class="date-filter-btn"
+                :class="{ active: !showAllWorkorders }"
+                @click="toggleWorkorderDateFilter(false)"
+              >
+                仅显示今日工单
+              </button>
+              <button
+                class="date-filter-btn"
+                :class="{ active: showAllWorkorders }"
+                @click="toggleWorkorderDateFilter(true)"
+              >
+                显示全部工单
+              </button>
+            </div>
+          </div>
+
           <!-- 工单类型筛选 -->
           <div class="filter-item">
             <label for="type-filter">工单类型</label>
@@ -350,6 +370,8 @@ export default {
       filterStatus: 'all',
       searchKeyword: '',
       loading: false,
+      // 工单日期筛选
+      showAllWorkorders: false,
 
       // 员工列表
       employees: [],
@@ -624,6 +646,14 @@ export default {
       }
     },
 
+    // 切换工单日期筛选
+    toggleWorkorderDateFilter(showAll) {
+      if (this.showAllWorkorders !== showAll) {
+        this.showAllWorkorders = showAll;
+        this.fetchWorkOrders();
+      }
+    },
+
     // 获取工长组的工单列表
     async fetchWorkOrders() {
       try {
@@ -640,8 +670,9 @@ export default {
         this.filterStatus = 'all';
         this.searchKeyword = '';
 
-        console.log('开始获取工单数据,工长组号:', this.currentForeman.group_id);
-        const response = await fetch(`/api/workorders/foreman-workorders?group_id=${this.currentForeman.group_id}`, {
+        console.log('开始获取工单数据,工长组号:', this.currentForeman.group_id, '显示全部:', this.showAllWorkorders);
+        const url = `/api/workorders/foreman-workorders?group_id=${this.currentForeman.group_id}${this.showAllWorkorders ? '&showAll=true' : ''}`;
+        const response = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -1877,5 +1908,35 @@ export default {
   100% {
     opacity: 1;
   }
+}
+
+/* 日期筛选按钮样式 */
+.date-filter-container {
+  margin-right: 15px;
+}
+
+.date-filter {
+  display: flex;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.date-filter-btn {
+  padding: 8px 12px;
+  background-color: #f5f5f5;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+
+.date-filter-btn.active {
+  background-color: #2196F3;
+  color: white;
+}
+
+.date-filter-btn:hover:not(.active) {
+  background-color: #e0e0e0;
 }
 </style>
