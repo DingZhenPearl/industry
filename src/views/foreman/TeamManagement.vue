@@ -15,7 +15,7 @@
       <div class="department-cards">
         <div class="dept-card" v-for="line in assignedLines" :key="line.id">
           <div class="dept-header">
-            <h3>{{ line.name }}</h3>
+            <h3>{{ line.name || line.line_name || `产线${line.id}` }}</h3>
             <span class="member-count">{{ getLineWorkerCount(line.id) }}人</span>
           </div>
           <div class="dept-stats">
@@ -47,7 +47,7 @@
           <select v-model="filterLine" class="filter-select">
             <option value="">全部产线</option>
             <option v-for="line in assignedLines" :key="line.id" :value="line.id">
-              {{ line.name }}
+              {{ line.name || line.line_name || `产线${line.id}` }}
             </option>
           </select>
           <select v-model="filterStatus" class="filter-select">
@@ -108,6 +108,7 @@
                 </td>
                 <td>
                   <button class="action-btn view" @click="viewEmployeeDetail(emp)">详情</button>
+                  <button class="action-btn assign" v-if="emp.role === 'member'" @click="showAssignDeviceModal(emp)">分配设备</button>
                 </td>
               </tr>
             </tbody>
@@ -216,6 +217,54 @@
       </div>
     </div>
 
+    <!-- 分配设备模态框 -->
+    <div class="modal" v-if="showAssignDevice">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>分配设备给 {{ selectedWorker.name }}</h3>
+          <span class="close-btn" @click="showAssignDevice = false">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>选择设备</label>
+            <select v-model="selectedDeviceId" class="form-control">
+              <option value="">请选择设备</option>
+              <option v-for="device in availableDevices" :key="device.id" :value="device.id">
+                {{ device.equipment_name }} ({{ device.equipment_code || '无编号' }})
+              </option>
+            </select>
+          </div>
+          <div class="device-info" v-if="selectedDeviceId && getSelectedDevice()">
+            <h4>设备信息</h4>
+            <div class="info-item">
+              <label>设备名称：</label>
+              <span>{{ getSelectedDevice().equipment_name }}</span>
+            </div>
+            <div class="info-item">
+              <label>设备编号：</label>
+              <span>{{ getSelectedDevice().equipment_code || '无编号' }}</span>
+            </div>
+            <div class="info-item">
+              <label>所属产线：</label>
+              <span>{{ getSelectedDevice().line_name || '未知产线' }}</span>
+            </div>
+            <div class="info-item">
+              <label>当前状态：</label>
+              <span :class="['status-tag', getDeviceStatusClass(getSelectedDevice().status)]">{{ getSelectedDevice().status }}</span>
+            </div>
+            <div class="info-item" v-if="getSelectedDevice().worker_id">
+              <label>当前负责人：</label>
+              <span>{{ getDeviceWorkerName(getSelectedDevice().worker_id) }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showAssignDevice = false">取消</button>
+          <button class="confirm-btn" @click="confirmAssignDevice">确认分配</button>
+        </div>
+      </div>
+    </div>
+
     <ForemanNav />
   </div>
 </template>
@@ -244,7 +293,11 @@ export default {
       searchKeyword: '',
       showEmployeeDetail: false,
       showLeaveManagement: false,
+      showAssignDevice: false,
       selectedEmployee: {},
+      selectedWorker: {},
+      selectedDeviceId: '',
+      availableDevices: [],
       currentForeman: null // 存储当前工长信息
     }
   },
@@ -258,6 +311,7 @@ export default {
 
     this.currentForeman = {
       id: userInfo.employee_id,
+      employee_id: userInfo.employee_id, // 添加employee_id字段
       name: userInfo.username,
       role: userInfo.role,
       group_id: userInfo.group_id || 99
@@ -351,8 +405,9 @@ export default {
           return;
         }
 
-        console.log('开始获取产线数据,工长工号:', this.currentForeman.id);
-        const response = await fetch(`/api/foreman/assigned-lines?employee_id=${this.currentForeman.id}`, {
+        const foremanId = this.currentForeman.id;
+        console.log('开始获取产线数据,工长工号:', foremanId);
+        const response = await fetch(`/api/foreman/assigned-lines?employee_id=${foremanId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -372,7 +427,8 @@ export default {
           });
 
           this.assignedLines = data.data.map(line => ({
-            ...line // 保持原始数据格式
+            ...line, // 保持原始数据格式
+            name: line.line_name || line.name || `产线${line.id}` // 确保有name字段
           }));
 
           console.log('处理后的产线数据:');
@@ -522,6 +578,162 @@ export default {
     rejectLeave(index) {
       this.leaveRequests[index].status = 'rejected';
       this.leaveRequests[index].statusText = '已拒绝';
+    },
+
+    // 显示分配设备模态框
+    async showAssignDeviceModal(worker) {
+      this.selectedWorker = worker;
+      this.selectedDeviceId = '';
+      this.showAssignDevice = true;
+
+      // 获取可分配的设备列表
+      await this.fetchAvailableDevices();
+    },
+
+    // 获取可分配的设备列表
+    async fetchAvailableDevices() {
+      try {
+        // 获取当前工长的组号和工号
+        const groupId = this.currentForeman.group_id;
+        const foremanId = this.currentForeman.id; // 使用id代替employee_id
+
+        console.log('当前工长信息:', {
+          id: this.currentForeman.id,
+          name: this.currentForeman.name,
+          employee_id: this.currentForeman.employee_id,
+          group_id: groupId
+        });
+
+        if (!groupId) {
+          console.error('未找到组号信息');
+          return;
+        }
+
+        if (!foremanId) {
+          console.error('未找到工长工号信息');
+          return;
+        }
+
+        // 使用正确的API获取工长负责的产线
+        const linesResponse = await fetch(`/api/foreman/assigned-lines?employee_id=${foremanId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!linesResponse.ok) {
+          throw new Error(`获取产线列表失败: ${linesResponse.status}`);
+        }
+
+        const linesResult = await linesResponse.json();
+        console.log('产线列表数据:', linesResult);
+
+        if (!linesResult.success || !linesResult.data || linesResult.data.length === 0) {
+          console.warn('没有找到工长负责的产线');
+          this.availableDevices = [];
+          return;
+        }
+
+        // 获取这些产线上的设备
+        const lineIds = linesResult.data.map(line => line.id);
+        console.log('产线 ID 列表:', lineIds);
+
+        // 直接获取组号对应的所有设备
+        const equipmentResponse = await fetch(`/api/equipment/with-status?group_id=${groupId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!equipmentResponse.ok) {
+          throw new Error(`获取设备列表失败: ${equipmentResponse.status}`);
+        }
+
+        const equipmentResult = await equipmentResponse.json();
+        console.log('设备列表数据:', equipmentResult);
+
+        if (!equipmentResult.success || !equipmentResult.data) {
+          console.warn('没有找到设备数据');
+          this.availableDevices = [];
+          return;
+        }
+
+        // 过滤出属于工长负责产线的设备
+        const lineIdSet = new Set(lineIds.map(id => id.toString()));
+        const filteredDevices = equipmentResult.data.filter(device => {
+          // 确保类型一致性
+          const deviceLineId = device.line_id ? device.line_id.toString() : '';
+          return lineIdSet.has(deviceLineId);
+        });
+
+        console.log('过滤后的设备数据:', filteredDevices);
+        this.availableDevices = filteredDevices;
+
+        if (filteredDevices.length === 0) {
+          console.warn('没有找到可分配的设备');
+        }
+      } catch (error) {
+        console.error('获取设备列表出错:', error);
+        alert('获取设备列表失败，请重试');
+      }
+    },
+
+    // 获取选中的设备
+    getSelectedDevice() {
+      return this.availableDevices.find(device => device.id === this.selectedDeviceId);
+    },
+
+    // 获取设备状态类名
+    getDeviceStatusClass(status) {
+      if (status === '故障') return 'error';
+      if (status === '预警') return 'warning';
+      if (status === '停机') return 'stopped';
+      if (status === '维修中') return 'warning';
+      return 'normal';
+    },
+
+    // 获取设备负责人名称
+    getDeviceWorkerName(workerId) {
+      const worker = this.employees.find(emp => emp.id === workerId);
+      return worker ? worker.name : '未知';
+    },
+
+    // 确认分配设备
+    async confirmAssignDevice() {
+      if (!this.selectedDeviceId) {
+        alert('请选择设备');
+        return;
+      }
+
+      try {
+        // 调用API分配设备
+        const response = await fetch('/api/equipment/assign-worker', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            equipment_id: this.selectedDeviceId,
+            worker_id: this.selectedWorker.id
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('设备分配成功！');
+          this.showAssignDevice = false;
+
+          // 重新获取员工数据
+          await this.fetchEmployees();
+        } else {
+          alert(`分配失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('分配设备出错:', error);
+        alert('分配设备失败，请重试');
+      }
     }
   }
 }
@@ -940,5 +1152,61 @@ export default {
 .leave-actions {
   display: flex;
   gap: 10px;
+}
+
+/* 设备信息样式 */
+.device-info {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.device-info h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.info-item {
+  display: flex;
+  margin-bottom: 8px;
+}
+
+.info-item label {
+  font-weight: 600;
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.info-item span {
+  flex: 1;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.confirm-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 15px;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background-color: #f5f5f5;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 15px;
+  cursor: pointer;
 }
 </style>
