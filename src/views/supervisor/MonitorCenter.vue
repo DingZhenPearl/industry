@@ -384,6 +384,118 @@
               <label>设备描述</label>
               <textarea v-model="editEquipment.description" class="form-input" rows="3" placeholder="请输入设备描述"></textarea>
             </div>
+
+            <div class="form-group">
+              <label>传感器项目</label>
+              <div class="sensor-projects-container">
+                <h4>基本参数</h4>
+                <div class="sensor-projects-group">
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_temperature" v-model="editEquipment.sensorProjects.temperature">
+                    <label for="edit_temperature">温度</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_pressure" v-model="editEquipment.sensorProjects.pressure">
+                    <label for="edit_pressure">压力</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_vibration" v-model="editEquipment.sensorProjects.vibration">
+                    <label for="edit_vibration">振动</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_speed" v-model="editEquipment.sensorProjects.speed">
+                    <label for="edit_speed">转速</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_noise" v-model="editEquipment.sensorProjects.noise">
+                    <label for="edit_noise">噪音</label>
+                  </div>
+                </div>
+
+                <h4>电气参数</h4>
+                <div class="sensor-projects-group">
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_voltage" v-model="editEquipment.sensorProjects.voltage">
+                    <label for="edit_voltage">电压</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_current" v-model="editEquipment.sensorProjects.current">
+                    <label for="edit_current">电流</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_power" v-model="editEquipment.sensorProjects.power">
+                    <label for="edit_power">功率</label>
+                  </div>
+                </div>
+
+                <h4>环境参数</h4>
+                <div class="sensor-projects-group">
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_humidity" v-model="editEquipment.sensorProjects.humidity">
+                    <label for="edit_humidity">湿度</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_air_pressure" v-model="editEquipment.sensorProjects.air_pressure">
+                    <label for="edit_air_pressure">气压</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_light_intensity" v-model="editEquipment.sensorProjects.light_intensity">
+                    <label for="edit_light_intensity">光强</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_radiation" v-model="editEquipment.sensorProjects.radiation">
+                    <label for="edit_radiation">辐射</label>
+                  </div>
+                </div>
+
+                <h4>液体参数</h4>
+                <div class="sensor-projects-group">
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_flow_rate" v-model="editEquipment.sensorProjects.flow_rate">
+                    <label for="edit_flow_rate">流量</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_liquid_level" v-model="editEquipment.sensorProjects.liquid_level">
+                    <label for="edit_liquid_level">液位</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_concentration" v-model="editEquipment.sensorProjects.concentration">
+                    <label for="edit_concentration">浓度</label>
+                  </div>
+                </div>
+
+                <h4>机械参数</h4>
+                <div class="sensor-projects-group">
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_torque" v-model="editEquipment.sensorProjects.torque">
+                    <label for="edit_torque">扭矩</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_displacement" v-model="editEquipment.sensorProjects.displacement">
+                    <label for="edit_displacement">位移</label>
+                  </div>
+                  <div class="sensor-project-item">
+                    <input type="checkbox" id="edit_weight" v-model="editEquipment.sensorProjects.weight">
+                    <label for="edit_weight">重量</label>
+                  </div>
+                </div>
+
+                <h4>自定义传感器项目</h4>
+                <div class="custom-sensor-projects">
+                  <div class="custom-sensor-input">
+                    <input type="text" v-model="customSensorKey" placeholder="项目英文名称（如custom_temp）" class="form-input">
+                    <input type="text" v-model="customSensorValue" placeholder="项目中文名称（如自定义温度）" class="form-input">
+                    <button class="btn add-sensor" @click="addCustomSensor">添加</button>
+                  </div>
+                  <div class="custom-sensors-list" v-if="Object.keys(customSensors).length > 0">
+                    <div v-for="(value, key) in customSensors" :key="key" class="custom-sensor-item">
+                      <span>{{ key }}: {{ value }}</span>
+                      <button class="btn remove-sensor" @click="removeCustomSensor(key)">删除</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="modal-footer">
             <button class="btn cancel" @click="showEditEquipmentModal = false">取消</button>
@@ -591,7 +703,29 @@ export default {
         type: '',
         line_id: '',
         location: '',
-        description: ''
+        description: '',
+        sensorProjects: {
+          temperature: false,
+          pressure: false,
+          vibration: false,
+          speed: false,
+          voltage: false,
+          current: false,
+          power: false,
+          noise: false,
+          humidity: false,
+          flow_rate: false,
+          liquid_level: false,
+          air_pressure: false,
+          torque: false,
+          displacement: false,
+          weight: false,
+          concentration: false,
+          light_intensity: false,
+          radiation: false,
+          runtime: false,
+          output: false
+        }
       },
       // 新增设备相关数据
       newEquipment: {
@@ -940,6 +1074,75 @@ export default {
 
     // 编辑设备
     editDevice(device) {
+      // 清空自定义传感器项目
+      this.customSensors = {};
+      this.customSensorKey = '';
+      this.customSensorValue = '';
+
+      // 初始化传感器项目
+      const sensorProjects = {
+        temperature: false,
+        pressure: false,
+        vibration: false,
+        speed: false,
+        voltage: false,
+        current: false,
+        power: false,
+        noise: false,
+        humidity: false,
+        flow_rate: false,
+        liquid_level: false,
+        air_pressure: false,
+        torque: false,
+        displacement: false,
+        weight: false,
+        concentration: false,
+        light_intensity: false,
+        radiation: false,
+        runtime: false,
+        output: false
+      };
+
+      // 如果设备有传感器项目数据，则加载
+      if (device.sensor_projects && typeof device.sensor_projects === 'object') {
+        // 处理预设传感器项目
+        const sensorNameMap = {
+          '温度': 'temperature',
+          '压力': 'pressure',
+          '振动': 'vibration',
+          '转速': 'speed',
+          '电压': 'voltage',
+          '电流': 'current',
+          '功率': 'power',
+          '噪音': 'noise',
+          '湿度': 'humidity',
+          '流量': 'flow_rate',
+          '液位': 'liquid_level',
+          '气压': 'air_pressure',
+          '扭矩': 'torque',
+          '位移': 'displacement',
+          '重量': 'weight',
+          '浓度': 'concentration',
+          '光强': 'light_intensity',
+          '辐射': 'radiation',
+          '运行时间': 'runtime',
+          '产量': 'output'
+        };
+
+        // 遍历设备的传感器项目
+        for (const [key, value] of Object.entries(device.sensor_projects)) {
+          // 检查是否是预设项目
+          const englishKey = sensorNameMap[value];
+          if (englishKey && Object.prototype.hasOwnProperty.call(sensorProjects, englishKey)) {
+            // 设置预设项目为选中
+            sensorProjects[englishKey] = true;
+          } else {
+            // 添加为自定义项目
+            this.$set(this.customSensors, key, value);
+          }
+        }
+      }
+
       // 初始化编辑表单
       this.editEquipment = {
         id: device.id,
@@ -948,7 +1151,8 @@ export default {
         type: device.typeText || '生产设备',
         line_id: device.line_id || '',
         location: device.location || '',
-        description: device.description || ''
+        description: device.description || '',
+        sensorProjects: sensorProjects
       };
 
       // 显示编辑模态框
@@ -974,6 +1178,44 @@ export default {
           return;
         }
 
+        // 处理传感器项目数据
+        const sensorProjects = {};
+        const sensorNameMap = {
+          temperature: '温度',
+          pressure: '压力',
+          vibration: '振动',
+          speed: '转速',
+          voltage: '电压',
+          current: '电流',
+          power: '功率',
+          noise: '噪音',
+          humidity: '湿度',
+          flow_rate: '流量',
+          liquid_level: '液位',
+          air_pressure: '气压',
+          torque: '扭矩',
+          displacement: '位移',
+          weight: '重量',
+          concentration: '浓度',
+          light_intensity: '光强',
+          radiation: '辐射',
+          runtime: '运行时间',
+          output: '产量'
+        };
+
+        // 处理预设传感器项目
+        for (const [key, value] of Object.entries(this.editEquipment.sensorProjects)) {
+          if (value && sensorNameMap[key]) {
+            // 只保存选中的传感器项目
+            sensorProjects[key] = sensorNameMap[key];
+          }
+        }
+
+        // 处理自定义传感器项目
+        for (const [key, value] of Object.entries(this.customSensors)) {
+          sensorProjects[key] = value;
+        }
+
         // 准备请求数据
         const equipmentData = {
           equipment_name: this.editEquipment.name,
@@ -981,7 +1223,8 @@ export default {
           equipment_type: this.editEquipment.type,
           line_id: this.editEquipment.line_id,
           location: this.editEquipment.location || '',
-          description: this.editEquipment.description || ''
+          description: this.editEquipment.description || '',
+          sensor_projects: sensorProjects // 添加传感器项目数据
         };
 
         // 发送请求
