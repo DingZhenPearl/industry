@@ -30,7 +30,6 @@
           <div class="line-actions">
             <button class="action-btn" @click="viewLineDetail(line)">查看详情</button>
             <button class="action-btn" @click="manageDevices(line)">管理设备</button>
-            <button class="action-btn" @click="scheduleMaintenace(line)">排程维护</button>
           </div>
         </div>
       </div>
@@ -92,57 +91,12 @@
             <div class="device-actions">
               <button class="action-btn" @click="viewDeviceDetail(device)">查看详情</button>
               <button class="action-btn" @click="reportIssue(device)" v-if="device.status !== 'stopped'">上报故障</button>
-              <button class="action-btn primary" @click="startMaintenance(device)" v-if="device.status === 'warning'">开始维护</button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 维护排程模态框 -->
-      <div class="modal" v-if="showMaintenanceModal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>设备维护排程</h3>
-            <span class="close-btn" @click="showMaintenanceModal = false">&times;</span>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>产线</label>
-              <div class="value">{{ selectedLine.name }}</div>
-            </div>
-            <div class="form-group">
-              <label>维护时间</label>
-              <input type="datetime-local" v-model="maintenanceForm.time" class="form-input">
-            </div>
-            <div class="form-group">
-              <label>维护工程师</label>
-              <select v-model="maintenanceForm.engineer" class="form-input">
-                <option value="">请选择工程师</option>
-                <option value="张工">张工</option>
-                <option value="李工">李工</option>
-                <option value="王工">王工</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>维护类型</label>
-              <select v-model="maintenanceForm.type" class="form-input">
-                <option value="">请选择维护类型</option>
-                <option value="regular">定期保养</option>
-                <option value="repair">故障修复</option>
-                <option value="update">设备升级</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>备注</label>
-              <textarea v-model="maintenanceForm.notes" class="form-input" rows="3"></textarea>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="btn cancel" @click="showMaintenanceModal = false">取消</button>
-            <button class="btn submit" @click="submitMaintenance">提交</button>
-          </div>
-        </div>
-      </div>
+
     </div>
 
     <ForemanNav />
@@ -161,14 +115,6 @@ export default {
     return {
       filterLine: '',
       filterStatus: '',
-      showMaintenanceModal: false,
-      selectedLine: {},
-      maintenanceForm: {
-        time: '',
-        engineer: '',
-        type: '',
-        notes: ''
-      },
       // 工长被分配的产线
       assignedLines: [],
       // 所有设备列表
@@ -492,11 +438,7 @@ export default {
       this.filterLine = line.name;
     },
 
-    // 排程维护
-    scheduleMaintenace(line) {
-      this.selectedLine = line;
-      this.showMaintenanceModal = true;
-    },
+
 
     // 查看设备详情
     viewDeviceDetail(device) {
@@ -510,10 +452,7 @@ export default {
       console.log('上报设备故障:', device);
     },
 
-    // 开始维护
-    startMaintenance(device) {
-      console.log('开始维护设备:', device);
-    },
+
 
     // 设置设备状态
     async setDeviceStatus(device, status) {
@@ -600,21 +539,7 @@ export default {
       }
     },
 
-    // 提交维护排程
-    submitMaintenance() {
-      console.log('提交维护排程:', {
-        line: this.selectedLine,
-        ...this.maintenanceForm
-      });
-      this.showMaintenanceModal = false;
-      // 重置表单
-      this.maintenanceForm = {
-        time: '',
-        engineer: '',
-        type: '',
-        notes: ''
-      };
-    }
+
   }
 }
 </script>

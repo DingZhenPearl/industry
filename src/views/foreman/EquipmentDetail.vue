@@ -26,8 +26,6 @@
       >
         <!-- 自定义操作按钮 -->
         <template v-slot:actions>
-          <button class="action-btn" @click="scheduleMaintenace" v-if="formattedEquipment && formattedEquipment.status !== 'stopped'">排程维护</button>
-          <button class="action-btn" @click="assignWorker" v-if="formattedEquipment">分配工人</button>
           <button class="action-btn" @click="viewWorkOrders" v-if="formattedEquipment">相关工单</button>
         </template>
 
@@ -54,70 +52,9 @@
         </template>
       </equipment-detail-component>
 
-      <!-- 排程维护弹窗 -->
-      <div class="modal" v-if="showMaintenanceModal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>排程设备维护</h3>
-            <button class="close-btn" @click="showMaintenanceModal = false">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>维护时间</label>
-              <input type="datetime-local" v-model="maintenanceForm.time" class="form-control">
-            </div>
-            <div class="form-group">
-              <label>维护类型</label>
-              <select v-model="maintenanceForm.type" class="form-control">
-                <option value="routine">例行维护</option>
-                <option value="repair">故障修复</option>
-                <option value="upgrade">设备升级</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>负责工人</label>
-              <select v-model="maintenanceForm.worker" class="form-control">
-                <option v-for="worker in teamMembers" :key="worker.id" :value="worker.id">
-                  {{ worker.name }}
-                </option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>备注</label>
-              <textarea v-model="maintenanceForm.notes" class="form-control" rows="3"></textarea>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="cancel-btn" @click="showMaintenanceModal = false">取消</button>
-            <button class="confirm-btn" @click="confirmMaintenance">确认</button>
-          </div>
-        </div>
-      </div>
 
-      <!-- 分配工人弹窗 -->
-      <div class="modal" v-if="showAssignModal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>分配负责工人</h3>
-            <button class="close-btn" @click="showAssignModal = false">&times;</button>
-          </div>
-          <div class="modal-body">
-            <div class="form-group">
-              <label>选择工人</label>
-              <select v-model="selectedWorker" class="form-control">
-                <option value="">请选择工人</option>
-                <option v-for="worker in teamMembers" :key="worker.id" :value="worker.id">
-                  {{ worker.name }}
-                </option>
-              </select>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="cancel-btn" @click="showAssignModal = false">取消</button>
-            <button class="confirm-btn" @click="confirmAssign">确认</button>
-          </div>
-        </div>
-      </div>
+
+
     </div>
 
     <ForemanNav />
@@ -153,15 +90,6 @@ export default {
       error: null,
       autoRefresh: true,
       refreshRate: 10000, // 10秒更新一次
-      showMaintenanceModal: false,
-      showAssignModal: false,
-      maintenanceForm: {
-        time: '',
-        type: 'routine',
-        worker: '',
-        notes: ''
-      },
-      selectedWorker: '',
       teamMembers: [],
       maintenanceRecords: [],
       sensorProjects: {}
@@ -520,84 +448,9 @@ export default {
       }
     },
 
-    // 排程维护
-    scheduleMaintenace() {
-      // 设置默认时间为明天同一时间
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      this.maintenanceForm.time = tomorrow.toISOString().slice(0, 16);
 
-      this.showMaintenanceModal = true;
-    },
 
-    // 确认维护
-    async confirmMaintenance() {
-      try {
-        // 模拟API调用
-        console.log('排程维护:', this.maintenanceForm);
 
-        // 创建工单
-        const workOrderData = {
-          equipment_id: this.equipment.id,
-          equipment_name: this.equipment.name,
-          scheduled_time: this.maintenanceForm.time,
-          type: '设备维护',
-          worker_id: this.maintenanceForm.worker,
-          description: this.maintenanceForm.notes,
-          maintenance_type: this.maintenanceForm.type
-        };
-
-        // 实际项目中应该调用后端API
-        console.log('创建维护工单:', workOrderData);
-
-        alert('维护排程成功！');
-        this.showMaintenanceModal = false;
-      } catch (error) {
-        console.error('排程维护出错:', error);
-        alert('排程维护失败，请重试');
-      }
-    },
-
-    // 分配工人
-    assignWorker() {
-      this.showAssignModal = true;
-    },
-
-    // 确认分配
-    async confirmAssign() {
-      if (!this.selectedWorker) {
-        alert('请选择工人');
-        return;
-      }
-
-      try {
-        // 模拟API调用
-        console.log('分配工人:', this.selectedWorker, '到设备:', this.equipment.id);
-
-        // 实际项目中应该调用后端API
-        const response = await fetch('/api/equipment/assign-worker', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({
-            equipment_id: this.equipment.id,
-            worker_id: this.selectedWorker
-          })
-        });
-
-        if (response.ok) {
-          alert('工人分配成功！');
-          this.showAssignModal = false;
-        } else {
-          alert('工人分配失败，请重试');
-        }
-      } catch (error) {
-        console.error('分配工人出错:', error);
-        alert('分配工人失败，请重试');
-      }
-    },
 
     // 查看相关工单
     viewWorkOrders() {

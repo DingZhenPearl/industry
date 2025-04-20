@@ -23,10 +23,6 @@
               <span class="label">在岗率</span>
               <span class="value">{{ getLineActiveRate(line.id) }}%</span>
             </div>
-            <div class="stat-item">
-              <span class="label">任务完成率</span>
-              <span class="value">{{ getLineCompletionRate(line.id) }}%</span>
-            </div>
           </div>
           <div class="dept-actions">
             <button class="action-btn" @click="viewLineDetail(line)">查看产线详情</button>
@@ -112,6 +108,7 @@
                 <td>
                   <button class="action-btn view" @click="viewEmployeeDetail(emp)">详情</button>
                   <button class="action-btn assign" v-if="emp.role === 'member'" @click="showAssignDeviceModal(emp)">分配设备</button>
+                  <button class="action-btn assign" v-if="emp.role === 'member'" @click="showAssignLineModal(emp)">分配产线</button>
                   <button class="action-btn status" @click="showUpdateStatusModal(emp)">修改状态</button>
                 </td>
               </tr>
@@ -350,6 +347,42 @@
       </div>
     </div>
 
+    <!-- 分配产线模态框 -->
+    <div class="modal" v-if="showAssignLine">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>分配产线给 {{ selectedWorker.name }}</h3>
+          <span class="close-btn" @click="showAssignLine = false">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>选择产线</label>
+            <select v-model="selectedLineId" class="form-control">
+              <option value="">请选择产线</option>
+              <option v-for="line in assignedLines" :key="line.id" :value="line.id">
+                {{ line.name }}
+              </option>
+            </select>
+          </div>
+          <div class="line-info" v-if="selectedLineId && getSelectedLine()">
+            <h4>产线信息</h4>
+            <div class="info-item">
+              <label>产线名称：</label>
+              <span>{{ getSelectedLine().name }}</span>
+            </div>
+            <div class="info-item">
+              <label>产线 ID：</label>
+              <span>{{ getSelectedLine().id }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showAssignLine = false">取消</button>
+          <button class="confirm-btn" @click="confirmAssignLine">确认分配</button>
+        </div>
+      </div>
+    </div>
+
     <ForemanNav />
   </div>
 </template>
@@ -382,10 +415,12 @@ export default {
       showLeaveManagement: false,
       showStatusManagement: false,
       showAssignDevice: false,
+      showAssignLine: false,
       showUpdateStatus: false,
       selectedEmployee: {},
       selectedWorker: {},
       selectedDeviceId: '',
+      selectedLineId: '',
       availableDevices: [],
       currentForeman: null, // 存储当前工长信息
       newStatus: '',
@@ -446,38 +481,160 @@ export default {
     // 修改产线员工数量统计方法
     getLineWorkerCount() {
       return (lineId) => {
-        return this.employees.filter(emp => {
-          // 检查员工是否负责该产线
+        // 转换lineId为字符串，确保类型匹配
+        const lineIdStr = String(lineId);
+
+        // 详细调试日志
+        console.log(`计算产线 ${lineIdStr} 的员工数量`);
+        console.log(`当前员工总数: ${this.employees.length}`);
+
+        // 查看产线信息
+        const line = this.assignedLines.find(l => String(l.id) === lineIdStr);
+        console.log(`产线信息:`, line);
+
+        // 获取产线负责工长的分组号
+        const lineManagerGroupId = this.getLineManagerGroupId(lineIdStr);
+        console.log(`产线 ${lineIdStr} 的负责工长分组号: ${lineManagerGroupId}`);
+
+        // 如果没有找到工长分组号，使用当前工长的分组号
+        const groupId = lineManagerGroupId || this.currentForeman.group_id;
+        console.log(`使用分组号: ${groupId} 来查询产线员工`);
+
+        // 筛选该产线的员工
+        const lineWorkers = this.employees.filter(emp => {
+          // 检查员工是否负责该产线（通过assigned_lines字段）
           const isResponsibleForLine = emp.assigned_lines &&
-            emp.assigned_lines.some(line => line.id === lineId);
-          return isResponsibleForLine && emp.group_id === this.currentForeman.group_id;
-        }).length;
+            Array.isArray(emp.assigned_lines) &&
+            emp.assigned_lines.some(assignedLine => String(assignedLine.id) === lineIdStr);
+
+          // 检查员工是否属于该产线（通过line_id字段）
+          const isAssignedToLine = emp.line_id && String(emp.line_id) === lineIdStr;
+
+          // 检查员工组号是否与产线负责工长的组号匹配
+          const groupMatch = String(emp.group_id) === String(groupId);
+
+          // 员工属于该产线的条件：
+          // 1. 员工的assigned_lines包含该产线，或
+          // 2. 员工的line_id字段等于该产线ID，或
+          // 3. 员工是该产线的负责工长，或
+          // 4. 员工是工人（member角色）且属于该产线负责工长的组，或
+          // 5. 员工是安全员（safety_officer角色）且属于该产线负责工长的组
+          const isLineManager = line && line.foreman_id && String(emp.id) === String(line.foreman_id);
+          const isWorkerInGroup = emp.role === 'member' && groupMatch;
+          const isSafetyOfficerInGroup = emp.role === 'safety_officer' && groupMatch;
+
+          const isRelatedToLine = isResponsibleForLine || isAssignedToLine || isLineManager || isWorkerInGroup || isSafetyOfficerInGroup;
+
+          // 详细调试日志
+          console.log(`员工 ${emp.name} (工号: ${emp.id}, 角色: ${emp.role}):`);
+          console.log(`  - 通过assigned_lines关联: ${isResponsibleForLine}`);
+          console.log(`  - 通过line_id关联: ${isAssignedToLine}`);
+          console.log(`  - 是产线负责工长: ${isLineManager}`);
+          console.log(`  - 是工长组内工人: ${isWorkerInGroup}`);
+          console.log(`  - 是工长组内安全员: ${isSafetyOfficerInGroup}`);
+          console.log(`  - 组号匹配: ${groupMatch} (员工组号: ${emp.group_id}, 产线工长组号: ${groupId})`);
+          console.log(`  - 最终结果: ${isRelatedToLine}`);
+
+          return isRelatedToLine;
+        });
+
+        console.log(`产线 ${lineIdStr} 的员工数量: ${lineWorkers.length}`);
+        lineWorkers.forEach(worker => {
+          console.log(`- 员工: ${worker.name}, 状态: ${worker.status}, 角色: ${worker.role}, 组号: ${worker.group_id}`);
+        });
+
+        return lineWorkers.length;
       };
     },
 
     // 修改产线在岗率统计方法
     getLineActiveRate() {
       return (lineId) => {
+        // 转换lineId为字符串，确保类型匹配
+        const lineIdStr = String(lineId);
+
+        // 详细调试日志
+        console.log(`计算产线 ${lineIdStr} 的在岗率`);
+        console.log(`当前员工总数: ${this.employees.length}`);
+
+        // 查看产线信息
+        const line = this.assignedLines.find(l => String(l.id) === lineIdStr);
+        console.log(`产线信息:`, line);
+
+        // 获取产线负责工长的分组号
+        const lineManagerGroupId = this.getLineManagerGroupId(lineIdStr);
+        console.log(`产线 ${lineIdStr} 的负责工长分组号: ${lineManagerGroupId}`);
+
+        // 如果没有找到工长分组号，使用当前工长的分组号
+        const groupId = lineManagerGroupId || this.currentForeman.group_id;
+        console.log(`使用分组号: ${groupId} 来查询产线员工`);
+
+        // 筛选该产线的员工
         const lineWorkers = this.employees.filter(emp => {
-          // 检查员工是否负责该产线
+          // 检查员工是否负责该产线（通过assigned_lines字段）
           const isResponsibleForLine = emp.assigned_lines &&
-            emp.assigned_lines.some(line => line.id === lineId);
-          return isResponsibleForLine && emp.group_id === this.currentForeman.group_id;
+            Array.isArray(emp.assigned_lines) &&
+            emp.assigned_lines.some(assignedLine => String(assignedLine.id) === lineIdStr);
+
+          // 检查员工是否属于该产线（通过line_id字段）
+          const isAssignedToLine = emp.line_id && String(emp.line_id) === lineIdStr;
+
+          // 检查员工组号是否与产线负责工长的组号匹配
+          const groupMatch = String(emp.group_id) === String(groupId);
+
+          // 员工是否是该产线的负责工长
+          const isLineManager = line && line.foreman_id && String(emp.id) === String(line.foreman_id);
+
+          // 员工是否是工人角色且属于该产线负责工长的组
+          const isWorkerInGroup = emp.role === 'member' && groupMatch;
+
+          // 员工是否是安全员角色且属于该产线负责工长的组
+          const isSafetyOfficerInGroup = emp.role === 'safety_officer' && groupMatch;
+
+          // 员工属于该产线的条件：
+          // 1. 员工的assigned_lines包含该产线，或
+          // 2. 员工的line_id字段等于该产线ID，或
+          // 3. 员工是该产线的负责工长，或
+          // 4. 员工是工人（member角色）且属于该产线负责工长的组，或
+          // 5. 员工是安全员（safety_officer角色）且属于该产线负责工长的组
+          const isRelatedToLine = isResponsibleForLine || isAssignedToLine || isLineManager || isWorkerInGroup || isSafetyOfficerInGroup;
+
+          // 详细调试日志
+          console.log(`员工 ${emp.name} (工号: ${emp.id}, 角色: ${emp.role}):`);
+          console.log(`  - 通过assigned_lines关联: ${isResponsibleForLine}`);
+          console.log(`  - 通过line_id关联: ${isAssignedToLine}`);
+          console.log(`  - 是产线负责工长: ${isLineManager}`);
+          console.log(`  - 是工长组内工人: ${isWorkerInGroup}`);
+          console.log(`  - 是工长组内安全员: ${isSafetyOfficerInGroup}`);
+          console.log(`  - 组号匹配: ${groupMatch} (员工组号: ${emp.group_id}, 产线工长组号: ${groupId})`);
+          console.log(`  - 最终结果: ${isRelatedToLine}`);
+
+          return isRelatedToLine;
         });
+
+        console.log(`产线 ${lineIdStr} 的员工数量: ${lineWorkers.length}`);
+        lineWorkers.forEach(worker => {
+          console.log(`- 员工: ${worker.name}, 状态: ${worker.status}, 角色: ${worker.role}, 组号: ${worker.group_id}`);
+        });
+
         if (lineWorkers.length === 0) return 0;
 
-        const activeWorkers = lineWorkers.filter(emp =>
-          emp.status === 'active' || emp.status === 'task'
-        );
-        return Math.round((activeWorkers.length / lineWorkers.length) * 100);
+        // 考虑中文和英文状态值
+        const activeWorkers = lineWorkers.filter(emp => {
+          // 在岗状态可能是中文或英文
+          const isActive = emp.status === '在岗' || emp.status === 'active' || emp.status === 'task';
+          console.log(`员工 ${emp.name} 状态: ${emp.status}, 是否在岗: ${isActive}`);
+          return isActive;
+        });
+
+        // 计算在岗率
+        const activeRate = Math.round((activeWorkers.length / lineWorkers.length) * 100);
+        console.log(`产线 ${lineIdStr} 的在岗率: ${activeRate}%, 在岗人数: ${activeWorkers.length}, 总人数: ${lineWorkers.length}`);
+        return activeRate;
       };
     },
 
-    // 修改产线任务完成率统计方法
-    getLineCompletionRate() {
-      // 由于后端没有提供完成率数据，返回固定值
-      return () => 95; // 固定返回95%的完成率
-    }
+
   },
   methods: {
     // 获取分配给当前工长的产线信息
@@ -511,7 +668,8 @@ export default {
 
           this.assignedLines = data.data.map(line => ({
             ...line, // 保持原始数据格式
-            name: line.line_name || line.name || `产线${line.id}` // 确保有name字段
+            name: line.line_name || line.name || `产线${line.id}`, // 确保有name字段
+            foreman_id: line.foreman_id || null // 确保有foreman_id字段
           }));
 
           console.log('处理后的产线数据:');
@@ -551,12 +709,21 @@ export default {
 
           // 处理员工数据,只保留后端提供的字段
           this.employees = data.data.map(emp => {
+            // 打印员工原始状态
+            console.log(`员工 ${emp.name} 原始状态: ${emp.status}`);
+
             return {
               ...emp,
-              status: emp.status || '在岗',
+              // 保留原始状态，不设置默认值
               assigned_lines: emp.assigned_lines || [],
               assigned_equipment: emp.assigned_equipment || []
             };
+          });
+
+          // 打印处理后的员工状态
+          console.log('处理后的员工状态:');
+          this.employees.forEach(emp => {
+            console.log(`员工 ${emp.name} 状态: ${emp.status}`);
           });
 
           // 打印处理后的员工数据
@@ -621,6 +788,39 @@ export default {
       return '无';
     },
 
+    // 获取产线负责工长的分组号
+    getLineManagerGroupId(lineId) {
+      // 转换lineId为字符串，确保类型匹配
+      const lineIdStr = String(lineId);
+
+      // 查找产线信息
+      const line = this.assignedLines.find(l => String(l.id) === lineIdStr);
+      if (!line) {
+        console.log(`未找到产线 ${lineIdStr} 的信息`);
+        return null;
+      }
+
+      // 获取产线的负责工长ID
+      const foremanId = line.foreman_id;
+      if (!foremanId) {
+        console.log(`产线 ${lineIdStr} 没有指定负责工长`);
+        return null;
+      }
+
+      // 查找工长信息
+      const foreman = this.employees.find(emp =>
+        emp.role === 'foreman' && String(emp.id) === String(foremanId)
+      );
+
+      if (!foreman) {
+        console.log(`未找到工长 ${foremanId} 的信息`);
+        return null;
+      }
+
+      console.log(`产线 ${lineIdStr} 的负责工长 ${foreman.name} 的分组号: ${foreman.group_id}`);
+      return foreman.group_id;
+    },
+
     // 查看产线详情
     viewLineDetail(line) {
       console.log('查看产线详情:', line);
@@ -668,6 +868,13 @@ export default {
 
       // 获取可分配的设备列表
       await this.fetchAvailableDevices();
+    },
+
+    // 显示分配产线模态框
+    showAssignLineModal(worker) {
+      this.selectedWorker = worker;
+      this.selectedLineId = '';
+      this.showAssignLine = true;
     },
 
     // 获取可分配的设备列表
@@ -763,6 +970,11 @@ export default {
       return this.availableDevices.find(device => device.id === this.selectedDeviceId);
     },
 
+    // 获取选中的产线
+    getSelectedLine() {
+      return this.assignedLines.find(line => String(line.id) === String(this.selectedLineId));
+    },
+
     // 获取设备状态类名
     getDeviceStatusClass(status) {
       if (status === '故障') return 'error';
@@ -781,12 +993,21 @@ export default {
 
     // 获取状态类名
     getStatusClass(status) {
-      switch (status) {
-        case '在岗': return 'status-active';
-        case '请假': return 'status-leave';
-        case '离岗': return 'status-off';
-        default: return '';
-      }
+      // 打印状态值以便调试
+      console.log(`获取状态类名，状态值: ${status}, 类型: ${typeof status}`);
+
+      // 处理中文状态
+      if (status === '在岗') return 'status-active';
+      if (status === '请假') return 'status-leave';
+      if (status === '离岗') return 'status-off';
+
+      // 处理英文状态
+      if (status === 'active' || status === 'task') return 'status-active';
+      if (status === 'leave') return 'status-leave';
+      if (status === 'off') return 'status-off';
+
+      // 如果状态为空或未知，返回空字符串
+      return '';
     },
 
 
@@ -877,6 +1098,64 @@ export default {
       } catch (error) {
         console.error('分配设备出错:', error);
         alert('分配设备失败，请重试');
+      }
+    },
+
+    // 确认分配产线
+    async confirmAssignLine() {
+      if (!this.selectedLineId) {
+        alert('请选择产线');
+        return;
+      }
+
+      try {
+        // 获取员工当前的产线关联
+        const currentLines = this.selectedWorker.assigned_lines || [];
+
+        // 检查是否已经关联了该产线
+        const alreadyAssigned = currentLines.some(line => String(line.id) === String(this.selectedLineId));
+
+        if (alreadyAssigned) {
+          alert('该员工已经关联了该产线');
+          return;
+        }
+
+        // 获取选中的产线
+        const selectedLine = this.getSelectedLine();
+
+        if (!selectedLine) {
+          alert('无法获取产线信息');
+          return;
+        }
+
+        // 手动关联员工与产线
+        // 在实际项目中，这里应该调用后端API
+        // 这里我们只是在前端模拟关联
+
+        // 添加新的产线关联
+        const newAssignedLines = [...currentLines, {
+          id: selectedLine.id,
+          name: selectedLine.name
+        }];
+
+        // 更新员工数据
+        const index = this.employees.findIndex(emp => emp.id === this.selectedWorker.id);
+        if (index !== -1) {
+          // 更新员工的产线关联
+          this.$set(this.employees[index], 'assigned_lines', newAssignedLines);
+
+          // 打印调试信息
+          console.log(`已将产线 ${selectedLine.name} (ID: ${selectedLine.id}) 分配给员工 ${this.selectedWorker.name}`);
+          console.log('更新后的员工产线关联:', newAssignedLines);
+
+          alert('产线分配成功！');
+          this.showAssignLine = false;
+        } else {
+          alert('找不到员工数据，无法更新');
+        }
+      } catch (error) {
+        console.error('分配产线出错:', error);
+        alert('分配产线失败，请重试');
       }
     },
 
