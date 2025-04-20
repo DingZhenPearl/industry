@@ -123,9 +123,6 @@
             </div>
             <div class="action-bar">
               <button class="action-btn" @click="viewLineDetail(line)">查看详情</button>
-              <button class="action-btn" @click="startInspection(line)">开始巡检</button>
-              <button class="action-btn" @click="viewHistory(line)">历史记录</button>
-              <button class="action-btn status-btn" @click="openStatusModal(line, false)">修改状态</button>
             </div>
           </div>
         </div>
@@ -259,7 +256,6 @@
                   <td>{{ device.lastCheck }}</td>
                   <td>
                     <button class="op-btn" @click="viewDeviceDetail(device)">查看</button>
-                    <button class="op-btn" @click="startInspectionForDevice(device)">巡检</button>
                     <button class="op-btn warning" v-if="device.safetyStatus === 'error'" @click="createMaintenanceOrder(device)">维修</button>
                     <button class="op-btn warning" v-else-if="device.safetyStatus === 'warning'" @click="createSafetyAlert(device)">预警</button>
                   </td>
@@ -271,45 +267,7 @@
       </div>
     </div>
 
-    <!-- 巡检任务模态框 -->
-    <div class="modal" v-if="showInspectionModal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>巡检任务</h3>
-          <span class="close-btn" @click="showInspectionModal = false">&times;</span>
-        </div>
-        <div class="modal-body">
-          <div class="checklist">
-            <div class="check-item" v-for="item in inspectionItems" :key="item.id">
-              <label class="checkbox-label">
-                <input
-                  type="checkbox"
-                  v-model="item.checked"
-                  :disabled="item.status === 'passed'"
-                >
-                <span class="item-text">{{ item.content }}</span>
-              </label>
-              <span class="check-status" :class="item.status">
-                {{ item.statusText }}
-              </span>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>备注</label>
-            <textarea
-              v-model="inspectionNote"
-              class="form-input"
-              rows="3"
-              placeholder="请输入巡检备注"
-            ></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn cancel" @click="showInspectionModal = false">取消</button>
-          <button class="btn submit" @click="submitInspection">提交</button>
-        </div>
-      </div>
-    </div>
+
 
 
 
@@ -413,9 +371,6 @@ export default {
       ],
       */
       hazards: [],
-      showInspectionModal: false,
-      inspectionItems: [],
-      inspectionNote: '',
 
 
 
@@ -541,7 +496,6 @@ export default {
     this.fetchEquipments();
     this.fetchWarnings();
     this.fetchHazards();
-    this.fetchInspectionItems();
   },
   methods: {
     // 查看产线详情
@@ -565,14 +519,7 @@ export default {
       this.$router.push(`/safety-officer/production-line-detail/${line.id}`);
     },
 
-    startInspection(line) {
-      this.selectedLine = line;
-      this.showInspectionModal = true;
-    },
 
-    viewHistory(line) {
-      console.log('查看历史记录:', line);
-    },
     // 处理隐患
     async handleHazard(hazard) {
       console.log('处理安全隐患:', hazard);
@@ -606,10 +553,7 @@ export default {
       console.log('查看隐患详情:', hazard);
       alert(`隐患详情\n\n类型: ${hazard.type}\n级别: ${hazard.levelText}\n描述: ${hazard.description}\n位置: ${hazard.location}\n时间: ${hazard.time}`);
     },
-    submitInspection() {
-      console.log('提交巡检结果');
-      this.showInspectionModal = false;
-    },
+
 
     // 查看设备详情
     viewDeviceDetail(device) {
@@ -618,12 +562,7 @@ export default {
       this.$router.push(`/safety-officer/equipment-detail/${device.id}`);
     },
 
-    // 对特定设备开始巡检
-    startInspectionForDevice(device) {
-      console.log('对设备开始安全巡检:', device);
-      // 这里可以直接打开巡检表单或跳转到巡检页面
-      this.$router.push('/safety-officer/inspection');
-    },
+
 
     // 创建安全预警
     async createSafetyAlert(device) {
@@ -1256,31 +1195,7 @@ export default {
       }
     },
 
-    // 获取巡检项目数据
-    async fetchInspectionItems() {
-      try {
-        const response = await fetch('/api/safety/inspection-items', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
 
-        if (!response.ok) {
-          throw new Error(`获取巡检项目数据失败: ${response.status}`);
-        }
-
-        const result = await response.json();
-        console.log('巡检项目数据:', result);
-
-        if (result.success) {
-          this.inspectionItems = result.data || [];
-        } else {
-          console.error('获取巡检项目数据失败:', result.error || '未知错误');
-        }
-      } catch (error) {
-        console.error('获取巡检项目数据出错:', error);
-      }
-    }
   }
 }
 </script>

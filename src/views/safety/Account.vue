@@ -92,7 +92,7 @@
       </div>
     </div>
 
-    <SafetyOfficerNav />
+    <SafetyNav />
 
     <!-- 更新用户名对话框 -->
     <div v-if="showDialog" class="dialog-overlay">
@@ -117,7 +117,7 @@
 </template>
 
 <script>
-import SafetyOfficerNav from '@/components/SafetyOfficerNav.vue'
+import SafetyNav from '@/components/SafetyNav.vue'
 import AttendanceCard from '@/components/AttendanceCard.vue'
 import LeaveRequestForm from '@/components/LeaveRequestForm.vue'
 import LeaveRequestList from '@/components/LeaveRequestList.vue'
@@ -125,7 +125,7 @@ import LeaveRequestList from '@/components/LeaveRequestList.vue'
 export default {
   name: 'SafetyAccount',
   components: {
-    SafetyOfficerNav,
+    SafetyNav,
     AttendanceCard,
     LeaveRequestForm,
     LeaveRequestList

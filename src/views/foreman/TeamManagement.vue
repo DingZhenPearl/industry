@@ -383,18 +383,22 @@
       </div>
     </div>
 
-    <ForemanNav />
+    <!-- 根据用户角色显示不同的导航栏 -->
+    <ForemanNav v-if="currentForeman && currentForeman.role === 'foreman'" />
+    <SafetyNav v-else-if="currentForeman && currentForeman.role === 'safety_officer'" />
   </div>
 </template>
 
 <script>
 import ForemanNav from '@/components/ForemanNav.vue'
+import SafetyNav from '@/components/SafetyNav.vue'
 import PendingLeaveList from '@/components/PendingLeaveList.vue'
 
 export default {
   name: 'TeamManagement',
   components: {
     ForemanNav,
+    SafetyNav,
     PendingLeaveList
   },
   data() {
