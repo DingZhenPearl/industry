@@ -395,36 +395,7 @@ export default {
   },
   data() {
     return {
-      roles: [
-        {
-          id: 'supervisor',
-          name: '厂长',
-          memberCount: 1,
-          activeRate: 100,
-          completion: 95
-        },
-        {
-          id: 'foreman',
-          name: '工长',
-          memberCount: 4,
-          activeRate: 100,
-          completion: 92
-        },
-        {
-          id: 'member',  // 修改这里，从 'worker' 改为 'member'
-          name: '产线工人',
-          memberCount: 45,
-          activeRate: 95,
-          completion: 90
-        },
-        {
-          id: 'safety_officer',  // 修改这里，从 'safety' 改为 'safety_officer'
-          name: '安全员',
-          memberCount: 3,
-          activeRate: 100,
-          completion: 94
-        }
-      ],
+      roles: [],
       employees: [], // 清空本地数据,改为从后端获取
       filterRole: '',
       filterGroup: '', // 添加组号筛选数据
@@ -467,6 +438,9 @@ export default {
       id: userInfo.employee_id,
       name: userInfo.username
     };
+
+    // 获取角色数据
+    await this.fetchRoles();
 
     // 组件创建时获取用户列表
     await this.fetchEmployees();
@@ -535,6 +509,90 @@ export default {
         this.$message.error('获取用户列表失败');
       }
     },
+    // 获取角色数据
+    async fetchRoles() {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/roles/stats', {
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await response.json();
+
+        if (data.success && Array.isArray(data.data)) {
+          this.roles = data.data;
+        } else {
+          console.error('获取角色数据失败:', data.error || '未知错误');
+          // 使用默认角色数据
+          this.roles = [
+            {
+              id: 'supervisor',
+              name: '厂长',
+              memberCount: 0,
+              activeRate: 0,
+              completion: 0
+            },
+            {
+              id: 'foreman',
+              name: '工长',
+              memberCount: 0,
+              activeRate: 0,
+              completion: 0
+            },
+            {
+              id: 'member',
+              name: '产线工人',
+              memberCount: 0,
+              activeRate: 0,
+              completion: 0
+            },
+            {
+              id: 'safety_officer',
+              name: '安全员',
+              memberCount: 0,
+              activeRate: 0,
+              completion: 0
+            }
+          ];
+        }
+      } catch (error) {
+        console.error('请求角色数据出错:', error);
+        // 使用默认角色数据
+        this.roles = [
+          {
+            id: 'supervisor',
+            name: '厂长',
+            memberCount: 0,
+            activeRate: 0,
+            completion: 0
+          },
+          {
+            id: 'foreman',
+            name: '工长',
+            memberCount: 0,
+            activeRate: 0,
+            completion: 0
+          },
+          {
+            id: 'member',
+            name: '产线工人',
+            memberCount: 0,
+            activeRate: 0,
+            completion: 0
+          },
+          {
+            id: 'safety_officer',
+            name: '安全员',
+            memberCount: 0,
+            activeRate: 0,
+            completion: 0
+          }
+        ];
+      }
+    },
+
     // 获取角色显示名称
     getRoleName(role) {
       const roleNames = {

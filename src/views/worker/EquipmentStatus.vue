@@ -97,12 +97,7 @@ export default {
       deviceHistory: [],
       autoRefresh: true,
       refreshRate: 10000, // 10秒更新一次
-      operationLogs: [
-        { time: '2023-07-10 10:30', content: '完成设备检查' },
-        { time: '2023-07-10 09:15', content: '设备启动运行' },
-        { time: '2023-07-10 09:00', content: '设备维护' },
-        { time: '2023-07-10 08:30', content: '参数调整' }
-      ]
+      operationLogs: []
     }
   },
   computed: {
@@ -118,6 +113,8 @@ export default {
     this.getCurrentUserInfo();
     // 获取工人负责的设备
     this.fetchMyDevices();
+    // 获取操作日志
+    this.fetchOperationLogs();
 
     // 打印自动刷新设置
     console.log('工人设备详情页面初始化，自动刷新:', this.autoRefresh, '刷新间隔:', this.refreshRate);
@@ -356,6 +353,7 @@ export default {
     onDeviceChange() {
       console.log('选中设备:', this.selectedDeviceId);
       this.fetchDeviceHistory();
+      this.fetchOperationLogs();
     },
 
     // 获取设备历史数据
@@ -415,6 +413,37 @@ export default {
     // 查看操作手册
     viewManual() {
       console.log('查看设备操作手册');
+    },
+
+    // 获取设备操作日志
+    async fetchOperationLogs() {
+      if (!this.currentDevice) return;
+
+      try {
+        const response = await fetch(`/api/equipment/operation-logs?equipment_id=${this.currentDevice.id}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取操作日志失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('操作日志数据:', result);
+
+        if (result.success && result.data) {
+          this.operationLogs = result.data.map(log => ({
+            time: new Date(log.operation_time).toLocaleString(),
+            content: log.operation_content
+          }));
+        } else {
+          console.error('获取操作日志失败:', result.error || '未知错误');
+        }
+      } catch (error) {
+        console.error('获取操作日志出错:', error);
+      }
     },
 
     // 更新设备状态

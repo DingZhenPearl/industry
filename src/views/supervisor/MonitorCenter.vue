@@ -24,20 +24,6 @@
         </div>
       </div>
 
-      <div class="monitor-stats">
-        <div class="stat-item">
-          <span class="stat-label">设备运行率</span>
-          <span class="stat-value">95%</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">生产完成率</span>
-          <span class="stat-value">87%</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">任务达成率</span>
-          <span class="stat-value">92%</span>
-        </div>
-      </div>
 
       <!-- 增加产线状态列表 -->
       <div class="production-lines">
@@ -1776,22 +1762,7 @@ export default {
   padding: 15px;
 }
 
-.monitor-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-  margin-bottom: 20px;
-}
 
-.stat-item {
-  background: white;
-  padding: 15px;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
 
 .stat-label {
   font-size: 14px;

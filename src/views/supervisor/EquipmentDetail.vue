@@ -50,17 +50,15 @@ export default {
     return {
       equipment: {
         id: '',
-        name: '花都新工厂-机加线M3内喷电机',
-        location: '花都',
+        name: '',
+        location: '',
         status: 'normal',
         statusText: '正常',
-        sensorId: '1000004700060003',
-        description: '该设备提供传感器共有2个，当前传感器提供属性：温度'
+        sensorId: '',
+        description: ''
       },
-      sensors: [
-        { name: '接触式温度', value: '24.8', unit: '°C' }
-      ],
-      currentSensor: { name: '温度', value: '24.8', unit: '°C' },
+      sensors: [],
+      currentSensor: null,
       deviceHistory: [],
       loading: false,
       error: null,

@@ -505,31 +505,21 @@ export default {
             name: line.line_name
           }));
 
-          // 如果没有产线数据，添加测试数据
+          // 如果没有产线数据，显示提示信息
           if (this.assignedLines.length === 0) {
-            this.assignedLines = [
-              { id: 'line1', name: '一号生产线' },
-              { id: 'line2', name: '二号生产线' },
-              { id: 'line3', name: '三号生产线' }
-            ];
+            console.warn('未找到分配给当前工长的产线');
           }
         } else {
           console.error('获取产线列表失败:', data.error || '未知错误');
-          // 添加测试数据
-          this.assignedLines = [
-            { id: 'line1', name: '一号生产线' },
-            { id: 'line2', name: '二号生产线' },
-            { id: 'line3', name: '三号生产线' }
-          ];
+          // 显示错误提示
+          this.$message.error('获取产线列表失败');
+          this.assignedLines = [];
         }
       } catch (error) {
         console.error('请求产线列表出错:', error);
-        // 添加测试数据
-        this.assignedLines = [
-          { id: 'line1', name: '一号生产线' },
-          { id: 'line2', name: '二号生产线' },
-          { id: 'line3', name: '三号生产线' }
-        ];
+        // 显示错误提示
+        this.$message.error('请求产线列表出错');
+        this.assignedLines = [];
       }
     },
 
@@ -567,23 +557,15 @@ export default {
           }));
         } else {
           console.error('获取团队成员失败:', data.error || '未知错误');
-          // 添加测试数据
-          this.employees = [
-            { id: 'WK0001', name: '张三', line_id: 'line1', status: 'active', statusText: '在岗', skillLevel: '高级' },
-            { id: 'WK0002', name: '李四', line_id: 'line1', status: 'active', statusText: '在岗', skillLevel: '中级' },
-            { id: 'WK0003', name: '王五', line_id: 'line2', status: 'active', statusText: '在岗', skillLevel: '高级' },
-            { id: 'WK0004', name: '赵六', line_id: 'line2', status: 'active', statusText: '在岗', skillLevel: '初级' }
-          ];
+          // 显示错误提示
+          this.$message.error('获取团队成员失败');
+          this.employees = [];
         }
       } catch (error) {
         console.error('请求团队成员出错:', error);
-        // 添加测试数据
-        this.employees = [
-          { id: 'WK0001', name: '张三', line_id: 'line1', status: 'active', statusText: '在岗', skillLevel: '高级' },
-          { id: 'WK0002', name: '李四', line_id: 'line1', status: 'active', statusText: '在岗', skillLevel: '中级' },
-          { id: 'WK0003', name: '王五', line_id: 'line2', status: 'active', statusText: '在岗', skillLevel: '高级' },
-          { id: 'WK0004', name: '赵六', line_id: 'line2', status: 'active', statusText: '在岗', skillLevel: '初级' }
-        ];
+        // 显示错误提示
+        this.$message.error('请求团队成员出错');
+        this.employees = [];
       }
     },
 
@@ -626,55 +608,17 @@ export default {
           console.log('按产线分组的设备:', this.equipmentsByLine);
         } else {
           console.error('获取设备列表失败:', data.error || '未知错误');
-          // 添加测试数据
-          this.equipments = [
-            { id: 1, name: '数控车床1', code: 'EQ001', line_id: 'line1', status: '正常' },
-            { id: 2, name: '数控车床2', code: 'EQ002', line_id: 'line1', status: '正常' },
-            { id: 3, name: '机械臂', code: 'EQ003', line_id: 'line2', status: '正常' },
-            { id: 4, name: '自动包装机', code: 'EQ004', line_id: 'line2', status: '正常' },
-            { id: 5, name: '检测设备', code: 'EQ005', line_id: 'line3', status: '正常' }
-          ];
-
-          // 按产线分组设备
-          this.equipmentsByLine = {
-            'line1': [
-              { id: 1, name: '数控车床1', code: 'EQ001', line_id: 'line1', status: '正常' },
-              { id: 2, name: '数控车床2', code: 'EQ002', line_id: 'line1', status: '正常' }
-            ],
-            'line2': [
-              { id: 3, name: '机械臂', code: 'EQ003', line_id: 'line2', status: '正常' },
-              { id: 4, name: '自动包装机', code: 'EQ004', line_id: 'line2', status: '正常' }
-            ],
-            'line3': [
-              { id: 5, name: '检测设备', code: 'EQ005', line_id: 'line3', status: '正常' }
-            ]
-          };
+          // 显示错误提示
+          this.$message.error('获取设备列表失败');
+          this.equipments = [];
+          this.equipmentsByLine = {};
         }
       } catch (error) {
         console.error('请求设备列表出错:', error);
-        // 添加测试数据
-        this.equipments = [
-          { id: 1, name: '数控车床1', code: 'EQ001', line_id: 'line1', status: '正常' },
-          { id: 2, name: '数控车床2', code: 'EQ002', line_id: 'line1', status: '正常' },
-          { id: 3, name: '机械臂', code: 'EQ003', line_id: 'line2', status: '正常' },
-          { id: 4, name: '自动包装机', code: 'EQ004', line_id: 'line2', status: '正常' },
-          { id: 5, name: '检测设备', code: 'EQ005', line_id: 'line3', status: '正常' }
-        ];
-
-        // 按产线分组设备
-        this.equipmentsByLine = {
-          'line1': [
-            { id: 1, name: '数控车床1', code: 'EQ001', line_id: 'line1', status: '正常' },
-            { id: 2, name: '数控车床2', code: 'EQ002', line_id: 'line1', status: '正常' }
-          ],
-          'line2': [
-            { id: 3, name: '机械臂', code: 'EQ003', line_id: 'line2', status: '正常' },
-            { id: 4, name: '自动包装机', code: 'EQ004', line_id: 'line2', status: '正常' }
-          ],
-          'line3': [
-            { id: 5, name: '检测设备', code: 'EQ005', line_id: 'line3', status: '正常' }
-          ]
-        };
+        // 显示错误提示
+        this.$message.error('请求设备列表出错');
+        this.equipments = [];
+        this.equipmentsByLine = {};
       }
     },
 

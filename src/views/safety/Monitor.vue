@@ -336,22 +336,7 @@ export default {
         productionLines: null,
         equipments: null
       },
-      warnings: [
-        {
-          id: 1,
-          type: '设备异常',
-          time: '2023-07-10 10:30',
-          description: '检测到设备温度异常升高',
-          location: '一号生产线'
-        },
-        {
-          id: 2,
-          type: '环境预警',
-          time: '2023-07-10 09:15',
-          description: '空气质量超标',
-          location: '生产车间A区'
-        }
-      ],
+      warnings: [],
       // 原始模拟数据
       /*
       monitorItems: [
@@ -427,43 +412,9 @@ export default {
         }
       ],
       */
-      hazards: [
-        {
-          id: 1,
-          type: '设备隐患',
-          level: 'high',
-          levelText: '高危',
-          description: '车身焊接生产线焊接机器人温度异常，存在安全隐患',
-          location: '车身焊接生产线',
-          time: '2023-07-10 10:30'
-        },
-        {
-          id: 2,
-          type: '环境隐患',
-          level: 'medium',
-          levelText: '中危',
-          description: '电池组装生产线通风系统效率下降，可能影响空气质量',
-          location: '电池组装生产线',
-          time: '2023-07-10 11:15'
-        }
-      ],
+      hazards: [],
       showInspectionModal: false,
-      inspectionItems: [
-        {
-          id: 1,
-          content: '检查安全防护装置是否完好',
-          status: 'pending',
-          statusText: '待检查',
-          checked: false
-        },
-        {
-          id: 2,
-          content: '检查消防设施是否正常',
-          status: 'pending',
-          statusText: '待检查',
-          checked: false
-        }
-      ],
+      inspectionItems: [],
       inspectionNote: '',
 
 
@@ -588,6 +539,9 @@ export default {
   created() {
     this.fetchProductionLines();
     this.fetchEquipments();
+    this.fetchWarnings();
+    this.fetchHazards();
+    this.fetchInspectionItems();
   },
   methods: {
     // 查看产线详情
@@ -620,13 +574,30 @@ export default {
       console.log('查看历史记录:', line);
     },
     // 处理隐患
-    handleHazard(hazard) {
+    async handleHazard(hazard) {
       console.log('处理安全隐患:', hazard);
-      // 从隐患列表中移除该隐患
-      const index = this.hazards.findIndex(h => h.id === hazard.id);
-      if (index !== -1) {
-        this.hazards.splice(index, 1);
-        alert('隐患已处理并关闭');
+      try {
+        // 调用API处理安全隐患
+        const response = await fetch(`/api/safety/hazards/${hazard.id}/resolve`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 刷新隐患列表
+          this.fetchHazards();
+          alert('隐患已处理并关闭');
+        } else {
+          alert(`处理隐患失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('处理隐患出错:', error);
+        alert(`处理隐患出错: ${error.message || '未知错误'}`);
       }
     },
 
@@ -655,20 +626,40 @@ export default {
     },
 
     // 创建安全预警
-    createSafetyAlert(device) {
+    async createSafetyAlert(device) {
       console.log('为设备创建安全预警:', device);
-      const newHazard = {
-        id: this.hazards.length + 1,
-        type: '设备安全隐患',
-        level: 'high',
-        levelText: '高危',
-        description: `${device.name}在${device.productionLine}的温度异常，存在安全风险`,
-        location: device.productionLine,
-        time: new Date().toLocaleString()
-      };
+      try {
+        const hazardData = {
+          type: '设备安全隐患',
+          level: 'high',
+          description: `${device.name}在${device.productionLine}的温度异常，存在安全风险`,
+          location: device.productionLine,
+          equipment_id: device.id
+        };
 
-      this.hazards.push(newHazard);
-      alert('已创建安全预警并添加到隐患列表');
+        // 调用API创建安全隐患
+        const response = await fetch('/api/safety/hazards', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(hazardData)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 刷新隐患列表
+          this.fetchHazards();
+          alert('已创建安全预警并添加到隐患列表');
+        } else {
+          alert(`创建安全预警失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('创建安全预警出错:', error);
+        alert(`创建安全预警出错: ${error.message || '未知错误'}`);
+      }
     },
 
     // 创建维修工单
@@ -686,37 +677,68 @@ export default {
     },
 
     // 处理预警
-    handleWarning(warning) {
+    async handleWarning(warning) {
       console.log('处理预警:', warning);
-      // 从预警列表中移除该预警
-      const index = this.warnings.findIndex(w => w.id === warning.id);
-      if (index !== -1) {
-        this.warnings.splice(index, 1);
+      try {
+        // 调用API处理预警
+        const response = await fetch(`/api/safety/warnings/${warning.id}/handle`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            convert_to_hazard: true,
+            hazard_data: {
+              type: warning.type + '隐患',
+              level: 'medium',
+              description: warning.description,
+              location: warning.location
+            }
+          })
+        });
 
-        // 将预警转换为隐患并添加到隐患列表
-        const newHazard = {
-          id: this.hazards.length + 1,
-          type: warning.type + '隐患',
-          level: 'medium',
-          levelText: '中危',
-          description: warning.description,
-          location: warning.location,
-          time: new Date().toLocaleString()
-        };
+        const result = await response.json();
 
-        this.hazards.push(newHazard);
-        alert('预警已处理并转为隐患进行跟踪');
+        if (result.success) {
+          // 刷新预警和隐患列表
+          this.fetchWarnings();
+          this.fetchHazards();
+          alert('预警已处理并转为隐患进行跟踪');
+        } else {
+          alert(`处理预警失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('处理预警出错:', error);
+        alert(`处理预警出错: ${error.message || '未知错误'}`);
       }
     },
 
     // 忽略预警
-    ignoreWarning(warning) {
+    async ignoreWarning(warning) {
       console.log('忽略预警:', warning);
-      // 从预警列表中移除该预警
-      const index = this.warnings.findIndex(w => w.id === warning.id);
-      if (index !== -1) {
-        this.warnings.splice(index, 1);
-        alert('预警已忽略');
+      try {
+        // 调用API忽略预警
+        const response = await fetch(`/api/safety/warnings/${warning.id}/ignore`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // 刷新预警列表
+          this.fetchWarnings();
+          alert('预警已忽略');
+        } else {
+          alert(`忽略预警失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('忽略预警出错:', error);
+        alert(`忽略预警出错: ${error.message || '未知错误'}`);
       }
     },
 
@@ -1162,6 +1184,102 @@ export default {
           original: equipment
         };
       });
+    },
+
+    // 获取预警数据
+    async fetchWarnings() {
+      try {
+        // 获取当前登录用户的组号
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        const groupId = userInfo.group_id;
+
+        if (!groupId) {
+          console.error('未找到组号信息');
+          return;
+        }
+
+        const response = await fetch(`/api/safety/warnings?group_id=${groupId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取预警数据失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('预警数据:', result);
+
+        if (result.success) {
+          this.warnings = result.data || [];
+        } else {
+          console.error('获取预警数据失败:', result.error || '未知错误');
+        }
+      } catch (error) {
+        console.error('获取预警数据出错:', error);
+      }
+    },
+
+    // 获取隐患数据
+    async fetchHazards() {
+      try {
+        // 获取当前登录用户的组号
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        const groupId = userInfo.group_id;
+
+        if (!groupId) {
+          console.error('未找到组号信息');
+          return;
+        }
+
+        const response = await fetch(`/api/safety/hazards?group_id=${groupId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取隐患数据失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('隐患数据:', result);
+
+        if (result.success) {
+          this.hazards = result.data || [];
+        } else {
+          console.error('获取隐患数据失败:', result.error || '未知错误');
+        }
+      } catch (error) {
+        console.error('获取隐患数据出错:', error);
+      }
+    },
+
+    // 获取巡检项目数据
+    async fetchInspectionItems() {
+      try {
+        const response = await fetch('/api/safety/inspection-items', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取巡检项目数据失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('巡检项目数据:', result);
+
+        if (result.success) {
+          this.inspectionItems = result.data || [];
+        } else {
+          console.error('获取巡检项目数据失败:', result.error || '未知错误');
+        }
+      } catch (error) {
+        console.error('获取巡检项目数据出错:', error);
+      }
     }
   }
 }
