@@ -25,37 +25,10 @@
       >
         <!-- 自定义操作按钮 -->
         <template v-slot:actions>
-          <button class="action-btn" @click="generateChart">绘制图像</button>
           <button class="action-btn" @click="assignMaintenance" v-if="formattedEquipment && formattedEquipment.status === 'warning'">安排维护</button>
         </template>
 
-        <!-- 时间范围选择器 -->
-        <template v-slot:extra-content>
-          <div class="time-range">
-            <h3>选择时间范围：</h3>
-            <div class="date-inputs">
-              <div class="date-input">
-                <span>日期</span>
-                <input type="date" v-model="dateRange.date">
-              </div>
-              <div class="time-input">
-                <span>开始时间</span>
-                <input type="time" v-model="dateRange.startTime">
-              </div>
-              <div class="time-input">
-                <span>结束时间</span>
-                <input type="time" v-model="dateRange.endTime">
-              </div>
-            </div>
-          </div>
 
-          <!-- 传感器数据展示区 -->
-          <div class="sensor-data" v-if="currentSensor">
-            <h3>传感器数据</h3>
-            <div class="sensor-type">{{ currentSensor.name }}传感器</div>
-            <div class="sensor-value">{{ currentSensor.value }}<span class="unit">{{ currentSensor.unit }}</span></div>
-          </div>
-        </template>
       </equipment-detail-component>
     </div>
 
@@ -88,11 +61,6 @@ export default {
         { name: '接触式温度', value: '24.8', unit: '°C' }
       ],
       currentSensor: { name: '温度', value: '24.8', unit: '°C' },
-      dateRange: {
-        date: '2023-04-13',
-        startTime: '08:00',
-        endTime: '08:05'
-      },
       deviceHistory: [],
       loading: false,
       error: null,
@@ -371,10 +339,7 @@ export default {
       }
     },
 
-    generateChart() {
-      // 生成图表的逻辑
-      console.log('生成图表，时间范围:', this.dateRange);
-    },
+
 
     assignMaintenance() {
       // 安排维护的逻辑
@@ -733,5 +698,120 @@ export default {
   right: 20px;
   top: 40px;
   bottom: 20px;
+}
+
+/* 模态框样式 */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.close-btn {
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  background: none;
+  border: none;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+textarea.form-input {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn.cancel {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.btn.submit {
+  background-color: #2196F3;
+  color: white;
+}
+
+.action-btn {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  margin-right: 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.action-btn:hover {
+  background-color: #0b7dda;
 }
 </style>

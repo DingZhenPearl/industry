@@ -80,18 +80,6 @@
         <div class="chart-header">
           <h3>参数变化图表</h3>
           <div class="chart-controls">
-            <select v-model="selectedParameter" class="parameter-select" @change="updateChart">
-              <option v-for="(label, key) in sensorLabels" :key="key" :value="key">
-                {{ label }}
-              </option>
-              <option value="fault_probability">故障概率</option>
-            </select>
-            <select v-model="historyLimit" class="limit-select" @change="fetchDeviceHistory">
-              <option value="10">10条记录</option>
-              <option value="20">20条记录</option>
-              <option value="30">30条记录</option>
-              <option value="50">50条记录</option>
-            </select>
             <button
               class="auto-refresh-btn"
               :class="{ active: autoRefresh }"
@@ -104,8 +92,7 @@
         <div class="chart-container" ref="chartContainer"></div>
       </div>
 
-      <!-- 额外内容插槽 -->
-      <slot name="extra-content"></slot>
+
     </div>
   </div>
 </template>
@@ -159,8 +146,8 @@ export default {
   },
   data() {
     return {
-      selectedParameter: 'temperature',
-      historyLimit: '10',
+      selectedParameter: 'temperature', // 默认显示温度参数
+      historyLimit: '10', // 默认显示10条记录
       chartInstance: null,
       autoRefresh: this.autoRefreshEnabled, // 初始化时使用传入的值
       refreshInterval: null,

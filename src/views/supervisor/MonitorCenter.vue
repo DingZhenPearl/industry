@@ -346,11 +346,62 @@
                 <span class="device-name">{{ device.name }}</span>
                 <div class="config-actions">
                   <button class="btn" @click="viewDeviceDetail(device)">查看</button>
+                  <button class="btn" @click="editDevice(device)">编辑</button>
                   <button class="btn danger" @click="deleteDevice(device)">删除</button>
                 </div>
               </div>
             </div>
             <button class="btn primary add-device" @click="showAddEquipmentModal = true">新增设备</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 编辑设备模态框 -->
+      <div class="modal" v-if="showEditEquipmentModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>编辑设备</h3>
+            <span class="close-btn" @click="showEditEquipmentModal = false">&times;</span>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>设备名称</label>
+              <input type="text" v-model="editEquipment.name" class="form-input" placeholder="请输入设备名称">
+            </div>
+            <div class="form-group">
+              <label>设备编码</label>
+              <input type="text" v-model="editEquipment.code" class="form-input" placeholder="请输入设备编码">
+            </div>
+            <div class="form-group">
+              <label>设备类型</label>
+              <select v-model="editEquipment.type" class="form-input">
+                <option value="生产设备">生产设备</option>
+                <option value="检测设备">检测设备</option>
+                <option value="辅助设备">辅助设备</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>所属产线</label>
+              <select v-model="editEquipment.line_id" class="form-input">
+                <option value="">请选择产线</option>
+                <option v-for="line in productionLines" :key="line.id" :value="line.id">
+                  {{ line.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>设备位置</label>
+              <input type="text" v-model="editEquipment.location" class="form-input" placeholder="请输入设备位置">
+            </div>
+            <div class="form-group">
+              <label>设备描述</label>
+              <textarea v-model="editEquipment.description" class="form-input" rows="3" placeholder="请输入设备描述"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn cancel" @click="showEditEquipmentModal = false">取消</button>
+            <button class="btn submit" @click="confirmEditEquipment">保存</button>
           </div>
         </div>
       </div>
@@ -388,15 +439,7 @@
                 </option>
               </select>
             </div>
-            <div class="form-group">
-              <label>负责人</label>
-              <select v-model="newEquipment.worker_id" class="form-input">
-                <option value="">请选择负责人</option>
-                <option v-for="worker in workers" :key="worker.id" :value="worker.id">
-                  {{ worker.name }}
-                </option>
-              </select>
-            </div>
+
 
             <div class="form-group">
               <label>传感器项目</label>
@@ -543,6 +586,7 @@ export default {
       showAssignModal: false,
       showAddLineModal: false,
       showAddEquipmentModal: false,
+      showEditEquipmentModal: false,
       selectedLine: {},
       selectedManager: '',
       foremen: [],
@@ -553,13 +597,22 @@ export default {
         theoretical_capacity: 1000,
         foreman_id: ''
       },
+      // 编辑设备相关数据
+      editEquipment: {
+        id: '',
+        name: '',
+        code: '',
+        type: '',
+        line_id: '',
+        location: '',
+        description: ''
+      },
       // 新增设备相关数据
       newEquipment: {
         name: '',
         code: '',
         type: '生产设备',
         line_id: '',
-        worker_id: '',
         sensorProjects: {
           temperature: true,
           pressure: false,
@@ -899,6 +952,82 @@ export default {
       }
     },
 
+    // 编辑设备
+    editDevice(device) {
+      // 初始化编辑表单
+      this.editEquipment = {
+        id: device.id,
+        name: device.name,
+        code: device.code || '',
+        type: device.typeText || '生产设备',
+        line_id: device.line_id || '',
+        location: device.location || '',
+        description: device.description || ''
+      };
+
+      // 显示编辑模态框
+      this.showEditEquipmentModal = true;
+    },
+
+    // 确认编辑设备
+    async confirmEditEquipment() {
+      try {
+        // 验证表单
+        if (!this.editEquipment.name) {
+          alert('请输入设备名称');
+          return;
+        }
+
+        if (!this.editEquipment.code) {
+          alert('请输入设备编码');
+          return;
+        }
+
+        if (!this.editEquipment.line_id) {
+          alert('请选择所属产线');
+          return;
+        }
+
+        // 准备请求数据
+        const equipmentData = {
+          equipment_name: this.editEquipment.name,
+          equipment_code: this.editEquipment.code,
+          equipment_type: this.editEquipment.type,
+          line_id: this.editEquipment.line_id,
+          location: this.editEquipment.location || '',
+          description: this.editEquipment.description || ''
+        };
+
+        // 发送请求
+        const response = await fetch('/api/equipment/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            equipment_id: this.editEquipment.id,
+            equipment_data: equipmentData
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('设备信息更新成功！');
+          // 重新加载设备数据
+          this.fetchEquipments(true);
+          // 关闭模态框
+          this.showEditEquipmentModal = false;
+        } else {
+          alert(`更新失败: ${result.error || '未知错误'}`);
+        }
+      } catch (error) {
+        console.error('编辑设备出错:', error);
+        alert(`编辑设备出错: ${error.message || '未知错误'}`);
+      }
+    },
+
     deleteDevice(device) {
       if(confirm(`确定要删除设备 ${device.name} 吗？删除后无法恢复。`)) {
         this.deleteEquipment(device);
@@ -998,7 +1127,6 @@ export default {
         code: '',
         type: '生产设备',
         line_id: '',
-        worker_id: '',
         sensorProjects: {
           temperature: true,
           pressure: false,
@@ -1137,7 +1265,6 @@ export default {
           equipment_code: this.newEquipment.code,
           equipment_type: this.newEquipment.type,
           line_id: this.newEquipment.line_id,
-          worker_id: this.newEquipment.worker_id || null,
           status: '正常', // 默认状态为正常
           sensor_projects: sensorProjects // 添加传感器项目数据
         };
