@@ -73,6 +73,7 @@
                                                       workorder.type === '设备维护' ? 'maintenance' :
                                                       workorder.type === '质量检查' ? 'quality' : 'inspection'"></span>
               <span class="workorder-number">{{ workorder.number }}</span>
+              <span class="emergency-badge" v-if="workorder.extension_fields && workorder.extension_fields.is_emergency">⚡ 紧急</span>
             </div>
             <span class="workorder-status" :class="workorder.displayStatus">{{ workorder.statusText }}</span>
           </div>
@@ -128,7 +129,10 @@
             <div class="overview-number">{{ selectedWorkorder.number }}</div>
             <div class="overview-status" :class="selectedWorkorder.displayStatus">{{ selectedWorkorder.statusText }}</div>
           </div>
-          <div class="overview-type">{{ selectedWorkorder.type }}</div>
+          <div class="overview-type">
+            {{ selectedWorkorder.type }}
+            <span class="emergency-badge" v-if="selectedWorkorder.extension_fields && selectedWorkorder.extension_fields.is_emergency">⚡ 紧急</span>
+          </div>
           <div class="overview-progress">
             <div class="progress-bar">
               <div
@@ -777,6 +781,31 @@ export default {
 </script>
 
 <style scoped>
+/* 紧急工单标记样式 */
+.emergency-badge {
+  display: inline-block;
+  background-color: #ff4d4f;
+  color: white;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .my-workorders {
   display: flex;
   flex-direction: column;

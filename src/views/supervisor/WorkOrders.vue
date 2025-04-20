@@ -21,27 +21,37 @@
         </div>
       </div>
 
-      <!-- 工单筛选区 -->
-      <div class="filter-bar">
-        <select v-model="filterType" class="filter-select">
-          <option value="all">全部工单</option>
-          <option value="设备维护">设备维护</option>
-          <option value="产线巡检">产线巡检</option>
-          <option value="排班任务">排班任务</option>
-        </select>
-        <select v-model="filterStatus" class="filter-select">
-          <option value="all">全部状态</option>
-          <option value="未接受">未接受</option>
-          <option value="进行中">进行中</option>
-          <option value="已完成">已完成</option>
-          <option value="已取消">已取消</option>
-        </select>
-        <input
-          type="text"
-          v-model="searchKeyword"
-          class="search-input"
-          placeholder="搜索工单编号/提交人"
-        >
+      <!-- 工单筛选区和操作区 -->
+      <div class="filter-action-bar">
+        <div class="filter-bar">
+          <select v-model="filterType" class="filter-select">
+            <option value="all">全部工单</option>
+            <option value="设备维护">设备维护</option>
+            <option value="产线巡检">产线巡检</option>
+            <option value="排班任务">排班任务</option>
+          </select>
+          <select v-model="filterStatus" class="filter-select">
+            <option value="all">全部状态</option>
+            <option value="未接受">未接受</option>
+            <option value="进行中">进行中</option>
+            <option value="已完成">已完成</option>
+            <option value="已取消">已取消</option>
+          </select>
+          <input
+            type="text"
+            v-model="searchKeyword"
+            class="search-input"
+            placeholder="搜索工单编号/提交人"
+          >
+        </div>
+        <div class="action-buttons">
+          <button class="create-btn" @click="showCreateWorkOrderModal = true">
+            <i class="plus-icon">+</i> 创建工单
+          </button>
+          <button class="emergency-btn" @click="showEmergencyWorkOrderModal = true">
+            <i class="emergency-icon">⚡</i> 发放紧急工单
+          </button>
+        </div>
       </div>
 
       <!-- 加载状态 -->
@@ -63,7 +73,10 @@
             <span :class="['workorder-status', item.status]">{{ item.status }}</span>
           </div>
           <div class="workorder-content">
-            <h3>{{ item.title }}</h3>
+            <h3>
+              <span class="emergency-badge" v-if="item.extension_fields && item.extension_fields.is_emergency">⚡ 紧急</span>
+              {{ item.title }}
+            </h3>
             <p class="description">{{ item.description }}</p>
             <div class="workorder-info">
               <span>类型：{{ item.typeText }}</span>
@@ -117,6 +130,12 @@
           <div class="detail-item">
             <label>任务类型</label>
             <div class="value">{{ selectedWorkOrder.typeText }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkOrder.extension_fields && selectedWorkOrder.extension_fields.is_emergency">
+            <label>紧急工单</label>
+            <div class="value">
+              <span class="emergency-badge">⚡ 紧急</span>
+            </div>
           </div>
           <div class="detail-item">
             <label>任务描述</label>
@@ -184,6 +203,181 @@
         </div>
       </div>
     </div>
+
+    <!-- 创建工单模态框 -->
+    <div class="modal" v-if="showCreateWorkOrderModal" @click.self="closeCreateModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>创建工单</h2>
+          <button class="close-btn" @click="closeCreateModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>工单类型</label>
+            <select v-model="newWorkOrder.task_type" class="form-control">
+              <option value="设备维护">设备维护</option>
+              <option value="产线巡检">产线巡检</option>
+              <option value="排班任务">排班任务</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>任务描述</label>
+            <textarea v-model="newWorkOrder.task_details" class="form-control" rows="4" placeholder="请输入工单的详细描述"></textarea>
+          </div>
+          <div class="form-group">
+            <label>产线信息</label>
+            <select v-model="newWorkOrder.production_line" class="form-control" required>
+              <option value="">请选择产线</option>
+              <option v-for="line in productionLines" :key="line.id" :value="line.id">
+                {{ line.name }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>负责工长</label>
+            <select v-model="newWorkOrder.foreman" class="form-control" required @change="handleForemanChange">
+              <option value="">请选择工长</option>
+              <option v-for="foreman in foremen" :key="foreman.id" :value="foreman.id">
+                {{ foreman.name }} ({{ foreman.id }})
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>负责班组</label>
+            <select v-model="newWorkOrder.team" class="form-control" required>
+              <option value="">请选择班组</option>
+              <option v-for="team in teams" :key="team.id" :value="team.id">
+                {{ team.name }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>开始时间</label>
+            <input type="datetime-local" v-model="newWorkOrder.start_time" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>截止时间</label>
+            <input type="datetime-local" v-model="newWorkOrder.deadline" class="form-control">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="closeCreateModal">取消</button>
+          <button class="submit-btn" @click="createWorkOrder" :disabled="isSubmitting">
+            {{ isSubmitting ? '提交中...' : '创建工单' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 紧急工单模态框 -->
+    <div class="modal" v-if="showEmergencyWorkOrderModal" @click.self="closeEmergencyModal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>发放紧急工单</h2>
+          <button class="close-btn" @click="closeEmergencyModal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>工单类型</label>
+            <select v-model="emergencyWorkOrder.task_type" class="form-control">
+              <option value="schedule">排班任务</option>
+              <option value="maintenance">设备维护</option>
+              <option value="inspection">产线巡检</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>任务描述</label>
+            <textarea v-model="emergencyWorkOrder.task_details" class="form-control" rows="4" placeholder="请输入紧急工单的详细描述"></textarea>
+          </div>
+          <div class="form-group">
+            <label>开始时间</label>
+            <input type="datetime-local" v-model="emergencyWorkOrder.start_time" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>截止时间</label>
+            <input type="datetime-local" v-model="emergencyWorkOrder.deadline" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>产线信息</label>
+            <select v-model="emergencyWorkOrder.production_line" class="form-control" required :disabled="!emergencyWorkOrder.foreman || dataLoading.productionLines">
+              <option value="">请选择产线</option>
+              <option v-for="line in getFilteredProductionLines()" :key="line.id" :value="line.id">
+                {{ line.name }}
+              </option>
+            </select>
+            <div v-if="dataLoading.productionLines" class="loading-hint">加载产线数据中...</div>
+          </div>
+          <div class="form-group">
+            <label>负责工长</label>
+            <select v-model="emergencyWorkOrder.foreman" class="form-control" required @change="handleEmergencyForemanChange">
+              <option value="">请选择工长</option>
+              <option v-for="foreman in foremen" :key="foreman.id" :value="foreman.id">
+                {{ foreman.name }} ({{ foreman.id }})
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>负责班组</label>
+            <select v-model="emergencyWorkOrder.team" class="form-control" required>
+              <option value="">请选择班组</option>
+              <option v-for="team in teams" :key="team.id" :value="team.id">
+                {{ team.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>负责组员</label>
+            <select v-model="emergencyWorkOrder.team_members" class="form-control" required :disabled="!emergencyWorkOrder.team || dataLoading.teamMembers">
+              <option value="">请选择组员</option>
+              <option v-for="member in getTeamMembers()" :key="member.id" :value="member.id">
+                {{ member.name }} ({{ member.id }}) - {{ member.skillLevel }}
+              </option>
+            </select>
+            <div v-if="dataLoading.teamMembers" class="loading-hint">加载组员数据中...</div>
+          </div>
+
+          <!-- 根据任务类型显示不同的扩展字段 -->
+          <!-- 排班任务的字段 -->
+          <div v-if="emergencyWorkOrder.task_type === 'schedule'" class="extension-fields">
+            <div class="form-group">
+              <label>设备选择</label>
+              <select v-model="emergencyWorkOrder.extension_fields.device_id" class="form-control" :disabled="!emergencyWorkOrder.production_line">
+                <option value="">请选择设备</option>
+                <option v-for="device in getFilteredEquipments()" :key="device.id" :value="device.id">
+                  {{ device.name }}
+                </option>
+              </select>
+              <div v-if="emergencyWorkOrder.production_line && getFilteredEquipments().length === 0" class="loading-hint">没有可用的设备</div>
+            </div>
+          </div>
+
+          <!-- 设备维护的字段 -->
+          <div v-if="emergencyWorkOrder.task_type === 'maintenance'" class="extension-fields">
+            <div class="form-group">
+              <label>设备选择</label>
+              <select v-model="emergencyWorkOrder.extension_fields.device_id" class="form-control" :disabled="!emergencyWorkOrder.production_line">
+                <option value="">请选择设备</option>
+                <option v-for="device in getFilteredEquipments()" :key="device.id" :value="device.id">
+                  {{ device.name }}
+                </option>
+              </select>
+              <div v-if="emergencyWorkOrder.production_line && getFilteredEquipments().length === 0" class="loading-hint">没有可用的设备</div>
+            </div>
+            <div class="form-group">
+              <label>发现时间</label>
+              <input type="datetime-local" v-model="emergencyWorkOrder.extension_fields.discovery_time" class="form-control">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="closeEmergencyModal">取消</button>
+          <button class="submit-btn" @click="createEmergencyWorkOrder" :disabled="isSubmitting">
+            {{ isSubmitting ? '提交中...' : '发放紧急工单' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -207,7 +401,55 @@ export default {
       selectedWorkOrder: null,
       detailLoading: false,
       // 用户名缓存
-      usernameCache: {}
+      usernameCache: {},
+      // 产线列表
+      productionLines: [],
+      // 工长列表
+      foremen: [],
+      // 班组列表
+      teams: [],
+      // 数据加载状态
+      dataLoading: {
+        productionLines: false,
+        foremen: false,
+        teams: false,
+        teamMembers: false
+      },
+      // 工长负责的产线和设备
+      foremanLines: {},
+      foremanEquipments: {},
+      // 工长的组员
+      teamMembers: {},
+      // 常规工单相关
+      showCreateWorkOrderModal: false,
+      newWorkOrder: {
+        task_type: '设备维护',
+        task_details: '',
+        production_line: '',
+        foreman: '',
+        team: '',
+        start_time: '',
+        deadline: '',
+        extension_fields: {}
+      },
+      // 紧急工单相关
+      showEmergencyWorkOrderModal: false,
+      isSubmitting: false,
+      emergencyWorkOrder: {
+        task_type: 'maintenance', // 默认选择设备维护
+        task_details: '',
+        start_time: '',
+        deadline: '',
+        production_line: '',
+        foreman: '',
+        team: '',
+        team_members: '',
+        extension_fields: {
+          is_emergency: true,
+          device_id: '',
+          discovery_time: ''
+        }
+      }
     }
   },
   created() {
@@ -217,6 +459,44 @@ export default {
   mounted() {
     // 获取用户名缓存
     this.fetchUsernames();
+    // 获取产线、工长和班组数据
+    this.fetchProductionLines();
+    this.fetchForemen();
+    this.fetchTeams();
+    // 初始化工单表单
+    this.initWorkOrderForms();
+  },
+
+  watch: {
+    // 监听紧急工单任务类型变化，动态更新扩展字段
+    'emergencyWorkOrder.task_type': function(newType) {
+      // 根据任务类型初始化不同的扩展字段
+      if (newType === 'schedule') {
+        this.emergencyWorkOrder.extension_fields = {
+          is_emergency: true,
+          device_id: ''
+        };
+      } else if (newType === 'maintenance') {
+        const now = new Date();
+        this.emergencyWorkOrder.extension_fields = {
+          is_emergency: true,
+          device_id: '',
+          discovery_time: now.toISOString().slice(0, 16) // 格式化为日期时间输入框支持的格式
+        };
+      } else if (newType === 'inspection') {
+        this.emergencyWorkOrder.extension_fields = {
+          is_emergency: true
+        };
+      }
+    },
+
+    // 监听产线选择变化，重置设备选择
+    'emergencyWorkOrder.production_line': function() {
+      // 重置设备选择
+      if (this.emergencyWorkOrder.extension_fields) {
+        this.emergencyWorkOrder.extension_fields.device_id = '';
+      }
+    }
   },
   methods: {
     // 获取所有工单
@@ -622,6 +902,730 @@ export default {
       }
 
       return value;
+    },
+
+    // 获取产线列表
+    async fetchProductionLines() {
+      try {
+        this.dataLoading.productionLines = true;
+        const response = await fetch('/api/production_line/list', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取产线列表失败: ${response.status}`);
+        }
+
+        // 尝试解析响应内容
+        let responseText;
+        try {
+          responseText = await response.text();
+
+          // 检查是否是HTML响应
+          if (responseText.trim().startsWith('<!doctype') || responseText.trim().startsWith('<html')) {
+            console.error('服务器返回了HTML而不是JSON，可能是认证问题');
+            // 使用默认产线数据
+            this.productionLines = [
+              { id: '1', name: '一号产线' },
+              { id: '2', name: '二号产线' },
+              { id: '3', name: '三号产线' }
+            ];
+            return;
+          }
+
+          const result = JSON.parse(responseText);
+
+          if (result.success && Array.isArray(result.data)) {
+            this.productionLines = result.data.map(line => ({
+              id: line.id,
+              name: line.line_name || `产线 ${line.id}`
+            }));
+          } else {
+            console.error('获取产线列表失败:', result.error || '未知错误');
+            // 使用默认产线数据
+            this.productionLines = [
+              { id: '1', name: '一号产线' },
+              { id: '2', name: '二号产线' },
+              { id: '3', name: '三号产线' }
+            ];
+          }
+        } catch (parseError) {
+          console.error('解析产线列表响应失败:', parseError);
+          console.error('响应内容:', responseText);
+          // 使用默认产线数据
+          this.productionLines = [
+            { id: '1', name: '一号产线' },
+            { id: '2', name: '二号产线' },
+            { id: '3', name: '三号产线' }
+          ];
+        }
+      } catch (error) {
+        console.error('获取产线列表出错:', error);
+        // 使用默认产线数据
+        this.productionLines = [
+          { id: '1', name: '一号产线' },
+          { id: '2', name: '二号产线' },
+          { id: '3', name: '三号产线' }
+        ];
+      } finally {
+        this.dataLoading.productionLines = false;
+      }
+    },
+
+    // 获取工长列表
+    async fetchForemen() {
+      try {
+        this.dataLoading.foremen = true;
+        const response = await fetch('/api/users/foremen', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取工长列表失败: ${response.status}`);
+        }
+
+        // 尝试解析响应内容
+        let responseText;
+        try {
+          responseText = await response.text();
+
+          // 检查是否是HTML响应
+          if (responseText.trim().startsWith('<!doctype') || responseText.trim().startsWith('<html')) {
+            console.error('服务器返回了HTML而不是JSON，可能是认证问题');
+            // 使用默认工长数据
+            this.foremen = [
+              { id: '1001', name: '张工长', group_id: '1' },
+              { id: '1002', name: '李工长', group_id: '2' },
+              { id: '1003', name: '王工长', group_id: '3' }
+            ];
+            return;
+          }
+
+          const result = JSON.parse(responseText);
+
+          if (result.success && Array.isArray(result.data)) {
+            this.foremen = result.data.map(foreman => ({
+              id: foreman.id, // employee_id
+              name: foreman.name,
+              group_id: foreman.group_id
+            }));
+          } else {
+            console.error('获取工长列表失败:', result.error || '未知错误');
+            // 使用默认工长数据
+            this.foremen = [
+              { id: '1001', name: '张工长', group_id: '1' },
+              { id: '1002', name: '李工长', group_id: '2' },
+              { id: '1003', name: '王工长', group_id: '3' }
+            ];
+          }
+        } catch (parseError) {
+          console.error('解析工长列表响应失败:', parseError);
+          console.error('响应内容:', responseText);
+          // 使用默认工长数据
+          this.foremen = [
+            { id: '1001', name: '张工长', group_id: '1' },
+            { id: '1002', name: '李工长', group_id: '2' },
+            { id: '1003', name: '王工长', group_id: '3' }
+          ];
+        }
+      } catch (error) {
+        console.error('获取工长列表出错:', error);
+        // 使用默认工长数据
+        this.foremen = [
+          { id: '1001', name: '张工长', group_id: '1' },
+          { id: '1002', name: '李工长', group_id: '2' },
+          { id: '1003', name: '王工长', group_id: '3' }
+        ];
+      } finally {
+        this.dataLoading.foremen = false;
+      }
+    },
+
+    // 获取班组列表
+    async fetchTeams() {
+      try {
+        this.dataLoading.teams = true;
+
+        // 从工长列表中提取班组信息
+        if (this.foremen.length === 0) {
+          await this.fetchForemen();
+        }
+
+        // 如果工长列表仍然为空，使用默认班组数据
+        if (this.foremen.length === 0) {
+          this.teams = [
+            { id: '1', name: '一班' },
+            { id: '2', name: '二班' },
+            { id: '3', name: '三班' }
+          ];
+          return;
+        }
+
+        // 从工长列表中提取唯一的班组编号
+        const uniqueTeams = new Set();
+        this.foremen.forEach(foreman => {
+          if (foreman.group_id) {
+            uniqueTeams.add(foreman.group_id);
+          }
+        });
+
+        // 如果没有提取到班组编号，使用默认班组数据
+        if (uniqueTeams.size === 0) {
+          this.teams = [
+            { id: '1', name: '一班' },
+            { id: '2', name: '二班' },
+            { id: '3', name: '三班' }
+          ];
+          return;
+        }
+
+        // 将班组编号转换为班组对象
+        this.teams = Array.from(uniqueTeams).map(groupId => ({
+          id: groupId,
+          name: `班组 ${groupId}`
+        }));
+      } catch (error) {
+        console.error('获取班组列表出错:', error);
+        // 使用默认班组数据
+        this.teams = [
+          { id: '1', name: '一班' },
+          { id: '2', name: '二班' },
+          { id: '3', name: '三班' }
+        ];
+      } finally {
+        this.dataLoading.teams = false;
+      }
+    },
+
+    // 初始化工单表单
+    initWorkOrderForms() {
+      this.initNewWorkOrder();
+      this.initEmergencyWorkOrder();
+    },
+
+    // 处理常规工单工长选择变更
+    handleForemanChange() {
+      // 如果选择了工长，自动填充对应的班组
+      if (this.newWorkOrder.foreman) {
+        const selectedForeman = this.foremen.find(f => f.id === this.newWorkOrder.foreman);
+        if (selectedForeman && selectedForeman.group_id) {
+          this.newWorkOrder.team = selectedForeman.group_id;
+        }
+      }
+    },
+
+    // 处理紧急工单工长选择变更
+    async handleEmergencyForemanChange() {
+      // 重置相关字段
+      this.emergencyWorkOrder.team = '';
+      this.emergencyWorkOrder.production_line = '';
+      this.emergencyWorkOrder.extension_fields.device_id = '';
+      this.emergencyWorkOrder.team_members = '';
+
+      // 如果选择了工长，自动填充对应的班组
+      if (this.emergencyWorkOrder.foreman) {
+        try {
+          // 显示加载状态
+          this.isSubmitting = true;
+
+          const selectedForeman = this.foremen.find(f => f.id === this.emergencyWorkOrder.foreman);
+          if (selectedForeman && selectedForeman.group_id) {
+            this.emergencyWorkOrder.team = selectedForeman.group_id;
+
+            // 并行获取数据
+            await Promise.all([
+              // 获取工长负责的产线和设备
+              this.fetchForemanLines(this.emergencyWorkOrder.foreman),
+
+              // 获取工长的组员
+              this.fetchTeamMembers(selectedForeman.group_id)
+            ]);
+          }
+        } catch (error) {
+          console.error('获取工长相关数据失败:', error);
+          Message.error('获取工长相关数据失败');
+        } finally {
+          this.isSubmitting = false;
+        }
+      }
+    },
+
+    // 获取工长负责的产线
+    async fetchForemanLines(foremanId) {
+      if (!foremanId) return;
+
+      // 如果已经获取过该工长的产线数据，直接返回
+      if (this.foremanLines[foremanId]) {
+        console.log(`使用缓存的工长产线数据: ${foremanId}`);
+        return;
+      }
+
+      try {
+        console.log(`获取工长 ${foremanId} 的产线数据`);
+
+        // 从后端获取工长负责的产线
+        const response = await fetch(`/api/foreman/assigned-lines?employee_id=${foremanId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取工长产线失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && Array.isArray(result.data)) {
+          // 存储工长负责的产线
+          this.foremanLines[foremanId] = result.data.map(line => ({
+            id: line.id,
+            name: line.line_name || `产线 ${line.id}`
+          }));
+
+          // 获取这些产线上的设备
+          await this.fetchEquipmentsByForeman(foremanId);
+        } else {
+          console.error('获取工长产线列表失败:', result.error || '未知错误');
+          Message.error('获取工长产线列表失败');
+          this.foremanLines[foremanId] = [];
+        }
+      } catch (error) {
+        console.error(`获取工长 ${foremanId} 的产线数据失败:`, error);
+        Message.error('获取工长产线数据失败');
+
+        // 使用空数组作为默认值
+        this.foremanLines[foremanId] = [];
+        this.foremanEquipments[foremanId] = {};
+      }
+    },
+
+    // 获取工长负责的设备
+    async fetchEquipmentsByForeman(foremanId) {
+      if (!foremanId || !this.foremanLines[foremanId] || this.foremanLines[foremanId].length === 0) {
+        this.foremanEquipments[foremanId] = {};
+        return;
+      }
+
+      try {
+        console.log(`获取工长 ${foremanId} 的设备数据`);
+
+        // 初始化设备对象
+        this.foremanEquipments[foremanId] = {};
+
+        // 遍历工长负责的每一条产线，获取设备
+        for (const line of this.foremanLines[foremanId]) {
+          const response = await fetch(`/api/equipment/list?line_id=${line.id}`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`获取产线设备失败: ${response.status}`);
+          }
+
+          const result = await response.json();
+
+          if (result.success && Array.isArray(result.data)) {
+            // 将设备添加到工长的设备列表中
+            result.data.forEach(equipment => {
+              this.foremanEquipments[foremanId][equipment.id] = {
+                id: equipment.id,
+                name: equipment.equipment_name || `设备 ${equipment.id}`,
+                code: equipment.equipment_code,
+                line_id: line.id
+              };
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`获取工长 ${foremanId} 的设备数据失败:`, error);
+        Message.error('获取工长设备数据失败');
+        this.foremanEquipments[foremanId] = {};
+      }
+    },
+
+    // 获取班组成员
+    async fetchTeamMembers(groupId) {
+      if (!groupId) return;
+
+      // 如果已经获取过该班组的成员数据，直接返回
+      if (this.teamMembers[groupId]) {
+        console.log(`使用缓存的班组成员数据: ${groupId}`);
+        return;
+      }
+
+      try {
+        this.dataLoading.teamMembers = true;
+        console.log(`获取班组 ${groupId} 的成员数据`);
+
+        // 从后端获取班组成员
+        const response = await fetch(`/api/foreman/team-members?group_id=${groupId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`获取班组成员失败: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success && Array.isArray(result.data)) {
+          // 存储班组成员
+          this.teamMembers[groupId] = result.data.map(member => ({
+            id: member.id, // 工号
+            name: member.name,
+            skillLevel: member.skillLevel || '普通'
+          }));
+        } else {
+          console.error('获取班组成员列表失败:', result.error || '未知错误');
+          Message.error('获取班组成员列表失败');
+          this.teamMembers[groupId] = [];
+        }
+      } catch (error) {
+        console.error(`获取班组 ${groupId} 的成员数据失败:`, error);
+        Message.error('获取班组成员数据失败');
+
+        // 使用空数组作为默认值
+        this.teamMembers[groupId] = [];
+      } finally {
+        this.dataLoading.teamMembers = false;
+      }
+    },
+
+    // 初始化常规工单表单
+    initNewWorkOrder() {
+      // 设置默认开始时间为当前时间
+      const now = new Date();
+      const start_time = now.toISOString().slice(0, 16); // 格式化为本地时间格式
+
+      // 设置默认截止时间为当前时间+24小时
+      const deadline = new Date();
+      deadline.setHours(deadline.getHours() + 24);
+      const deadlineStr = deadline.toISOString().slice(0, 16);
+
+      this.newWorkOrder = {
+        task_type: '设备维护',
+        task_details: '',
+        production_line: '',
+        foreman: '',
+        team: '',
+        start_time: start_time,
+        deadline: deadlineStr,
+        extension_fields: {}
+      };
+    },
+
+    // 获取过滤后的产线列表
+    getFilteredProductionLines() {
+      if (!this.emergencyWorkOrder.foreman) {
+        return this.productionLines;
+      }
+      return this.currentForemanLines;
+    },
+
+    // 获取过滤后的设备列表
+    getFilteredEquipments() {
+      if (!this.emergencyWorkOrder.foreman) {
+        return [];
+      }
+
+      const equipments = this.currentForemanEquipments;
+      if (!this.emergencyWorkOrder.production_line) {
+        // 如果没有选择产线，返回所有设备
+        return Object.values(equipments);
+      }
+
+      // 过滤出当前产线的设备
+      return Object.values(equipments).filter(device =>
+        device.line_id === this.emergencyWorkOrder.production_line
+      );
+    },
+
+    // 获取班组成员
+    getTeamMembers() {
+      if (!this.emergencyWorkOrder.team) {
+        return [];
+      }
+      return this.currentTeamMembers;
+    },
+
+    // 初始化紧急工单表单
+    initEmergencyWorkOrder() {
+      // 设置默认开始时间为当前时间
+      const now = new Date();
+      const start_time = now.toISOString().slice(0, 16); // 格式化为本地时间格式
+
+      // 设置默认截止时间为当前时间+2小时
+      const deadline = new Date();
+      deadline.setHours(deadline.getHours() + 2);
+      const deadlineStr = deadline.toISOString().slice(0, 16);
+
+      // 设置默认发现时间为当前时间
+      const discoveryTime = now.toISOString().slice(0, 16);
+
+      this.emergencyWorkOrder = {
+        task_type: 'maintenance', // 默认选择设备维护
+        task_details: '',
+        start_time: start_time,
+        deadline: deadlineStr,
+        production_line: '',
+        foreman: '',
+        team: '',
+        team_members: '',
+        extension_fields: {
+          is_emergency: true,
+          device_id: '',
+          discovery_time: discoveryTime
+        }
+      };
+    },
+
+    // 关闭常规工单模态框
+    closeCreateModal() {
+      this.showCreateWorkOrderModal = false;
+      this.initNewWorkOrder();
+    },
+
+    // 关闭紧急工单模态框
+    closeEmergencyModal() {
+      this.showEmergencyWorkOrderModal = false;
+      this.initEmergencyWorkOrder();
+    },
+
+    // 创建紧急工单
+    // 创建常规工单
+    async createWorkOrder() {
+      // 验证表单
+      if (!this.newWorkOrder.task_details) {
+        Message.error('请输入任务描述');
+        return;
+      }
+      if (!this.newWorkOrder.production_line) {
+        Message.error('请输入产线信息');
+        return;
+      }
+      if (!this.newWorkOrder.foreman) {
+        Message.error('请输入负责工长工号');
+        return;
+      }
+      if (!this.newWorkOrder.team) {
+        Message.error('请输入负责班组');
+        return;
+      }
+      if (!this.newWorkOrder.start_time) {
+        Message.error('请设置开始时间');
+        return;
+      }
+      if (!this.newWorkOrder.deadline) {
+        Message.error('请设置截止时间');
+        return;
+      }
+
+      try {
+        this.isSubmitting = true;
+
+        // 获取当前用户信息
+        const userInfoStr = localStorage.getItem('userInfo');
+        if (!userInfoStr) {
+          Message.error('无法获取当前用户信息，请重新登录');
+          return;
+        }
+
+        const userInfo = JSON.parse(userInfoStr);
+
+        // 准备工单数据
+        const workorderData = {
+          task_type: this.newWorkOrder.task_type,
+          task_details: this.newWorkOrder.task_details,
+          start_time: new Date(this.newWorkOrder.start_time).toISOString(),
+          deadline: new Date(this.newWorkOrder.deadline).toISOString(),
+          creator: userInfo.employee_id,  // 使用当前用户的工号
+          foreman: this.newWorkOrder.foreman,
+          team: this.newWorkOrder.team,
+          production_line: this.newWorkOrder.production_line,
+          status: '未接受',
+          extension_fields: this.newWorkOrder.extension_fields || {}
+        };
+
+        // 发送请求创建工单
+        const response = await fetch('/api/workorders/create-workorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(workorderData)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+          Message.success('工单创建成功');
+          this.closeCreateModal();
+          // 重新获取工单列表
+          this.fetchAllWorkorders();
+        } else {
+          throw new Error(result.error || '创建工单失败');
+        }
+      } catch (error) {
+        console.error('创建工单出错:', error);
+        Message.error(error.message || '创建工单失败');
+      } finally {
+        this.isSubmitting = false;
+      }
+    },
+
+    // 创建紧急工单
+    async createEmergencyWorkOrder() {
+      try {
+        // 验证表单
+        if (!this.emergencyWorkOrder.task_type) {
+          Message.warning('请选择任务类型');
+          return;
+        }
+        if (!this.emergencyWorkOrder.task_details) {
+          Message.warning('请输入任务描述');
+          return;
+        }
+        if (!this.emergencyWorkOrder.start_time) {
+          Message.warning('请选择开始时间');
+          return;
+        }
+        if (!this.emergencyWorkOrder.deadline) {
+          Message.warning('请选择截止时间');
+          return;
+        }
+        if (!this.emergencyWorkOrder.production_line) {
+          Message.warning('请选择产线');
+          return;
+        }
+        if (!this.emergencyWorkOrder.foreman) {
+          Message.warning('请选择负责工长');
+          return;
+        }
+        if (!this.emergencyWorkOrder.team) {
+          Message.warning('请选择负责班组');
+          return;
+        }
+
+        // 根据任务类型验证特定字段
+        if (this.emergencyWorkOrder.task_type === 'maintenance') {
+          if (!this.emergencyWorkOrder.extension_fields.device_id) {
+            Message.warning('请选择设备');
+            return;
+          }
+          if (!this.emergencyWorkOrder.extension_fields.discovery_time) {
+            Message.warning('请选择发现时间');
+            return;
+          }
+        } else if (this.emergencyWorkOrder.task_type === 'schedule') {
+          if (!this.emergencyWorkOrder.extension_fields.device_id) {
+            Message.warning('请选择设备');
+            return;
+          }
+        }
+
+        this.isSubmitting = true;
+
+        // 获取当前用户信息
+        const userInfoStr = localStorage.getItem('userInfo');
+        if (!userInfoStr) {
+          Message.error('无法获取当前用户信息，请重新登录');
+          return;
+        }
+
+        const userInfo = JSON.parse(userInfoStr);
+
+        // 验证负责组员
+        if (!this.emergencyWorkOrder.team_members) {
+          Message.warning('请选择负责组员');
+          return;
+        }
+
+        // 准备工单数据
+        const workorderData = {
+          task_type: this.getTypeText(this.emergencyWorkOrder.task_type), // 存储中文任务类型
+          task_details: `[紧急] ${this.emergencyWorkOrder.task_details}`,
+          start_time: new Date(this.emergencyWorkOrder.start_time).toISOString(),
+          deadline: new Date(this.emergencyWorkOrder.deadline).toISOString(),
+          creator: userInfo.employee_id,  // 使用当前用户的工号
+          foreman: this.emergencyWorkOrder.foreman,
+          team: this.emergencyWorkOrder.team,
+          team_members: this.emergencyWorkOrder.team_members,
+          production_line: this.emergencyWorkOrder.production_line,
+          status: '未接受',
+          extension_fields: {
+            is_emergency: true
+          }
+        };
+
+        // 根据任务类型设置扩展字段
+        if (this.emergencyWorkOrder.task_type === 'maintenance') {
+          // 设备维护类型
+          workorderData.extension_fields = {
+            ...workorderData.extension_fields,
+            device_id: this.emergencyWorkOrder.extension_fields.device_id || '',
+            device_name: this.emergencyWorkOrder.extension_fields.device_id || '',  // 存储设备名称
+            device_info: this.emergencyWorkOrder.extension_fields.device_id || '', // 存储完整设备信息
+            discovery_time: new Date(this.emergencyWorkOrder.extension_fields.discovery_time).toISOString()
+          };
+        } else if (this.emergencyWorkOrder.task_type === 'inspection') {
+          // 产线巡检类型
+          workorderData.extension_fields = {
+            ...workorderData.extension_fields
+          };
+        } else if (this.emergencyWorkOrder.task_type === 'schedule') {
+          // 排班任务类型
+          workorderData.extension_fields = {
+            ...workorderData.extension_fields,
+            device_id: this.emergencyWorkOrder.extension_fields.device_id || '',
+            device_name: this.emergencyWorkOrder.extension_fields.device_id || '',  // 存储设备名称
+            device_info: this.emergencyWorkOrder.extension_fields.device_id || '' // 存储完整设备信息
+          };
+        }
+
+        // 发送请求创建工单
+        const response = await fetch('/api/workorders/create-workorder', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(workorderData)
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+          Message.success('紧急工单发放成功');
+          this.closeEmergencyModal();
+          // 重新获取工单列表
+          this.fetchAllWorkorders();
+        } else {
+          throw new Error(result.error || '创建工单失败');
+        }
+      } catch (error) {
+        console.error('创建紧急工单出错:', error);
+        Message.error(error.message || '创建紧急工单失败');
+      } finally {
+        this.isSubmitting = false;
+      }
     }
   },
   computed: {
@@ -633,6 +1637,30 @@ export default {
     },
     completedCount() {
       return this.workorders.filter(w => w.status === 'completed' || w.status === '已完成').length
+    },
+
+    // 获取当前选中工长的产线
+    currentForemanLines() {
+      if (!this.emergencyWorkOrder.foreman) {
+        return this.productionLines;
+      }
+      return this.foremanLines[this.emergencyWorkOrder.foreman] || this.productionLines;
+    },
+
+    // 获取当前选中工长的设备
+    currentForemanEquipments() {
+      if (!this.emergencyWorkOrder.foreman) {
+        return [];
+      }
+      return this.foremanEquipments[this.emergencyWorkOrder.foreman] || {};
+    },
+
+    // 获取当前选中班组的成员
+    currentTeamMembers() {
+      if (!this.emergencyWorkOrder.team) {
+        return [];
+      }
+      return this.teamMembers[this.emergencyWorkOrder.team] || [];
     },
     filteredWorkorders() {
       return this.workorders.filter(w => {
@@ -722,10 +1750,66 @@ export default {
 .count.processing { color: #2196F3; }
 .count.completed { color: #4CAF50; }
 
+.filter-action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
 .filter-bar {
   display: flex;
   gap: 10px;
-  margin-bottom: 15px;
+  flex: 1;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.create-btn {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.3s;
+}
+
+.create-btn:hover {
+  background-color: #0b7dda;
+}
+
+.plus-icon {
+  font-size: 16px;
+}
+
+.emergency-btn {
+  background-color: #ff3d00;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.3s;
+}
+
+.emergency-btn:hover {
+  background-color: #dd2c00;
+}
+
+.emergency-icon {
+  font-size: 16px;
 }
 
 .filter-select {
@@ -985,5 +2069,97 @@ export default {
   margin-bottom: 15px;
   color: #333;
   font-size: 18px;
+}
+
+/* 紧急工单样式 */
+.emergency-badge {
+  display: inline-block;
+  background-color: #ff3d00;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-right: 8px;
+  font-weight: bold;
+  vertical-align: middle;
+}
+
+
+
+/* 表单样式 */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #333;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 15px 20px;
+  border-top: 1px solid #eee;
+  gap: 10px;
+}
+
+.cancel-btn {
+  padding: 8px 16px;
+  background-color: #f5f5f5;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.submit-btn {
+  padding: 8px 16px;
+  background-color: #2196F3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.submit-btn:hover {
+  background-color: #0b7dda;
+}
+
+.submit-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* 扩展字段样式 */
+.extension-fields {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  border-left: 3px solid #2196F3;
+}
+
+/* 加载提示样式 */
+.loading-hint {
+  font-size: 12px;
+  color: #999;
+  margin-top: 5px;
+  font-style: italic;
 }
 </style>

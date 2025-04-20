@@ -17,10 +17,6 @@
               <span class="label">在岗率</span>
               <span class="value">{{ role.activeRate }}%</span>
             </div>
-            <div class="stat-item">
-              <span class="label">任务完成率</span>
-              <span class="value">{{ role.completion }}%</span>
-            </div>
           </div>
         </div>
       </div>
@@ -439,11 +435,11 @@ export default {
       name: userInfo.username
     };
 
-    // 获取角色数据
-    await this.fetchRoles();
-
     // 组件创建时获取用户列表
     await this.fetchEmployees();
+
+    // 获取角色数据
+    await this.fetchRoles();
 
     // 获取已处理的请假记录
     await this.fetchProcessedLeaveRequests();
@@ -512,82 +508,80 @@ export default {
     // 获取角色数据
     async fetchRoles() {
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/roles/stats', {
-          credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${token}`
+        // 初始化角色数据结构
+        const roleStats = {
+          'supervisor': {
+            id: 'supervisor',
+            name: '厂长',
+            memberCount: 0,
+            activeRate: 0
+          },
+          'foreman': {
+            id: 'foreman',
+            name: '工长',
+            memberCount: 0,
+            activeRate: 0
+          },
+          'member': {
+            id: 'member',
+            name: '产线工人',
+            memberCount: 0,
+            activeRate: 0
+          },
+          'safety_officer': {
+            id: 'safety_officer',
+            name: '安全员',
+            memberCount: 0,
+            activeRate: 0
+          }
+        };
+
+        // 计算每个角色的成员数量
+        this.employees.forEach(emp => {
+          if (emp.role && roleStats[emp.role]) {
+            roleStats[emp.role].memberCount++;
           }
         });
-        const data = await response.json();
 
-        if (data.success && Array.isArray(data.data)) {
-          this.roles = data.data;
-        } else {
-          console.error('获取角色数据失败:', data.error || '未知错误');
-          // 使用默认角色数据
-          this.roles = [
-            {
-              id: 'supervisor',
-              name: '厂长',
-              memberCount: 0,
-              activeRate: 0,
-              completion: 0
-            },
-            {
-              id: 'foreman',
-              name: '工长',
-              memberCount: 0,
-              activeRate: 0,
-              completion: 0
-            },
-            {
-              id: 'member',
-              name: '产线工人',
-              memberCount: 0,
-              activeRate: 0,
-              completion: 0
-            },
-            {
-              id: 'safety_officer',
-              name: '安全员',
-              memberCount: 0,
-              activeRate: 0,
-              completion: 0
-            }
-          ];
-        }
+        // 计算每个角色的在岗率
+        Object.keys(roleStats).forEach(role => {
+          const roleEmployees = this.employees.filter(emp => emp.role === role);
+          if (roleEmployees.length > 0) {
+            const activeEmployees = roleEmployees.filter(emp => emp.status === '在岗');
+            roleStats[role].activeRate = Math.round((activeEmployees.length / roleEmployees.length) * 100);
+          }
+        });
+
+        // 将结果转换为数组
+        this.roles = Object.values(roleStats);
+
       } catch (error) {
-        console.error('请求角色数据出错:', error);
-        // 使用默认角色数据
+        console.error('计算角色数据出错:', error);
+        // 初始化空的角色数组
         this.roles = [
           {
             id: 'supervisor',
             name: '厂长',
             memberCount: 0,
-            activeRate: 0,
-            completion: 0
+            activeRate: 0
           },
           {
             id: 'foreman',
             name: '工长',
             memberCount: 0,
-            activeRate: 0,
-            completion: 0
+            activeRate: 0
           },
           {
             id: 'member',
             name: '产线工人',
             memberCount: 0,
-            activeRate: 0,
-            completion: 0
+            activeRate: 0
           },
           {
             id: 'safety_officer',
             name: '安全员',
             memberCount: 0,
-            activeRate: 0,
-            completion: 0
+            activeRate: 0
           }
         ];
       }
@@ -928,7 +922,7 @@ export default {
 
 .dept-stats {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(1, 1fr);
   gap: 10px;
 }
 

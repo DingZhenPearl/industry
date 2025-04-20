@@ -41,7 +41,10 @@
             <span class="task-status" :class="task.status">{{ task.statusText }}</span>
           </div>
           <div class="task-title">
-            <h3>{{ task.name }}</h3>
+            <h3>
+              {{ task.name }}
+              <span class="emergency-badge" v-if="task.original && task.original.extension_fields && getExtensionFields(task.original.extension_fields).is_emergency">⚡ 紧急</span>
+            </h3>
           </div>
           <div class="task-info">
             <p><strong>产线信息：</strong>{{ task.area }}</p>
@@ -115,7 +118,10 @@
           </div>
           <div class="detail-item">
             <label>巡检类型</label>
-            <div class="value">{{ detailTask.name }}</div>
+            <div class="value">
+              {{ detailTask.name }}
+              <span class="emergency-badge" v-if="detailTask.original && detailTask.original.extension_fields && getExtensionFields(detailTask.original.extension_fields).is_emergency">⚡ 紧急</span>
+            </div>
           </div>
           <div class="detail-item">
             <label>工单状态</label>
@@ -475,6 +481,31 @@ export default {
 </script>
 
 <style scoped>
+/* 紧急工单标记样式 */
+.emergency-badge {
+  display: inline-block;
+  background-color: #ff4d4f;
+  color: white;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .inspection {
   display: flex;
   flex-direction: column;

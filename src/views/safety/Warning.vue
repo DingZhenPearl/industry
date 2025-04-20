@@ -43,7 +43,10 @@
               <span class="workorder-status" :class="item.status">{{ item.statusText }}</span>
             </div>
             <div class="workorder-content">
-              <h3 class="workorder-title">{{ item.title }}</h3>
+              <h3 class="workorder-title">
+                {{ item.title }}
+                <span class="emergency-badge" v-if="item.original && item.original.extension_fields && getExtensionFields(item.original.extension_fields).is_emergency">⚡ 紧急</span>
+              </h3>
               <p>{{ item.description }}</p>
               <div class="workorder-meta">
                 <span>上报人：{{ item.reporter }}</span>
@@ -94,7 +97,10 @@
           </div>
           <div class="detail-item">
             <label>工单标题</label>
-            <div class="value">{{ selectedWorkorder.title }}</div>
+            <div class="value">
+              {{ selectedWorkorder.title }}
+              <span class="emergency-badge" v-if="selectedWorkorder.original && selectedWorkorder.original.extension_fields && getExtensionFields(selectedWorkorder.original.extension_fields).is_emergency">⚡ 紧急</span>
+            </div>
           </div>
           <div class="detail-item">
             <label>工单描述</label>
@@ -483,6 +489,31 @@ export default {
 </script>
 
 <style scoped>
+/* 紧急工单标记样式 */
+.emergency-badge {
+  display: inline-block;
+  background-color: #ff4d4f;
+  color: white;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
 .safety-warning {
   display: flex;
   flex-direction: column;

@@ -78,6 +78,7 @@
               <span class="workorder-number">{{ item.number }}</span>
               <span class="workorder-status" :class="item.status">{{ item.statusText }}</span>
               <span class="workorder-type">类型：{{ getTypeText(item.type || item.task_type) }}</span>
+              <span class="emergency-badge" v-if="item.extension_fields && item.extension_fields.is_emergency">⚡ 紧急</span>
             </div>
             <div class="workorder-body">
               <p class="workorder-desc">{{ item.description }}</p>
@@ -224,6 +225,7 @@
             <label>任务类型</label>
             <div class="value">
               <span class="type-tag">{{ getTypeText(selectedWorkOrder.type || selectedWorkOrder.task_type) }}</span>
+              <span class="emergency-badge" v-if="selectedWorkOrder.extension_fields && selectedWorkOrder.extension_fields.is_emergency">⚡ 紧急</span>
             </div>
           </div>
           <div class="detail-item">
@@ -1850,5 +1852,30 @@ export default {
 .empty-text {
   color: #666;
   font-size: 16px;
+}
+
+/* 紧急工单标记样式 */
+.emergency-badge {
+  display: inline-block;
+  background-color: #ff4d4f;
+  color: white;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  font-weight: bold;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 </style>
