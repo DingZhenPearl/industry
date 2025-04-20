@@ -26,9 +26,7 @@
       >
         <!-- 自定义操作按钮 -->
         <template v-slot:actions>
-          <button class="action-btn" @click="startInspection">开始巡检</button>
           <button class="action-btn" @click="viewDevices">查看设备</button>
-          <button class="action-btn" @click="viewWorkOrders">相关工单</button>
         </template>
       </production-line-detail-component>
 
@@ -589,28 +587,12 @@ export default {
       this.$router.push(`/safety-officer/equipment-detail/${device.id}`);
     },
 
-    // 开始巡检
-    startInspection() {
-      this.$router.push({
-        path: '/safety-officer/inspection',
-        query: { line: this.productionLine.id }
-      });
-    },
-
     // 查看产线所有设备
     viewDevices() {
       // 跳转到设备页面，并传递产线ID作为查询参数
       this.$router.push({
         path: '/safety-officer/monitoring',
         query: { tab: 'equipment', line: this.productionLine.id }
-      });
-    },
-
-    // 查看相关工单
-    viewWorkOrders() {
-      this.$router.push({
-        path: '/safety-officer/inspection',
-        query: { line: this.productionLine.id }
       });
     },
 

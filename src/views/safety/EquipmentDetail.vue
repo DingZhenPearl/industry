@@ -26,9 +26,7 @@
       >
         <!-- 自定义操作按钮 -->
         <template v-slot:actions>
-          <button class="action-btn" @click="startInspection">开始巡检</button>
           <button class="action-btn warning" @click="createSafetyAlert" v-if="formattedEquipment && formattedEquipment.status === 'warning'">创建预警</button>
-          <button class="action-btn" @click="viewSafetyRecords">安全记录</button>
         </template>
 
         <!-- 额外内容 - 安全风险评估 -->
@@ -77,25 +75,7 @@
             </div>
           </div>
 
-          <!-- 最近巡检记录 -->
-          <div class="inspection-history">
-            <h3>最近巡检记录</h3>
-            <div class="inspection-list" v-if="inspectionRecords.length > 0">
-              <div class="inspection-item" v-for="record in inspectionRecords" :key="record.id">
-                <div class="inspection-header">
-                  <span class="inspection-date">{{ record.date }}</span>
-                  <span :class="['inspection-result', record.result]">{{ record.resultText }}</span>
-                </div>
-                <div class="inspection-body">
-                  <p class="inspection-desc">{{ record.description }}</p>
-                  <p class="inspection-inspector">检查人: {{ record.inspector }}</p>
-                </div>
-              </div>
-            </div>
-            <div class="empty-inspection" v-else>
-              <p>暂无巡检记录</p>
-            </div>
-          </div>
+
         </template>
       </equipment-detail-component>
 
@@ -177,7 +157,6 @@ export default {
         vibration: 0,
         pressure: 0
       },
-      inspectionRecords: [],
       sensorProjects: {}
     }
   },
@@ -217,9 +196,6 @@ export default {
 
     // 获取设备详情
     this.fetchEquipmentDetail(equipmentId)
-
-    // 获取巡检记录
-    this.fetchInspectionRecords()
 
     // 打印自动刷新设置
     console.log('安全员设备详情页面初始化，自动刷新:', this.autoRefresh, '刷新间隔:', this.refreshRate)
@@ -472,46 +448,9 @@ export default {
       }
     },
 
-    // 获取巡检记录
-    async fetchInspectionRecords() {
-      if (!this.equipment || !this.equipment.id) return;
 
-      try {
-        // 模拟获取巡检记录的API调用
-        // 实际项目中应该调用后端API
-        setTimeout(() => {
-          this.inspectionRecords = [
-            {
-              id: 1,
-              date: '2023-07-18',
-              result: 'pass',
-              resultText: '通过',
-              description: '设备运行正常，各项指标在安全范围内',
-              inspector: '王安全'
-            },
-            {
-              id: 2,
-              date: '2023-07-10',
-              result: 'warning',
-              resultText: '警告',
-              description: '设备温度偏高，建议检查冷却系统',
-              inspector: '李安全'
-            }
-          ];
-        }, 500);
-      } catch (error) {
-        console.error('获取巡检记录出错:', error);
-      }
-    },
 
-    // 开始巡检
-    startInspection() {
-      // 跳转到巡检页面并传递设备ID
-      this.$router.push({
-        path: '/safety/inspection',
-        query: { equipment_id: this.equipment.id }
-      });
-    },
+
 
     // 创建安全预警
     createSafetyAlert() {
@@ -557,14 +496,7 @@ export default {
       }
     },
 
-    // 查看安全记录
-    viewSafetyRecords() {
-      // 跳转到安全记录页面并传递设备ID
-      this.$router.push({
-        path: '/safety/statistics',
-        query: { equipment_id: this.equipment.id }
-      });
-    },
+
 
     // 返回上一页
     goBack() {
