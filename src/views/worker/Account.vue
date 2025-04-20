@@ -23,7 +23,6 @@
           <label>工号 (登录账号)</label>
           <div class="value">
             {{ userInfo.employee_id || '未分配' }}
-            <span class="note">工号为登录账号，不可修改</span>
           </div>
         </div>
         <div class="info-item">
@@ -34,7 +33,6 @@
               <i class="icon-edit"></i>
               编辑
             </button>
-            <span class="note">用户名仅作显示用途，不影响登录</span>
           </div>
         </div>
         <div class="info-item">
