@@ -87,6 +87,7 @@
                   </span>
                 </td>
                 <td>
+                  <button class="action-btn view" @click="viewEmployeeDetail(emp)">详情</button>
                   <button class="action-btn edit" @click="showGroupChangeModal(emp)">分组</button>
                   <button class="action-btn delete" @click="deleteEmployee(emp)">删除</button>
                   <button class="action-btn status" @click="showUpdateStatusModal(emp)">修改状态</button>
@@ -338,6 +339,46 @@
       </div>
     </div>
 
+    <!-- 员工详情模态框 -->
+    <div class="modal" v-if="showEmployeeDetail">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>员工详情</h3>
+          <span class="close-btn" @click="closeEmployeeDetail">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="detail-item">
+            <label>工号</label>
+            <div class="value">{{ selectedEmployee.id }}</div>
+          </div>
+          <div class="detail-item">
+            <label>姓名</label>
+            <div class="value">{{ selectedEmployee.name }}</div>
+          </div>
+          <div class="detail-item">
+            <label>角色</label>
+            <div class="value">{{ selectedEmployee.roleName }}</div>
+          </div>
+          <div class="detail-item">
+            <label>分组号</label>
+            <div class="value">{{ selectedEmployee.group_id || '未分组' }}</div>
+          </div>
+          <div class="detail-item">
+            <label>联系方式</label>
+            <div class="value">{{ selectedEmployee.phone }}</div>
+          </div>
+          <div class="detail-item">
+            <label>状态</label>
+            <div class="value">
+              <span :class="['status-tag', getStatusClass(selectedEmployee.status)]">
+                {{ selectedEmployee.status || '未知' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <SupervisorNav />
   </div>
 </template>
@@ -392,6 +433,7 @@ export default {
       showLeaveManagement: false,
       showUpdateStatus: false,
       showGroupChange: false,
+      showEmployeeDetail: false,
       editingEmployee: null,
       selectedEmployee: {},
       currentManager: {
@@ -550,6 +592,18 @@ export default {
         this.$message.error('保存失败，请重试');
       }
     },
+    // 查看员工详情
+    viewEmployeeDetail(employee) {
+      this.selectedEmployee = { ...employee };
+      this.showEmployeeDetail = true;
+    },
+
+    // 关闭员工详情
+    closeEmployeeDetail() {
+      this.showEmployeeDetail = false;
+      this.selectedEmployee = {};
+    },
+
     // 显示分组调整模态框
     showGroupChangeModal(employee) {
       this.selectedEmployee = { ...employee };
@@ -1233,6 +1287,28 @@ export default {
 
 .btn.submit {
   background: #4CAF50;
+  color: white;
+}
+
+/* 员工详情样式 */
+.detail-item {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-item label {
+  font-weight: 500;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.detail-item .value {
+  padding: 5px 0;
+}
+
+.action-btn.view {
+  background-color: #2196F3;
   color: white;
 }
 </style>

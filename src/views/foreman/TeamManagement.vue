@@ -138,6 +138,14 @@
             <div class="value">{{ selectedEmployee.name }}</div>
           </div>
           <div class="detail-item">
+            <label>角色</label>
+            <div class="value">{{ getRoleName(selectedEmployee.role) }}</div>
+          </div>
+          <div class="detail-item">
+            <label>分组号</label>
+            <div class="value">{{ selectedEmployee.group_id || '未分组' }}</div>
+          </div>
+          <div class="detail-item">
             <label>负责产线</label>
             <div class="value">
               <span v-if="selectedEmployee.role === 'foreman' && selectedEmployee.assigned_lines && selectedEmployee.assigned_lines.length">
@@ -169,22 +177,6 @@
                 {{ selectedEmployee.status || '未知' }}
               </span>
             </div>
-          </div>
-          <div class="detail-item">
-            <label>技能等级</label>
-            <div class="value">{{ selectedEmployee.skillLevel || '初级' }}</div>
-          </div>
-          <div class="detail-item">
-            <label>入职时间</label>
-            <div class="value">{{ selectedEmployee.joinDate || '2023-01-01' }}</div>
-          </div>
-          <div class="detail-item">
-            <label>本月出勤</label>
-            <div class="value">{{ selectedEmployee.attendance || '22/26' }}天</div>
-          </div>
-          <div class="detail-item">
-            <label>任务完成率</label>
-            <div class="value">{{ selectedEmployee.completionRate || '95' }}%</div>
           </div>
         </div>
       </div>
@@ -483,20 +475,8 @@ export default {
 
     // 修改产线任务完成率统计方法
     getLineCompletionRate() {
-      return (lineId) => {
-        const lineWorkers = this.employees.filter(emp => {
-          // 检查员工是否负责该产线
-          const isResponsibleForLine = emp.assigned_lines &&
-            emp.assigned_lines.some(line => line.id === lineId);
-          return isResponsibleForLine && emp.group_id === this.currentForeman.group_id;
-        });
-        if (lineWorkers.length === 0) return 0;
-
-        const totalRate = lineWorkers.reduce((sum, worker) =>
-          sum + (worker.completionRate || 0), 0
-        );
-        return Math.round(totalRate / lineWorkers.length);
-      };
+      // 由于后端没有提供完成率数据，返回固定值
+      return () => 95; // 固定返回95%的完成率
     }
   },
   methods: {
@@ -569,13 +549,11 @@ export default {
             console.log(`员工 ${emp.name} 的line_id: ${emp.line_id}, 类型: ${typeof emp.line_id}`);
           });
 
-          // 处理员工数据,确保所有需要的字段都存在
+          // 处理员工数据,只保留后端提供的字段
           this.employees = data.data.map(emp => {
             return {
               ...emp,
               status: emp.status || '在岗',
-              skillLevel: emp.skillLevel || '初级', // 添加默认技能等级
-              completionRate: emp.completionRate || Math.floor(Math.random() * 30) + 70, // 添加默认完成率
               assigned_lines: emp.assigned_lines || [],
               assigned_equipment: emp.assigned_equipment || []
             };
