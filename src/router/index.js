@@ -30,6 +30,7 @@ const foremanRoutes = [
     name: 'Team',
     component: () => import('../views/foreman/TeamManagement.vue')
   },
+
   {
     path: '/foreman/profile',
     name: 'ForemanProfile',
@@ -67,12 +68,12 @@ const supervisorRoutes = [
     name: 'MonitorCenter',
     component: () => import('../views/supervisor/MonitorCenter.vue')
   },
-
   {
     path: '/supervisor/team',
     name: 'TeamManagement',
     component: () => import('../views/supervisor/TeamManagement.vue')
   },
+
   {
     path: '/supervisor/workorders',
     name: 'WorkOrders',
@@ -88,7 +89,6 @@ const supervisorRoutes = [
     name: 'ProductionLineDetail',
     component: () => import('../views/supervisor/ProductionLineDetail.vue')
   },
-
   {
     path: '/supervisor/profile',
     name: 'SupervisorProfile',
@@ -98,33 +98,33 @@ const supervisorRoutes = [
 
 const safetyRoutes = [
   {
-    path: '/safety/monitor',
-    name: 'SafetyMonitor',
+    path: '/safety-officer/monitoring',
+    name: 'SafetyMonitoring',
     component: () => import('../views/safety/Monitor.vue')
   },
   {
-    path: '/safety/warning',
-    name: 'SafetyWarning',
+    path: '/safety-officer/warnings',
+    name: 'SafetyWarnings',
     component: () => import('../views/safety/Warning.vue')
   },
   {
-    path: '/safety/inspection',
+    path: '/safety-officer/inspection',
     name: 'SafetyInspection',
     component: () => import('../views/safety/Inspection.vue')
   },
   {
-    path: '/safety/equipment-detail/:id',
+    path: '/safety-officer/equipment-detail/:id',
     name: 'SafetyEquipmentDetail',
     component: () => import('../views/safety/EquipmentDetail.vue')
   },
   {
-    path: '/safety/production-line-detail/:id',
+    path: '/safety-officer/production-line-detail/:id',
     name: 'SafetyProductionLineDetail',
     component: () => import('../views/safety/ProductionLineDetail.vue')
   },
 
   {
-    path: '/safety/profile',
+    path: '/safety-officer/profile',
     name: 'SafetyProfile',
     component: () => import('../views/safety/Account.vue')
   }
@@ -171,8 +171,8 @@ router.beforeEach((to, from, next) => {
   }
 
   // 添加安全员路由判断
-  if (userInfo.role === 'safety_officer' && !to.path.startsWith('/safety')) {
-    next('/safety/monitor')
+  if (userInfo.role === 'safety_officer' && !to.path.startsWith('/safety-officer')) {
+    next('/safety-officer/monitoring')
     return
   }
 

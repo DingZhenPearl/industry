@@ -51,7 +51,31 @@
         </div>
       </div>
 
+      <!-- 考勤打卡卡片 -->
+      <div class="info-card">
+        <h3 class="card-title">考勤打卡</h3>
+        <AttendanceCard :employee-id="userInfo.employee_id" />
+      </div>
 
+      <!-- 请假管理卡片 -->
+      <div class="info-card">
+        <h3 class="card-title">
+          请假管理
+          <button class="new-leave-btn" @click="showLeaveForm = !showLeaveForm">
+            {{ showLeaveForm ? '取消' : '申请请假' }}
+          </button>
+        </h3>
+
+        <div v-if="showLeaveForm" class="leave-form-container">
+          <LeaveRequestForm
+            :employee-id="userInfo.employee_id"
+            @submitted="handleLeaveSubmitted"
+            @cancel="showLeaveForm = false"
+          />
+        </div>
+
+        <LeaveRequestList :employee-id="userInfo.employee_id" ref="leaveList" />
+      </div>
 
       <!-- 操作按钮列表 -->
       <div class="action-list">
@@ -70,7 +94,7 @@
       </div>
     </div>
 
-    <SafetyNav />
+    <SafetyOfficerNav />
 
     <!-- 更新用户名对话框 -->
     <div v-if="showDialog" class="dialog-overlay">
@@ -95,19 +119,26 @@
 </template>
 
 <script>
-import SafetyNav from '@/components/SafetyNav.vue'
+import SafetyOfficerNav from '@/components/SafetyOfficerNav.vue'
+import AttendanceCard from '@/components/AttendanceCard.vue'
+import LeaveRequestForm from '@/components/LeaveRequestForm.vue'
+import LeaveRequestList from '@/components/LeaveRequestList.vue'
 
 export default {
   name: 'SafetyAccount',
   components: {
-    SafetyNav
+    SafetyOfficerNav,
+    AttendanceCard,
+    LeaveRequestForm,
+    LeaveRequestList
   },
   data() {
     return {
       userInfo: JSON.parse(localStorage.getItem('userInfo') || '{}'),
       showDialog: false,
       newUsername: '',
-      updateError: ''
+      updateError: '',
+      showLeaveForm: false
     }
   },
   created() {
@@ -237,6 +268,15 @@ export default {
         console.error('更新用户名时出错:', error);
         this.updateError = '服务器连接失败，请稍后重试';
       }
+    },
+
+    handleLeaveSubmitted() {
+      this.showLeaveForm = false;
+
+      // 刷新请假记录列表
+      if (this.$refs.leaveList) {
+        this.$refs.leaveList.fetchLeaveRequests();
+      }
     }
   }
 }
@@ -249,6 +289,29 @@ export default {
   min-height: 100vh;
   padding-bottom: 60px;
   background-color: #f5f7fa;
+}
+
+.new-leave-btn {
+  float: right;
+  padding: 4px 10px;
+  background-color: #1890ff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.new-leave-btn:hover {
+  background-color: #40a9ff;
+}
+
+.leave-form-container {
+  margin-bottom: 20px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
 }
 
 .header {

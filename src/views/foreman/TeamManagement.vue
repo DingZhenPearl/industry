@@ -38,9 +38,12 @@
       <div class="employee-section">
         <div class="section-header">
           <h3>员工管理</h3>
-          <button class="view-btn" @click="showLeaveManagement = true">
-            <i class="calendar-icon"></i> 请假管理
-          </button>
+          <div class="header-actions">
+
+            <button class="view-btn" @click="showLeaveManagement = true">
+              <i class="calendar-icon"></i> 请假管理
+            </button>
+          </div>
         </div>
 
         <div class="filter-bar">
@@ -52,9 +55,9 @@
           </select>
           <select v-model="filterStatus" class="filter-select">
             <option value="">全部状态</option>
-            <option value="active">在岗</option>
-            <option value="leave">请假</option>
-            <option value="task">任务中</option>
+            <option value="在岗">在岗</option>
+            <option value="离岗">离岗</option>
+            <option value="请假">请假</option>
           </select>
           <input
             type="text"
@@ -102,13 +105,14 @@
                 </td>
                 <td>{{ emp.phone }}</td>
                 <td>
-                  <span :class="['status-tag', emp.status]">
-                    {{ getRoleName(emp.role) }} - {{ getStatusText(emp) }}
+                  <span :class="['status-tag', getStatusClass(emp.status)]">
+                    {{ emp.status || '未知' }}
                   </span>
                 </td>
                 <td>
                   <button class="action-btn view" @click="viewEmployeeDetail(emp)">详情</button>
                   <button class="action-btn assign" v-if="emp.role === 'member'" @click="showAssignDeviceModal(emp)">分配设备</button>
+                  <button class="action-btn status" @click="showUpdateStatusModal(emp)">修改状态</button>
                 </td>
               </tr>
             </tbody>
@@ -161,8 +165,8 @@
           <div class="detail-item">
             <label>状态</label>
             <div class="value">
-              <span :class="['status-tag', selectedEmployee.status]">
-                {{ selectedEmployee.statusText }}
+              <span :class="['status-tag', getStatusClass(selectedEmployee.status)]">
+                {{ selectedEmployee.status || '未知' }}
               </span>
             </div>
           </div>
@@ -190,29 +194,118 @@
 
     <!-- 请假管理模态框 -->
     <div class="modal" v-if="showLeaveManagement">
-      <div class="modal-content">
+      <div class="modal-content leave-modal-content">
         <div class="modal-header">
           <h3>请假管理</h3>
           <span class="close-btn" @click="showLeaveManagement = false">&times;</span>
         </div>
         <div class="modal-body">
-          <div class="leave-list">
-            <div class="leave-item" v-for="(leave, index) in leaveRequests" :key="index">
-              <div class="leave-header">
-                <span class="employee-name">{{ leave.employeeName }}</span>
-                <span :class="['status-tag', leave.status]">{{ leave.statusText }}</span>
+          <div class="tabs">
+            <div
+              class="tab"
+              :class="{ active: activeLeaveTab === 'pending' }"
+              @click="activeLeaveTab = 'pending'"
+            >
+              待审批申请
+            </div>
+            <div
+              class="tab"
+              :class="{ active: activeLeaveTab === 'history' }"
+              @click="activeLeaveTab = 'history'"
+            >
+              历史记录
+            </div>
+          </div>
+
+          <!-- 待审批申请列表 -->
+          <div v-if="activeLeaveTab === 'pending'" class="tab-content">
+            <PendingLeaveList
+              :approver-id="currentForeman.id"
+              :group-id="currentForeman.group_id"
+              ref="pendingLeaveList"
+              @leave-approved="handleLeaveApproved"
+              @leave-rejected="handleLeaveRejected"
+            />
+          </div>
+
+          <!-- 历史记录列表 -->
+          <div v-if="activeLeaveTab === 'history'" class="tab-content">
+            <div class="leave-list">
+              <div class="leave-item" v-for="(leave, index) in leaveRequests" :key="index">
+                <div class="leave-header">
+                  <span class="employee-name">{{ leave.employeeName }}</span>
+                  <span :class="['status-tag', leave.status]">{{ leave.statusText }}</span>
+                </div>
+                <div class="leave-details">
+                  <div class="leave-type">{{ leave.type }}</div>
+                  <div class="leave-period">{{ leave.startDate }} 至 {{ leave.endDate }}</div>
+                  <div class="leave-reason">
+                    <div class="reason-label">请假原因：</div>
+                    <div class="reason-content">{{ leave.reason }}</div>
+                  </div>
+                  <div class="approval-info">
+                    <div class="approval-time">审批时间：{{ leave.approvalTime }}</div>
+                    <div class="approver-info" v-if="leave.approverName">审批人：{{ leave.approverName }} ({{ leave.approverRole ? getRoleName(leave.approverRole) : '未知' }})</div>
+                    <div class="approval-notes" v-if="leave.notes">备注：{{ leave.notes }}</div>
+                  </div>
+                </div>
               </div>
-              <div class="leave-details">
-                <div class="leave-type">{{ leave.type }}</div>
-                <div class="leave-period">{{ leave.startDate }} 至 {{ leave.endDate }}</div>
-                <div class="leave-reason">{{ leave.reason }}</div>
-              </div>
-              <div class="leave-actions" v-if="leave.status === 'pending'">
-                <button class="action-btn approve" @click="approveLeave(index)">批准</button>
-                <button class="action-btn reject" @click="rejectLeave(index)">拒绝</button>
+
+              <div v-if="leaveRequests.length === 0" class="empty-state">
+                暂无历史记录
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- 修改状态模态框 -->
+    <div class="modal" v-if="showUpdateStatus">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>修改员工状态</h3>
+          <span class="close-btn" @click="showUpdateStatus = false">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="employee-info">
+            <div class="info-item">
+              <label>工号：</label>
+              <span>{{ selectedEmployee.id }}</span>
+            </div>
+            <div class="info-item">
+              <label>姓名：</label>
+              <span>{{ selectedEmployee.name }}</span>
+            </div>
+            <div class="info-item">
+              <label>当前状态：</label>
+              <span class="status-tag" :class="getStatusClass(selectedEmployee.status)">
+                {{ selectedEmployee.status || '未知' }}
+              </span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>新状态：</label>
+            <select v-model="newStatus" class="form-control">
+              <option value="">请选择新状态</option>
+              <option value="在岗">在岗</option>
+              <option value="请假">请假</option>
+              <option value="离岗">离岗</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="cancel-btn" @click="showUpdateStatus = false">取消</button>
+          <button
+            class="confirm-btn"
+            :disabled="!newStatus || statusUpdateLoading"
+            @click="updateEmployeeStatus"
+          >
+            {{ statusUpdateLoading ? '更新中...' : '确认更新' }}
+          </button>
         </div>
       </div>
     </div>
@@ -271,11 +364,13 @@
 
 <script>
 import ForemanNav from '@/components/ForemanNav.vue'
+import PendingLeaveList from '@/components/PendingLeaveList.vue'
 
 export default {
   name: 'TeamManagement',
   components: {
-    ForemanNav
+    ForemanNav,
+    PendingLeaveList
   },
   data() {
     return {
@@ -293,12 +388,17 @@ export default {
       searchKeyword: '',
       showEmployeeDetail: false,
       showLeaveManagement: false,
+      showStatusManagement: false,
       showAssignDevice: false,
+      showUpdateStatus: false,
       selectedEmployee: {},
       selectedWorker: {},
       selectedDeviceId: '',
       availableDevices: [],
-      currentForeman: null // 存储当前工长信息
+      currentForeman: null, // 存储当前工长信息
+      newStatus: '',
+      statusUpdateLoading: false,
+      activeLeaveTab: 'pending' // 请假管理模态框的激活标签
     }
   },
   async created() {
@@ -321,6 +421,9 @@ export default {
 
     await this.fetchAssignedLines(); // 先获取产线信息
     await this.fetchEmployees();
+
+    // 获取已处理的请假记录
+    await this.fetchProcessedLeaveRequests();
   },
   computed: {
     filteredEmployees() {
@@ -470,8 +573,7 @@ export default {
           this.employees = data.data.map(emp => {
             return {
               ...emp,
-              status: emp.status || 'active',
-              statusText: emp.statusText || this.getStatusText(emp),
+              status: emp.status || '在岗',
               skillLevel: emp.skillLevel || '初级', // 添加默认技能等级
               completionRate: emp.completionRate || Math.floor(Math.random() * 30) + 70, // 添加默认完成率
               assigned_lines: emp.assigned_lines || [],
@@ -694,8 +796,72 @@ export default {
 
     // 获取设备负责人名称
     getDeviceWorkerName(workerId) {
+      if (!workerId) return '无';
       const worker = this.employees.find(emp => emp.id === workerId);
       return worker ? worker.name : '未知';
+    },
+
+    // 获取状态类名
+    getStatusClass(status) {
+      switch (status) {
+        case '在岗': return 'status-active';
+        case '请假': return 'status-leave';
+        case '离岗': return 'status-off';
+        default: return '';
+      }
+    },
+
+
+
+    // 显示修改状态模态框
+    showUpdateStatusModal(employee) {
+      this.selectedEmployee = { ...employee };
+      this.newStatus = '';
+      this.showUpdateStatus = true;
+    },
+
+    // 更新员工状态
+    async updateEmployeeStatus() {
+      if (!this.newStatus || this.statusUpdateLoading) return;
+
+      this.statusUpdateLoading = true;
+
+      try {
+        const response = await fetch('/api/attendance/update-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            employee_id: this.selectedEmployee.id,
+            status: this.newStatus
+          })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('员工状态更新成功');
+          this.showUpdateStatus = false;
+
+          // 更新本地数据
+          const index = this.employees.findIndex(emp => emp.id === this.selectedEmployee.id);
+          if (index !== -1) {
+            this.$set(this.employees[index], 'status', this.newStatus);
+          }
+
+          // 刷新员工列表
+          await this.fetchEmployees();
+        } else {
+          alert(`更新员工状态失败: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('更新员工状态出错:', error);
+        alert('更新员工状态失败，请重试');
+      } finally {
+        this.statusUpdateLoading = false;
+      }
     },
 
     // 确认分配设备
@@ -733,6 +899,97 @@ export default {
       } catch (error) {
         console.error('分配设备出错:', error);
         alert('分配设备失败，请重试');
+      }
+    },
+
+    // 员工状态更新后的处理
+    handleStatusUpdated() {
+      // 刷新员工列表
+      this.fetchEmployees();
+    },
+
+    // 处理请假审批通过
+    async handleLeaveApproved(leaveRequest) {
+      // 将审批通过的请假添加到历史记录
+      this.leaveRequests.unshift({
+        employeeId: leaveRequest.employee_id,
+        employeeName: leaveRequest.employee_name,
+        type: leaveRequest.leave_type,
+        startDate: leaveRequest.start_date,
+        endDate: leaveRequest.end_date,
+        reason: leaveRequest.reason,
+        status: 'approved',
+        statusText: '已批准',
+        approvalTime: new Date().toLocaleString()
+      });
+
+      // 刷新员工列表
+      await this.fetchEmployees();
+
+      // 刷新请假历史记录
+      await this.fetchProcessedLeaveRequests();
+    },
+
+    // 处理请假审批拒绝
+    async handleLeaveRejected(leaveRequest) {
+      // 将审批拒绝的请假添加到历史记录
+      this.leaveRequests.unshift({
+        employeeId: leaveRequest.employee_id,
+        employeeName: leaveRequest.employee_name,
+        type: leaveRequest.leave_type,
+        startDate: leaveRequest.start_date,
+        endDate: leaveRequest.end_date,
+        reason: leaveRequest.reason,
+        status: 'rejected',
+        statusText: '已拒绝',
+        approvalTime: new Date().toLocaleString()
+      });
+
+      // 刷新请假历史记录
+      await this.fetchProcessedLeaveRequests();
+    },
+
+    // 获取已处理的请假记录
+    async fetchProcessedLeaveRequests() {
+      try {
+        if (!this.currentForeman || !this.currentForeman.group_id) {
+          console.log('当前工长组号未知，无法获取请假记录');
+          return;
+        }
+
+        const response = await fetch(`/api/attendance/processed-leaves?group_id=${this.currentForeman.group_id}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.success && Array.isArray(result.data)) {
+          console.log('获取到的请假记录:', result.data);
+
+          // 将后端返回的数据转换为前端需要的格式
+          this.leaveRequests = result.data.map(leave => ({
+            id: leave.id,
+            employeeId: leave.employee_id,
+            employeeName: leave.employee_name,
+            type: leave.leave_type,
+            startDate: leave.start_date,
+            endDate: leave.end_date,
+            reason: leave.reason,
+            status: leave.status === '已批准' ? 'approved' : 'rejected',
+            statusText: leave.status,
+            approvalTime: leave.approval_time,
+            approverName: leave.approver_name,
+            approverRole: leave.approver_role,
+            notes: leave.approval_notes
+          }));
+        } else {
+          console.error('获取已处理请假记录失败:', result.error || '未知错误');
+        }
+      } catch (error) {
+        console.error('获取已处理请假记录出错:', error);
       }
     }
   }
@@ -930,19 +1187,19 @@ export default {
   font-size: 0.8em;
 }
 
-.status-tag.active {
+.status-tag.status-active {
   background-color: #e8f5e9;
   color: #4CAF50;
 }
 
-.status-tag.leave {
+.status-tag.status-leave {
   background-color: #fff8e1;
   color: #FFC107;
 }
 
-.status-tag.task {
-  background-color: #e3f2fd;
-  color: #2196F3;
+.status-tag.status-off {
+  background-color: #f5f5f5;
+  color: #666;
 }
 
 .status-tag.pending {
@@ -977,6 +1234,11 @@ export default {
 .action-btn.assign {
   background-color: #e8f5e9;
   color: #4CAF50;
+}
+
+.action-btn.status {
+  background-color: #e3f2fd;
+  color: #2196F3;
 }
 
 .action-btn.approve {
@@ -1145,6 +1407,35 @@ export default {
 }
 
 .leave-reason {
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.reason-label {
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.reason-content {
+  white-space: pre-line;
+}
+
+.approval-info {
+  padding: 10px;
+  background-color: #f0f8ff;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #555;
+}
+
+.approval-time, .approver-info {
+  margin-bottom: 5px;
+}
+
+.approval-notes {
   font-style: italic;
   color: #666;
 }
@@ -1184,6 +1475,40 @@ export default {
   flex: 1;
 }
 
+.leave-modal-content {
+  max-width: 800px;
+  width: 95%;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 15px;
+}
+
+.tab {
+  padding: 10px 15px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s;
+}
+
+.tab.active {
+  border-bottom-color: #2196F3;
+  color: #2196F3;
+  font-weight: 500;
+}
+
+.tab-content {
+  padding: 10px 0;
+}
+
+.empty-state {
+  padding: 30px 0;
+  text-align: center;
+  color: #999;
+}
+
 .form-control {
   width: 100%;
   padding: 8px;
@@ -1208,5 +1533,20 @@ export default {
   border-radius: 4px;
   padding: 8px 15px;
   cursor: pointer;
+}
+
+/* 状态管理模态框样式 */
+.status-modal-content {
+  max-width: 800px;
+  width: 95%;
+}
+
+.status-icon::before {
+  content: '📈';
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
 }
 </style>

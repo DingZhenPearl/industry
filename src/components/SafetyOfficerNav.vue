@@ -1,18 +1,17 @@
 <template>
   <nav class="bottom-nav">
     <div class="nav-item" :class="{ active: $route.path === '/safety-officer/monitoring' }" @click="$router.push('/safety-officer/monitoring')">
-      <i class="nav-icon monitor-icon"></i>
+      <i class="nav-icon monitoring-icon"></i>
       <span>安全监控</span>
-    </div>
-    <div class="nav-item" :class="{ active: $route.path === '/safety-officer/warnings' }" @click="$router.push('/safety-officer/warnings')">
-      <i class="nav-icon warning-icon"></i>
-      <span>设备维护</span>
     </div>
     <div class="nav-item" :class="{ active: $route.path === '/safety-officer/inspection' }" @click="$router.push('/safety-officer/inspection')">
       <i class="nav-icon inspection-icon"></i>
       <span>安全巡检</span>
     </div>
-
+    <div class="nav-item" :class="{ active: $route.path === '/safety-officer/warnings' }" @click="$router.push('/safety-officer/warnings')">
+      <i class="nav-icon warnings-icon"></i>
+      <span>预警处理</span>
+    </div>
     <div class="nav-item" :class="{ active: $route.path === '/safety-officer/profile' }" @click="$router.push('/safety-officer/profile')">
       <i class="nav-icon profile-icon"></i>
       <span>我的</span>
@@ -22,7 +21,7 @@
 
 <script>
 export default {
-  name: 'SafetyNav'
+  name: 'SafetyOfficerNav'
 }
 </script>
 

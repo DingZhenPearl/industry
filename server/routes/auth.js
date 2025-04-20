@@ -83,7 +83,12 @@ router.post('/register', async (req, res) => {
 
 // 获取当前用户信息
 router.get('/user', (req, res) => {
-  res.json({ user: req.session.user });
+  // 检查用户是否已登录
+  if (!req.session || !req.session.user) {
+    return res.status(401).json({ success: false, error: '用户未登录或会话已过期' });
+  }
+
+  res.json({ success: true, user: req.session.user });
 });
 
 // 退出登录

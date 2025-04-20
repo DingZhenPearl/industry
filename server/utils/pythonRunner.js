@@ -9,8 +9,11 @@ const { spawn } = require('child_process');
  */
 async function runPythonScript(scriptPath, args, options = {}) {
   const encoding = options.encoding || 'utf-8';
-  const debug = options.debug || false;
-  
+  const debug = options.debug || true; // 默认开启调试模式
+
+  console.log(`运行 Python 脚本: ${scriptPath}`);
+  console.log(`参数: ${JSON.stringify(args)}`);
+
   return new Promise((resolve) => {
     const pythonProcess = spawn('python', [scriptPath, ...args], { encoding });
     let output = '';
@@ -39,6 +42,8 @@ async function runPythonScript(scriptPath, args, options = {}) {
       }
 
       if (code !== 0) {
+        console.error(`Python 脚本执行失败，退出码: ${code}`);
+        console.error(`错误输出: ${errorOutput}`);
         resolve({
           success: false,
           error: 'Python脚本执行失败',

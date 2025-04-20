@@ -12,7 +12,6 @@
       <i class="nav-icon equipment-icon"></i>
       <span>设备状态</span>
     </div>
-
     <div class="nav-item" :class="{ active: $route.path === '/worker/profile' }" @click="$router.push('/worker/profile')">
       <i class="nav-icon profile-icon"></i>
       <span>我的</span>
