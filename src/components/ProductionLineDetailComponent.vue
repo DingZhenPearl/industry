@@ -75,7 +75,6 @@
             <select v-model="selectedParameter" class="parameter-select" @change="updateChart">
               <option value="real_time_capacity">实际产能</option>
               <option value="utilization">产能利用率</option>
-              <option value="runtime_hours">运行时长</option>
             </select>
             <select v-model="historyLimit" class="limit-select" @change="fetchLineHistory">
               <option value="5">最近5条</option>
@@ -175,8 +174,7 @@ export default {
       refreshInterval: null,
       parameterLabels: {
         'real_time_capacity': '实际产能',
-        'utilization': '产能利用率',
-        'runtime_hours': '运行时长'
+        'utilization': '产能利用率'
       }
     }
   },
@@ -425,8 +423,7 @@ export default {
     getParameterUnit() {
       const unitMap = {
         'real_time_capacity': '件/小时',
-        'utilization': '%',
-        'runtime_hours': '小时'
+        'utilization': '%'
       };
 
       return unitMap[this.selectedParameter] || '';
@@ -436,8 +433,7 @@ export default {
     getParameterColor(alpha = 1) {
       const colorMap = {
         'real_time_capacity': `rgba(30, 144, 255, ${alpha})`,  // 蓝色
-        'utilization': `rgba(50, 205, 50, ${alpha})`,          // 绿色
-        'runtime_hours': `rgba(255, 165, 0, ${alpha})`         // 橙色
+        'utilization': `rgba(50, 205, 50, ${alpha})`           // 绿色
       };
 
       return colorMap[this.selectedParameter] || `rgba(65, 105, 225, ${alpha})`;

@@ -586,13 +586,13 @@ export default {
 
     // 查看设备详情
     viewDeviceDetail(device) {
-      this.$router.push(`/safety/equipment-detail/${device.id}`);
+      this.$router.push(`/safety-officer/equipment-detail/${device.id}`);
     },
 
     // 开始巡检
     startInspection() {
       this.$router.push({
-        path: '/safety/inspection',
+        path: '/safety-officer/inspection',
         query: { line: this.productionLine.id }
       });
     },
@@ -601,7 +601,7 @@ export default {
     viewDevices() {
       // 跳转到设备页面，并传递产线ID作为查询参数
       this.$router.push({
-        path: '/safety/monitor',
+        path: '/safety-officer/monitoring',
         query: { tab: 'equipment', line: this.productionLine.id }
       });
     },
@@ -609,7 +609,7 @@ export default {
     // 查看相关工单
     viewWorkOrders() {
       this.$router.push({
-        path: '/safety/inspection',
+        path: '/safety-officer/inspection',
         query: { line: this.productionLine.id }
       });
     },
@@ -619,7 +619,7 @@ export default {
       console.log('为设备创建安全预警:', device);
       alert(`已为设备 ${device.name} 创建安全预警`);
       // 跳转回监控页面
-      this.$router.push('/safety/monitor');
+      this.$router.push('/safety-officer/monitoring');
     }
   }
 }

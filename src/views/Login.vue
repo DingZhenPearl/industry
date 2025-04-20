@@ -212,7 +212,7 @@ export default {
           this.$router.push('/worker/workorders');
           break;
         case 'safety_officer':
-          this.$router.push('/safety/monitor');
+          this.$router.push('/safety-officer/monitoring');
           break;
         default:
           this.$router.push('/login');

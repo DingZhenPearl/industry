@@ -53,7 +53,6 @@
             <select v-model="selectedParameter" class="parameter-select" @change="handleParameterChange">
               <option value="real_time_capacity">实际产能</option>
               <option value="utilization">产能利用率</option>
-              <option value="runtime_hours">运行时长</option>
             </select>
             <select v-model="historyLimit" class="limit-select" @change="handleLimitChange">
               <option value="5">最近5条</option>
@@ -1002,7 +1001,7 @@ export default {
       if (!hasValidData) {
         console.log('没有有效数据，尝试切换到其他参数');
         // 如果当前参数没有有效数据，尝试切换到其他参数
-        const parameters = ['real_time_capacity', 'utilization', 'runtime_hours'];
+        const parameters = ['real_time_capacity', 'utilization'];
         for (const param of parameters) {
           if (param !== this.selectedParameter) {
             const tempData = this.lineHistory.map(item => {
@@ -1157,8 +1156,7 @@ export default {
     getParameterTitle() {
       const titleMap = {
         'real_time_capacity': '实际产能',
-        'utilization': '产能利用率',
-        'runtime_hours': '运行时长'
+        'utilization': '产能利用率'
       };
       return titleMap[this.selectedParameter] || this.selectedParameter;
     },
@@ -1167,8 +1165,7 @@ export default {
     getParameterUnit() {
       const unitMap = {
         'real_time_capacity': '件/小时',
-        'utilization': '%',
-        'runtime_hours': '小时'
+        'utilization': '%'
       };
 
       return unitMap[this.selectedParameter] || '';
@@ -1178,8 +1175,7 @@ export default {
     getParameterColor(alpha = 1) {
       const colorMap = {
         'real_time_capacity': `rgba(30, 144, 255, ${alpha})`,  // 蓝色
-        'utilization': `rgba(50, 205, 50, ${alpha})`,          // 绿色
-        'runtime_hours': `rgba(255, 165, 0, ${alpha})`         // 橙色
+        'utilization': `rgba(50, 205, 50, ${alpha})`           // 绿色
       };
 
       return colorMap[this.selectedParameter] || `rgba(65, 105, 225, ${alpha})`;

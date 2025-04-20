@@ -562,7 +562,7 @@ export default {
       });
 
       // 跳转到产线详情页面
-      this.$router.push(`/safety/production-line-detail/${line.id}`);
+      this.$router.push(`/safety-officer/production-line-detail/${line.id}`);
     },
 
     startInspection(line) {
@@ -615,14 +615,14 @@ export default {
     viewDeviceDetail(device) {
       console.log('查看设备详情:', device);
       // 跳转到设备详情页面
-      this.$router.push(`/safety/equipment-detail/${device.id}`);
+      this.$router.push(`/safety-officer/equipment-detail/${device.id}`);
     },
 
     // 对特定设备开始巡检
     startInspectionForDevice(device) {
       console.log('对设备开始安全巡检:', device);
       // 这里可以直接打开巡检表单或跳转到巡检页面
-      this.$router.push('/safety/inspection');
+      this.$router.push('/safety-officer/inspection');
     },
 
     // 创建安全预警
@@ -668,7 +668,7 @@ export default {
 
       // 跳转到安全预警处理页面
       this.$router.push({
-        path: '/safety/warning',
+        path: '/safety-officer/warnings',
         query: {
           device_id: device.id,
           type: 'maintenance'
