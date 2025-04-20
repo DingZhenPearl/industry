@@ -39,20 +39,6 @@
         <!-- 自定义操作按钮 -->
         <template v-slot:actions>
           <button
-            class="action-btn"
-            :class="{ disabled: currentDevice && currentDevice.status === 'stopped' }"
-            @click="checkParameters"
-          >参数检查</button>
-          <button
-            class="action-btn"
-            :class="{ disabled: currentDevice && currentDevice.status === 'stopped' }"
-            @click="reportIssue"
-          >故障上报</button>
-          <button
-            class="action-btn"
-            @click="viewManual"
-          >操作手册</button>
-          <button
             class="action-btn refresh"
             @click="refreshDeviceData"
           >刷新数据</button>
@@ -398,22 +384,7 @@ export default {
       }
     },
 
-    // 检查参数
-    checkParameters() {
-      if (!this.currentDevice || this.currentDevice.status === 'stopped') return;
-      console.log('检查设备参数');
-    },
 
-    // 故障上报
-    reportIssue() {
-      if (!this.currentDevice || this.currentDevice.status === 'stopped') return;
-      this.$router.push('/worker/issues');
-    },
-
-    // 查看操作手册
-    viewManual() {
-      console.log('查看设备操作手册');
-    },
 
     // 获取设备操作日志
     async fetchOperationLogs() {

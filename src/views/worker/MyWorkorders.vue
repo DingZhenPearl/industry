@@ -41,10 +41,9 @@
             <label class="filter-label">类型</label>
             <select v-model="workorderFilter.type" class="filter-select">
               <option value="all">全部类型</option>
-              <option value="production">生产工单</option>
+              <option value="schedule">排班任务</option>
               <option value="maintenance">设备维护</option>
-              <option value="quality">质量检查</option>
-              <option value="inspection">巡检工单</option>
+              <option value="inspection">产线巡检</option>
             </select>
           </div>
         </div>
@@ -89,9 +88,9 @@
         <div class="workorder-item" v-for="workorder in filteredWorkorders" :key="workorder.id" :class="workorder.displayStatus">
           <div class="workorder-header">
             <div class="workorder-left">
-              <span class="workorder-type-icon" :class="workorder.type === '生产工单' ? 'production' :
+              <span class="workorder-type-icon" :class="workorder.type === '排班任务' ? 'schedule' :
                                                       workorder.type === '设备维护' ? 'maintenance' :
-                                                      workorder.type === '质量检查' ? 'quality' : 'inspection'"></span>
+                                                      workorder.type === '产线巡检' ? 'inspection' : 'schedule'"></span>
               <span class="workorder-number">{{ workorder.number }}</span>
               <span class="emergency-badge" v-if="workorder.extension_fields && workorder.extension_fields.is_emergency">⚡ 紧急</span>
             </div>
@@ -326,10 +325,9 @@ export default {
         const statusMatch = this.workorderFilter.status === 'all' || workorder.displayStatus === this.workorderFilter.status;
 
         // 按类型筛选
-        const typeMatch = this.workorderFilter.type === 'all' || workorder.type.includes(this.workorderFilter.type === 'production' ? '生产' :
-                                                              this.workorderFilter.type === 'maintenance' ? '维护' :
-                                                              this.workorderFilter.type === 'quality' ? '质量' :
-                                                              this.workorderFilter.type === 'inspection' ? '巡检' : '');
+        const typeMatch = this.workorderFilter.type === 'all' || workorder.type.includes(this.workorderFilter.type === 'schedule' ? '排班任务' :
+                                                              this.workorderFilter.type === 'maintenance' ? '设备维护' :
+                                                              this.workorderFilter.type === 'inspection' ? '产线巡检' : '');
 
         // 按关键词搜索
         const keywordMatch = !this.searchKeyword ||
@@ -1064,19 +1062,14 @@ export default {
   background-size: 12px;
 }
 
-.workorder-type-icon.production {
+.workorder-type-icon.schedule {
   background-color: #e3f2fd;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%232196F3' d='M19.8 10.7L4.2 5l-.7 1.9L17.6 12H5c-1.1 0-2 .9-2 2v4c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-5.5c0-.8-.5-1.6-1.2-1.8z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%232196F3' d='M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z'/%3E%3C/svg%3E");
 }
 
 .workorder-type-icon.maintenance {
   background-color: #e8f5e9;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%234CAF50' d='M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z'/%3E%3C/svg%3E");
-}
-
-.workorder-type-icon.quality {
-  background-color: #e8eaf6;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%233F51B5' d='M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 14l-5-5 1.4-1.4L10 14.2l7.6-7.6L19 8l-9 9z'/%3E%3C/svg%3E");
 }
 
 .workorder-type-icon.inspection {

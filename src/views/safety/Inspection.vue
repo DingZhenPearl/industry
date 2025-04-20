@@ -33,7 +33,6 @@
           <option value="completed">已完成</option>
           <option value="cancelled">已取消</option>
         </select>
-        <button class="add-btn" @click="addInspection">新建巡检</button>
       </div>
 
       <!-- 加载中提示 -->
@@ -373,10 +372,7 @@ export default {
       });
     },
 
-    addInspection() {
-      console.log('新建巡检任务');
-      alert('新建巡检功能开发中');
-    },
+
 
     startInspection(task) {
       console.log('开始巡检:', task);
@@ -589,7 +585,6 @@ export default {
 
 .task-filter {
   display: flex;
-  justify-content: space-between;
   margin-bottom: 15px;
 }
 
@@ -599,14 +594,7 @@ export default {
   border-radius: 4px;
 }
 
-.add-btn {
-  padding: 8px 16px;
-  background: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
+
 
 .loading-container {
   display: flex;
