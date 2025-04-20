@@ -163,19 +163,23 @@
             <div class="value">{{ selectedWorkOrder.actualEndTime }}</div>
           </div>
 
+          <!-- 扩展字段显示 -->
+          <div class="detail-item" v-if="selectedWorkOrder.extension_fields && selectedWorkOrder.extension_fields.device_info">
+            <label>设备信息</label>
+            <div class="value">{{ selectedWorkOrder.extension_fields.device_info }}</div>
+          </div>
+          <div class="detail-item" v-else-if="selectedWorkOrder.extension_fields && selectedWorkOrder.extension_fields.device_id">
+            <label>设备编号</label>
+            <div class="value">{{ selectedWorkOrder.extension_fields.device_id }}</div>
+          </div>
+          <div class="detail-item" v-if="selectedWorkOrder.extension_fields && selectedWorkOrder.extension_fields.discovery_time">
+            <label>发现时间</label>
+            <div class="value">{{ formatDateTime(selectedWorkOrder.extension_fields.discovery_time) }}</div>
+          </div>
           <!-- 工单完成报告 -->
           <div class="detail-item" v-if="selectedWorkOrder.note">
             <label>完成报告</label>
             <div class="value note-content">{{ selectedWorkOrder.note }}</div>
-          </div>
-
-          <!-- 扩展字段显示 -->
-          <div class="detail-section" v-if="selectedWorkOrder.extension_fields && Object.keys(selectedWorkOrder.extension_fields).length > 0">
-            <h3>扩展信息</h3>
-            <div class="detail-item" v-for="(value, key) in selectedWorkOrder.extension_fields" :key="key">
-              <label>{{ formatExtensionKey(key) }}</label>
-              <div class="value">{{ formatExtensionValue(value) }}</div>
-            </div>
           </div>
         </div>
       </div>
