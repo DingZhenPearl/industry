@@ -517,7 +517,7 @@ export default {
       if (!equipmentId) return;
 
       try {
-        const response = await fetch(`/api/sensor-projects/${equipmentId}`, {
+        const response = await fetch(`/api/equipment/sensor-projects/${equipmentId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
