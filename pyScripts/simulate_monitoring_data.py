@@ -71,9 +71,23 @@ def generate_production_line_status(line_id, runtime_base, theoretical_capacity)
     efficiency = random.uniform(0.7, 0.95)
     real_time_capacity = round(theoretical_capacity * efficiency)
 
+    # 生成噪音水平数据，在70-90dB之间波动
+    noise_level = round(random.uniform(70, 90), 1)
+
+    # 生成环境温度数据，在25-40°C之间波动
+    temperature = round(random.uniform(25, 40), 1)
+
+    # 生成空气质量数据，随机选择good/medium/poor
+    air_quality_options = ['good', 'medium', 'poor']
+    air_quality_weights = [0.6, 0.3, 0.1]  # 60%概率为good，30%为medium，10%为poor
+    air_quality = random.choices(air_quality_options, weights=air_quality_weights, k=1)[0]
+
     return {
         "runtime_hours": runtime_hours,
-        "real_time_capacity": real_time_capacity
+        "real_time_capacity": real_time_capacity,
+        "noise_level": noise_level,
+        "temperature": temperature,
+        "air_quality": air_quality
     }
 
 # =============================================

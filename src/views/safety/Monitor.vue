@@ -8,18 +8,14 @@
       <div class="monitor-cards">
         <div class="monitor-card">
           <h3>今日安全状况</h3>
-          <div class="status good">良好</div>
+          <div class="status" :class="safetyStatus.class">{{ safetyStatus.text }}</div>
         </div>
       </div>
 
       <div class="monitor-list">
         <h3>实时监控</h3>
 
-        <!-- 加载中提示 -->
-        <div class="loading-container" v-if="loading.productionLines">
-          <div class="loading-spinner"></div>
-          <p>正在加载产线数据...</p>
-        </div>
+
 
         <!-- 错误提示 -->
         <div class="error-container" v-if="error.productionLines">
@@ -28,12 +24,12 @@
         </div>
 
         <!-- 空数据提示 -->
-        <div class="empty-container" v-if="!loading.productionLines && !error.productionLines && monitorItems.length === 0">
+        <div class="empty-container" v-if="!error.productionLines && monitorItems.length === 0">
           <p>没有找到产线数据</p>
         </div>
 
         <!-- 监控列表 -->
-        <div v-if="!loading.productionLines && !error.productionLines && monitorItems.length > 0">
+        <div v-if="!error.productionLines && monitorItems.length > 0">
           <div class="list-item" v-for="(item, index) in monitorItems" :key="index">
             <div class="area-info">
               <div class="area-name">{{ item.area }}</div>
@@ -94,14 +90,14 @@
             <div class="line-body">
               <div class="metric-item">
                 <span class="label">噪音水平</span>
-                <span class="value" :class="{ warning: line.noise > 85 }">
-                  {{ line.noise }}dB
+                <span class="value" :class="{ warning: typeof line.noise === 'number' && line.noise > 85 }">
+                  {{ typeof line.noise === 'number' ? line.noise + 'dB' : line.noise }}
                 </span>
               </div>
               <div class="metric-item">
                 <span class="label">环境温度</span>
-                <span class="value" :class="{ warning: line.temperature > 35 }">
-                  {{ line.temperature }}°C
+                <span class="value" :class="{ warning: typeof line.temperature === 'number' && line.temperature > 35 }">
+                  {{ typeof line.temperature === 'number' ? line.temperature + '°C' : line.temperature }}
                 </span>
               </div>
               <div class="metric-item">
@@ -199,8 +195,8 @@
                   </td>
                   <td>
                     <div class="safety-params">
-                      <span :class="{ warning: device.temperature > 80 }">温度: {{ device.temperature }}°C</span>
-                      <span :class="{ warning: device.noise > 85 }">噪音: {{ device.noise }}dB</span>
+                      <span :class="{ warning: typeof device.temperature === 'number' && device.temperature > 80 }">温度: {{ typeof device.temperature === 'number' ? device.temperature + '°C' : device.temperature }}</span>
+                      <span :class="{ warning: typeof device.noise === 'number' && device.noise > 85 }">噪音: {{ typeof device.noise === 'number' ? device.noise + 'dB' : device.noise }}</span>
                     </div>
                   </td>
                   <td>{{ device.lastCheck }}</td>
@@ -236,14 +232,15 @@ export default {
   data() {
     return {
       monitorItems: [],
-      loading: {
-        productionLines: false,
-        equipments: false
-      },
       error: {
         productionLines: null,
         equipments: null
       },
+      safetyStatus: {
+        text: '良好',
+        class: 'good'
+      },
+      updateTimer: null,
       // 原始模拟数据
       /*
       monitorItems: [
@@ -440,6 +437,18 @@ export default {
   created() {
     this.fetchProductionLines();
     this.fetchEquipments();
+    // 设置10秒自动刷新
+    this.updateTimer = setInterval(() => {
+      this.fetchProductionLines(false);
+      this.fetchEquipments(false);
+    }, 10000);
+  },
+
+  beforeDestroy() {
+    // 组件销毁前清除定时器
+    if (this.updateTimer) {
+      clearInterval(this.updateTimer);
+    }
   },
   methods: {
     // 查看产线详情
@@ -528,10 +537,10 @@ export default {
 
 
     // 从后端获取产线数据
-    async fetchProductionLines() {
-      // 不设置加载状态，避免显示加载界面
-      // this.loading.productionLines = true;
-      this.error.productionLines = null;
+    async fetchProductionLines(showError = true) {
+      if (showError) {
+        this.error.productionLines = null;
+      }
 
       try {
         // 获取当前登录用户的组号
@@ -539,16 +548,14 @@ export default {
         const groupId = userInfo.group_id;
 
         if (!groupId) {
-          console.error('未找到组号信息');
-          this.error.productionLines = '无法获取您的组号信息，请重新登录';
+          if (showError) {
+            this.error.productionLines = '无法获取您的组号信息，请重新登录';
+          }
           return;
         }
 
-        console.log('尝试获取组号为', groupId, '的产线数据');
-
         // 获取安全员组的产线信息
         const url = `/api/production_line/with-status?group_id=${groupId}`;
-        console.log('请求URL:', url);
 
         const response = await fetch(url, {
           headers: {
@@ -557,33 +564,28 @@ export default {
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('响应状态错误:', response.status, errorText);
-          throw new Error(`获取产线数据失败: ${response.status}`);
+          if (showError) {
+            throw new Error(`获取产线数据失败: ${response.status}`);
+          }
+          return;
         }
 
-        const responseText = await response.text();
-        console.log('原始响应文本:', responseText);
+        const data = await response.json();
 
-        try {
-          const data = JSON.parse(responseText);
-          console.log('安全员组的产线数据:', data);
-
-          if (data.success) {
-            // 格式化产线数据
-            this.productionLines = this.formatProductionLines(data.data || []);
-            // 更新监控项目
-            this.updateMonitorItems();
-          } else {
-            this.error.productionLines = data.error || '获取产线数据失败';
-          }
-        } catch (jsonError) {
-          console.error('JSON解析错误:', jsonError);
-          this.error.productionLines = `响应数据格式错误: ${jsonError.message}`;
+        if (data.success) {
+          // 格式化产线数据
+          this.productionLines = this.formatProductionLines(data.data || []);
+          // 更新监控项目
+          this.updateMonitorItems();
+          // 更新安全状况
+          this.updateSafetyStatus();
+        } else if (showError) {
+          this.error.productionLines = data.error || '获取产线数据失败';
         }
       } catch (error) {
-        console.error('获取产线数据出错:', error);
-        this.error.productionLines = error.message || '获取产线数据出错';
+        if (showError) {
+          this.error.productionLines = error.message || '获取产线数据出错';
+        }
       }
     },
 
@@ -611,38 +613,19 @@ export default {
           statusText = '维修中';
         }
 
-        // 解析传感器数据
-        let noise = 0;
-        let temperature = 0;
-        let airQuality = 'good';
-        let airQualityText = '良好';
+        // 使用后端数据或显示未找到
+        let noise = line.noise_level || '未找到';
+        let temperature = line.temperature || '未找到';
+        let airQuality = line.air_quality || 'unknown';
+        let airQualityText = '未找到';
 
-        try {
-          // 如果有实时状态数据
-          if (line.latest_status) {
-            // 尝试解析JSON数据
-            const sensorData = typeof line.latest_status.sensor_data === 'string'
-              ? JSON.parse(line.latest_status.sensor_data)
-              : line.latest_status.sensor_data || {};
-
-            noise = sensorData.noise || 0;
-            temperature = sensorData.temperature || 0;
-
-            // 根据空气质量值设置文本
-            if (sensorData.air_quality) {
-              airQuality = sensorData.air_quality;
-
-              if (airQuality === 'poor') {
-                airQualityText = '较差';
-              } else if (airQuality === 'medium') {
-                airQualityText = '一般';
-              } else {
-                airQualityText = '良好';
-              }
-            }
-          }
-        } catch (e) {
-          console.error('解析传感器数据失败:', e);
+        // 根据空气质量设置文本
+        if (airQuality === 'good') {
+          airQualityText = '良好';
+        } else if (airQuality === 'medium') {
+          airQualityText = '一般';
+        } else if (airQuality === 'poor') {
+          airQualityText = '较差';
         }
 
         return {
@@ -682,10 +665,10 @@ export default {
     },
 
     // 从后端获取设备数据
-    async fetchEquipments() {
-      // 不设置加载状态，避免显示加载界面
-      // this.loading.equipments = true;
-      this.error.equipments = null;
+    async fetchEquipments(showError = true) {
+      if (showError) {
+        this.error.equipments = null;
+      }
 
       try {
         // 获取当前登录用户的组号
@@ -693,16 +676,14 @@ export default {
         const groupId = userInfo.group_id;
 
         if (!groupId) {
-          console.error('未找到组号信息');
-          this.error.equipments = '无法获取您的组号信息，请重新登录';
+          if (showError) {
+            this.error.equipments = '无法获取您的组号信息，请重新登录';
+          }
           return;
         }
 
-        console.log('尝试获取组号为', groupId, '的设备数据');
-
         // 获取设备信息
         const url = `/api/equipment/with-status?group_id=${groupId}`;
-        console.log('请求URL:', url);
 
         const response = await fetch(url, {
           headers: {
@@ -711,31 +692,26 @@ export default {
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error('响应状态错误:', response.status, errorText);
-          throw new Error(`获取设备数据失败: ${response.status}`);
+          if (showError) {
+            throw new Error(`获取设备数据失败: ${response.status}`);
+          }
+          return;
         }
 
-        const responseText = await response.text();
-        console.log('原始响应文本:', responseText);
+        const data = await response.json();
 
-        try {
-          const data = JSON.parse(responseText);
-          console.log('安全员组的设备数据:', data);
-
-          if (data.success) {
-            // 格式化设备数据
-            this.equipments = this.formatEquipments(data.data || []);
-          } else {
-            this.error.equipments = data.error || '获取设备数据失败';
-          }
-        } catch (jsonError) {
-          console.error('JSON解析错误:', jsonError);
-          this.error.equipments = `响应数据格式错误: ${jsonError.message}`;
+        if (data.success) {
+          // 格式化设备数据
+          this.equipments = this.formatEquipments(data.data || []);
+          // 更新安全状况
+          this.updateSafetyStatus();
+        } else if (showError) {
+          this.error.equipments = data.error || '获取设备数据失败';
         }
       } catch (error) {
-        console.error('获取设备数据出错:', error);
-        this.error.equipments = error.message || '获取设备数据出错';
+        if (showError) {
+          this.error.equipments = error.message || '获取设备数据出错';
+        }
       }
     },
 
@@ -877,19 +853,48 @@ export default {
       }
     },
 
+    // 更新安全状况
+    updateSafetyStatus() {
+      // 检查是否有数据
+      if (this.productionLines.length === 0 && this.equipments.length === 0) {
+        this.safetyStatus = {
+          text: '无数据',
+          class: 'unknown'
+        };
+        return;
+      }
+
+      // 检查是否有故障或预警状态的产线或设备
+      const hasError = this.productionLines.some(line => line.status === 'error') ||
+                      this.equipments.some(device => device.safetyStatus === 'error');
+
+      const hasWarning = this.productionLines.some(line => line.status === 'warning') ||
+                        this.equipments.some(device => device.safetyStatus === 'warning');
+
+      if (hasError) {
+        this.safetyStatus = {
+          text: '异常',
+          class: 'error'
+        };
+      } else if (hasWarning) {
+        this.safetyStatus = {
+          text: '预警',
+          class: 'warning'
+        };
+      } else {
+        this.safetyStatus = {
+          text: '良好',
+          class: 'good'
+        };
+      }
+    },
+
     // 格式化设备数据
     formatEquipments(equipments) {
       return equipments.map(equipment => {
         // 获取关联的产线名称
         // 优先使用设备数据中的 line_name 字段
         const productionLine = equipment.line_name || this.productionLines.find(line => line.id === equipment.line_id)?.name || '未知产线';
-        console.log('设备产线信息:', {
-          equipment_id: equipment.id,
-          equipment_name: equipment.equipment_name,
-          line_id: equipment.line_id,
-          line_name: equipment.line_name,
-          productionLine: productionLine
-        });
 
         // 解析传感器数据
         let temperature = 0;
@@ -897,19 +902,21 @@ export default {
         let riskLevel = 'low';
         let riskLevelText = '低风险';
 
+        // 尝试解析传感器数据
         try {
-          // 如果有实时状态数据
-          if (equipment.latest_status) {
+          if (equipment.sensor_data) {
             // 尝试解析JSON数据
-            const sensorData = typeof equipment.latest_status.sensor_data === 'string'
-              ? JSON.parse(equipment.latest_status.sensor_data)
-              : equipment.latest_status.sensor_data || {};
+            const sensorData = typeof equipment.sensor_data === 'string'
+              ? JSON.parse(equipment.sensor_data)
+              : equipment.sensor_data || {};
 
-            temperature = sensorData.temperature || 0;
-            noise = sensorData.noise || 0;
+            temperature = sensorData.temperature ? sensorData.temperature : '未找到';
+            noise = sensorData.noise ? sensorData.noise : '未找到';
+          }
 
-            // 根据故障概率设置风险等级
-            const faultProbability = equipment.latest_status.fault_probability || 0;
+          // 根据故障概率设置风险等级
+          if (equipment.fault_probability) {
+            const faultProbability = equipment.fault_probability;
 
             if (faultProbability > 0.7) {
               riskLevel = 'high';
@@ -921,9 +928,16 @@ export default {
               riskLevel = 'low';
               riskLevelText = '低风险';
             }
+          } else {
+            riskLevel = 'unknown';
+            riskLevelText = '未知';
           }
         } catch (e) {
-          console.error('解析传感器数据失败:', e);
+          // 如果解析失败，显示未找到
+          temperature = '未找到';
+          noise = '未找到';
+          riskLevel = 'unknown';
+          riskLevelText = '未知';
         }
 
         // 设置安全状态
@@ -949,8 +963,8 @@ export default {
         }
 
         // 格式化最后检查时间
-        const lastCheck = equipment.latest_status?.collection_time
-          ? new Date(equipment.latest_status.collection_time).toLocaleDateString()
+        const lastCheck = equipment.collection_time
+          ? new Date(equipment.collection_time).toLocaleDateString()
           : '未知';
 
         return {
@@ -1026,6 +1040,18 @@ export default {
 
 .status.good {
   color: #4CAF50;
+}
+
+.status.warning {
+  color: #ff9800;
+}
+
+.status.error {
+  color: #f44336;
+}
+
+.status.unknown {
+  color: #9e9e9e;
 }
 
 .count {

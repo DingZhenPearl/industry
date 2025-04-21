@@ -72,6 +72,9 @@ def get_production_lines_by_group(group_id):
             SELECT pl.*,
                    pls.runtime_hours,
                    pls.real_time_capacity,
+                   pls.noise_level,
+                   pls.temperature,
+                   pls.air_quality,
                    pls.collection_time
             FROM production_line pl
             LEFT JOIN (

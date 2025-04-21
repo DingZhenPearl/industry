@@ -79,6 +79,9 @@ def create_production_line_tables(drop_existing=False):
                 line_id INT NOT NULL COMMENT '产线ID',
                 runtime_hours FLOAT DEFAULT 0 COMMENT '运行时长(小时)',
                 real_time_capacity FLOAT COMMENT '产线实时产能',
+                noise_level FLOAT COMMENT '噪音水平(dB)',
+                temperature FLOAT COMMENT '环境温度(°C)',
+                air_quality VARCHAR(20) COMMENT '空气质量(good/medium/poor)',
                 collection_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '数据采集时间',
                 FOREIGN KEY (line_id) REFERENCES production_line(id) ON DELETE CASCADE,
                 INDEX idx_line_id (line_id),
@@ -270,6 +273,9 @@ def get_production_line_with_status():
             SELECT pl.*,
                    pls.runtime_hours,
                    pls.real_time_capacity,
+                   pls.noise_level,
+                   pls.temperature,
+                   pls.air_quality,
                    pls.collection_time
             FROM production_line pl
             LEFT JOIN (
@@ -321,6 +327,9 @@ def get_production_lines_by_foreman(foreman_id):
             SELECT pl.*,
                    pls.runtime_hours,
                    pls.real_time_capacity,
+                   pls.noise_level,
+                   pls.temperature,
+                   pls.air_quality,
                    pls.collection_time
             FROM production_line pl
             LEFT JOIN (
@@ -403,6 +412,9 @@ def get_production_line_detail(line_id):
             SELECT pl.*,
                    pls.runtime_hours,
                    pls.real_time_capacity,
+                   pls.noise_level,
+                   pls.temperature,
+                   pls.air_quality,
                    pls.collection_time,
                    u.username as foreman_name
             FROM production_line pl
