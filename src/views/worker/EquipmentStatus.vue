@@ -494,46 +494,44 @@ export default {
       }
     },
 
+    // 获取设备的传感器项目列表
+    async fetchSensorProjects(equipmentId) {
+      if (!equipmentId) return;
 
-  },
-
-  // 获取设备的传感器项目列表
-  async fetchSensorProjects(equipmentId) {
-    if (!equipmentId) return;
-
-    try {
-      const response = await fetch(`/api/sensor-projects/${equipmentId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (!response.ok) {
-        console.error(`获取传感器项目列表失败: ${response.status}`);
-        return;
-      }
-
-      const result = await response.json();
-
-      if (result.success && result.data && result.data.sensor_projects) {
-        // 处理传感器项目数据
-        let sensorProjects = result.data.sensor_projects;
-        if (typeof sensorProjects === 'string') {
-          try {
-            sensorProjects = JSON.parse(sensorProjects);
-          } catch (e) {
-            console.error('解析传感器项目数据失败:', e);
-            sensorProjects = {};
+      try {
+        const response = await fetch(`/api/sensor-projects/${equipmentId}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
+        });
+
+        if (!response.ok) {
+          console.error(`获取传感器项目列表失败: ${response.status}`);
+          return;
         }
 
-        // 保存传感器项目数据
-        this.$set(this.sensorProjects, equipmentId, sensorProjects);
+        const result = await response.json();
+
+        if (result.success && result.data && result.data.sensor_projects) {
+          // 处理传感器项目数据
+          let sensorProjects = result.data.sensor_projects;
+          if (typeof sensorProjects === 'string') {
+            try {
+              sensorProjects = JSON.parse(sensorProjects);
+            } catch (e) {
+              console.error('解析传感器项目数据失败:', e);
+              sensorProjects = {};
+            }
+          }
+
+          // 保存传感器项目数据
+          this.$set(this.sensorProjects, equipmentId, sensorProjects);
+        }
+      } catch (error) {
+        console.error('获取传感器项目列表出错:', error);
       }
-    } catch (error) {
-      console.error('获取传感器项目列表出错:', error);
     }
-  }
+  },
 }
 </script>
 

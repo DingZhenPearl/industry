@@ -184,7 +184,7 @@ export default {
         productionLine: this.equipment.lineName || this.equipment.location,
         status: this.equipment.status,
         statusText: this.equipment.statusText,
-        runtime: 0, // 默认值
+        runtime: this.equipment.runtime || 0, // 使用设备的运行时间
         sensorData: sensorData
       };
     }
@@ -244,6 +244,7 @@ export default {
             lineName: deviceData.line_name || '未知产线',
             sensorId: deviceData.equipment_code,
             description: deviceData.description || '暂无详细信息',
+            runtime: deviceData.runtime_hours || 0, // 从 API 返回的数据中获取运行时间
             status: deviceData.status === '故障' ? 'error' :
                    deviceData.fault_probability > 0.3 ? 'warning' : 'normal',
             statusText: deviceData.status === '故障' ? '故障' :
