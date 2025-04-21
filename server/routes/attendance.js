@@ -3,20 +3,6 @@ const router = express.Router();
 const { runPythonScript } = require('../utils/pythonRunner');
 const { authMiddleware } = require('../middleware');
 
-// 初始化数据库表
-router.post('/init-tables', authMiddleware, async (req, res) => {
-  try {
-    const result = await runPythonScript(
-      'pyScripts/create_attendance_tables.py',
-      []
-    );
-
-    res.json(result);
-  } catch (error) {
-    console.error('初始化考勤表失败:', error);
-    res.status(500).json({ success: false, error: '服务器内部错误' });
-  }
-});
 
 // 上班打卡
 router.post('/check-in', authMiddleware, async (req, res) => {
