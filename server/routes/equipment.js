@@ -14,7 +14,7 @@ router.get('/list', authMiddleware, async (req, res) => {
     if (status) args.push('--status', status);
 
     const result = await runPythonScript(
-      'pyScripts/equipment_manager.py',
+      'pyScripts/equipment_unified.py',
       args,
       { debug: true }
     );
@@ -38,28 +38,28 @@ router.get('/with-status', authMiddleware, async (req, res) => {
     if (group_id) {
       // 如果有组号参数，使用按组号获取设备的脚本
       result = await runPythonScript(
-        'pyScripts/get_equipment_by_group.py',
-        [group_id],
+        'pyScripts/equipment_unified.py',
+        ['get-by-group', group_id],
         { debug: true }
       );
     } else if (equipment_id) {
       // 如果有设备 ID 参数，获取特定设备
       result = await runPythonScript(
-        'pyScripts/equipment_manager.py',
+        'pyScripts/equipment_unified.py',
         ['get-with-status', '--equipment-id', equipment_id],
         { debug: true }
       );
     } else if (line_id) {
       // 如果有产线 ID 参数，使用原来的脚本按产线获取设备
       result = await runPythonScript(
-        'pyScripts/equipment_manager.py',
+        'pyScripts/equipment_unified.py',
         ['get-with-status', '--line-id', line_id],
         { debug: true }
       );
     } else {
       // 如果没有特定参数，获取所有设备
       result = await runPythonScript(
-        'pyScripts/equipment_manager.py',
+        'pyScripts/equipment_unified.py',
         ['get-with-status'],
         { debug: true }
       );
@@ -81,8 +81,8 @@ router.get('/with-workers', authMiddleware, async (req, res) => {
     if (line_id) args.push(line_id);
 
     const result = await runPythonScript(
-      'pyScripts/get_equipment_with_workers.py',
-      args,
+      'pyScripts/equipment_unified.py',
+      ['get-with-workers', ...args],
       { debug: true }
     );
 
@@ -107,7 +107,7 @@ router.get('/status-history', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/equipment_manager.py',
+      'pyScripts/equipment_unified.py',
       ['get-status', '--equipment-id', equipment_id, '--limit', limit],
       { debug: true }
     );
@@ -132,7 +132,7 @@ router.post('/add', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/equipment_manager.py',
+      'pyScripts/equipment_unified.py',
       ['add-equipment', '--data', JSON.stringify(equipmentData)],
       { debug: true }
     );
@@ -157,7 +157,7 @@ router.post('/update-status', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/equipment_manager.py',
+      'pyScripts/equipment_unified.py',
       ['update-status', '--equipment-id', equipment_id, '--data', JSON.stringify(status_data)],
       { debug: true }
     );
@@ -182,8 +182,8 @@ router.post('/update', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/update_equipment.py',
-      ['--equipment-id', equipment_id, '--data', JSON.stringify(equipment_data)],
+      'pyScripts/equipment_unified.py',
+      ['update-equipment', '--equipment-id', equipment_id, '--data', JSON.stringify(equipment_data)],
       { debug: true }
     );
 
@@ -207,7 +207,7 @@ router.post('/assign-worker', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/equipment_manager.py',
+      'pyScripts/equipment_unified.py',
       ['assign-worker', '--equipment-id', equipment_id, '--worker-id', worker_id],
       { debug: true }
     );
@@ -234,8 +234,8 @@ router.delete('/delete/:equipment_id', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/delete_equipment.py',
-      ['--equipment-id', equipment_id],
+      'pyScripts/equipment_unified.py',
+      ['delete-equipment', '--equipment-id', equipment_id],
       { debug: true }
     );
 
@@ -252,7 +252,7 @@ router.post('/create-tables', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/equipment_manager.py',
+      'pyScripts/equipment_unified.py',
       ['create-tables'],
       { debug: true }
     );

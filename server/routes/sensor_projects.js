@@ -16,8 +16,8 @@ router.get('/:equipment_id', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/update_equipment_sensor_projects.py',
-      ['get', '--equipment-id', equipment_id],
+      'pyScripts/equipment_unified.py',
+      ['get-sensor-projects', '--equipment-id', equipment_id],
       { debug: true }
     );
 
@@ -42,8 +42,8 @@ router.post('/:equipment_id', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/update_equipment_sensor_projects.py',
-      ['update', '--equipment-id', equipment_id, '--data', JSON.stringify(sensor_projects)],
+      'pyScripts/equipment_unified.py',
+      ['update-sensor-projects', '--equipment-id', equipment_id, '--data', JSON.stringify(sensor_projects)],
       { debug: true }
     );
 
