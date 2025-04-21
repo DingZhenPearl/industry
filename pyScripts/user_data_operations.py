@@ -499,6 +499,48 @@ def get_users():
             cursor.close()
             connection.close()
 
+def get_foremen():
+    """获取所有工长信息"""
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+
+        query = """
+            SELECT
+                employee_id as id,
+                username as name,
+                phone,
+                group_id,
+                COALESCE(status, 'active') as status,
+                CASE
+                    WHEN status = 'leave' THEN '请假'
+                    WHEN status = 'off' THEN '离岗'
+                    ELSE '在岗'
+                END as statusText
+            FROM users
+            WHERE role = 'foreman'
+        """
+
+        cursor.execute(query)
+        foremen = cursor.fetchall()
+
+        # 包装在success对象中返回
+        print(json.dumps({
+            'success': True,
+            'data': foremen
+        }, ensure_ascii=False))
+
+    except Exception as e:
+        print(json.dumps({
+            'success': False,
+            'error': str(e)
+        }, ensure_ascii=False))
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
 def get_team_members(group_id):
     """获取指定组的团队成员及其负责的产线和设备信息"""
     connection = None
@@ -1126,6 +1168,9 @@ def main():
     # 获取用户命令
     get_users_parser = subparsers.add_parser('get-users', help='获取所有用户')
 
+    # 获取工长命令
+    get_foremen_parser = subparsers.add_parser('get-foremen', help='获取所有工长')
+
     # 获取团队成员命令
     get_team_parser = subparsers.add_parser('get-team', help='获取团队成员')
     get_team_parser.add_argument('group_id', help='组ID')
@@ -1206,6 +1251,8 @@ def main():
         verify_column_types()
     elif args.command == 'get-users':
         get_users()
+    elif args.command == 'get-foremen':
+        get_foremen()
     elif args.command == 'get-team':
         get_team_members(args.group_id)
     elif args.command == 'get-username':

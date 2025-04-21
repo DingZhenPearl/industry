@@ -22,8 +22,8 @@ router.get('/users', authMiddleware, async (_, res) => {
 router.get('/foremen', authMiddleware, async (_, res) => {
   try {
     const result = await runPythonScript(
-      'pyScripts/get_foremen.py',
-      []
+      'pyScripts/user_data_operations.py',
+      ['get-foremen']
     );
 
     res.json(result);
@@ -37,8 +37,8 @@ router.get('/foremen', authMiddleware, async (_, res) => {
 router.get('/users/foremen', authMiddleware, async (_, res) => {
   try {
     const result = await runPythonScript(
-      'pyScripts/get_foremen.py',
-      []
+      'pyScripts/user_data_operations.py',
+      ['get-foremen']
     );
 
     res.json(result);
