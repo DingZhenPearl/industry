@@ -82,7 +82,6 @@
                 <td>
                   <button class="action-btn view" @click="viewEmployeeDetail(emp)">详情</button>
                   <button class="action-btn edit" @click="showGroupChangeModal(emp)">分组</button>
-                  <button class="action-btn delete" @click="deleteEmployee(emp)">删除</button>
                   <button class="action-btn status" @click="showUpdateStatusModal(emp)">修改状态</button>
                 </td>
               </tr>
@@ -598,11 +597,6 @@ export default {
         this.groupUpdateLoading = false;
       }
     },
-    deleteEmployee(employee) {
-      if (confirm('确定要删除该员工吗？')) {
-        this.employees = this.employees.filter(emp => emp.id !== employee.id);
-      }
-    },
 
     // 获取状态类名
     getStatusClass(status) {
@@ -904,11 +898,6 @@ export default {
 
 .action-btn.edit {
   background: #2196F3;
-  color: white;
-}
-
-.action-btn.delete {
-  background: #f44336;
   color: white;
 }
 
