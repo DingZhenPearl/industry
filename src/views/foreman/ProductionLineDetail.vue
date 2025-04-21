@@ -517,22 +517,25 @@ export default {
 
     // 查看设备详情
     viewDeviceDetail(device) {
-      this.$router.push(`/foreman/equipment-detail/${device.id}`);
+      // 使用导航辅助函数跳转到设备详情页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, `/foreman/equipment-detail/${device.id}`);
+      });
     },
 
     // 查看产线所有设备
     viewDevices() {
-      this.$router.push({
-        path: '/foreman/equipment',
-        query: { line: this.productionLine.id }
+      // 使用导航辅助函数跳转到设备页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, '/foreman/equipment', { line: this.productionLine.id });
       });
     },
 
     // 查看相关工单
     viewWorkOrders() {
-      this.$router.push({
-        path: '/foreman/workorder',
-        query: { line: this.productionLine.id }
+      // 使用导航辅助函数跳转到工单页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, '/foreman/workorder', { line: this.productionLine.id });
       });
     },
 

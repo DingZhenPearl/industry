@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const express = require('express');
 const path = require('path');
+const { isValidUid } = require('./utils/uidGenerator');
 
 /**
  * 配置Express应用的中间件
@@ -62,4 +63,39 @@ const authMiddleware = (req, res, next) => {
   });
 };
 
-module.exports = { setupMiddleware, authMiddleware };
+/**
+ * UID验证中间件
+ * 验证请求中的uid参数是否有效
+ */
+const uidMiddleware = (req, res, next) => {
+  // 从URL参数或请求体中获取uid
+  const uid = req.query.uid || req.body.uid;
+
+  // 如果没有提供uid，则跳过验证
+  if (!uid) {
+    return next();
+  }
+
+  // 验证uid格式是否有效
+  if (!isValidUid(uid)) {
+    return res.status(400).json({
+      success: false,
+      error: '无效的用户标识符'
+    });
+  }
+
+  // 如果有会话，验证uid是否与会话中的uid匹配
+  if (req.session && req.session.user && req.session.user.uid) {
+    if (uid !== req.session.user.uid) {
+      return res.status(403).json({
+        success: false,
+        error: '用户标识符不匹配'
+      });
+    }
+  }
+
+  // uid有效，继续处理请求
+  next();
+};
+
+module.exports = { setupMiddleware, authMiddleware, uidMiddleware };

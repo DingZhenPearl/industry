@@ -501,7 +501,10 @@ export default {
 
     // 返回上一页
     goBack() {
-      this.$router.push('/safety/monitor');
+      // 使用导航辅助函数返回监控页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, '/safety-officer/monitoring');
+      });
     },
 
     // 获取传感器标签

@@ -1,18 +1,18 @@
 <template>
   <nav class="bottom-nav">
-    <div class="nav-item" :class="{ active: $route.path === '/worker/workorders' }" @click="$router.push('/worker/workorders')">
+    <div class="nav-item" :class="{ active: $route.path === '/worker/workorders' }" @click="navigateTo('/worker/workorders')">
       <i class="nav-icon tasks-icon"></i>
       <span>我的工单</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/worker/issues' }" @click="$router.push('/worker/issues')">
+    <div class="nav-item" :class="{ active: $route.path === '/worker/issues' }" @click="navigateTo('/worker/issues')">
       <i class="nav-icon issues-icon"></i>
       <span>故障上报</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/worker/equipment-status' }" @click="$router.push('/worker/equipment-status')">
+    <div class="nav-item" :class="{ active: $route.path === '/worker/equipment-status' }" @click="navigateTo('/worker/equipment-status')">
       <i class="nav-icon equipment-icon"></i>
       <span>设备状态</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/worker/profile' }" @click="$router.push('/worker/profile')">
+    <div class="nav-item" :class="{ active: $route.path === '/worker/profile' }" @click="navigateTo('/worker/profile')">
       <i class="nav-icon profile-icon"></i>
       <span>我的</span>
     </div>
@@ -21,7 +21,24 @@
 
 <script>
 export default {
-  name: 'WorkerNav'
+  name: 'WorkerNav',
+  methods: {
+    navigateTo(path) {
+      // 如果不是当前路径才进行跳转
+      if (this.$route.path !== path) {
+        // 获取当前的uid参数或从本地存储中获取
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+        const currentUid = this.$route.query.uid || userInfo.uid
+
+        // 构建带有uid参数的路由
+        if (currentUid) {
+          this.$router.push({ path, query: { uid: currentUid } })
+        } else {
+          this.$router.push(path)
+        }
+      }
+    }
+  }
 }
 </script>
 

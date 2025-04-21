@@ -31,7 +31,16 @@ export default {
     navigateTo(path) {
       // 如果不是当前路径才进行跳转
       if (this.$route.path !== path) {
-        this.$router.push(path)
+        // 获取当前的uid参数或从本地存储中获取
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+        const currentUid = this.$route.query.uid || userInfo.uid
+
+        // 构建带有uid参数的路由
+        if (currentUid) {
+          this.$router.push({ path, query: { uid: currentUid } })
+        } else {
+          this.$router.push(path)
+        }
       }
     }
   }

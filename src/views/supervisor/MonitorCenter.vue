@@ -1639,8 +1639,10 @@ export default {
       }
     },
     viewDetails(line) {
-      // 跳转到产线详情页面
-      this.$router.push(`/supervisor/production-line-detail/${line.id}`);
+      // 使用导航辅助函数跳转到产线详情页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, `/supervisor/production-line-detail/${line.id}`);
+      });
     },
 
 
@@ -1677,8 +1679,10 @@ export default {
     },
     // 查看设备详情
     viewDeviceDetail(device) {
-      // 跳转到设备详情页面
-      this.$router.push(`/supervisor/equipment-detail/${device.id}`);
+      // 使用导航辅助函数跳转到设备详情页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, `/supervisor/equipment-detail/${device.id}`);
+      });
     },
 
     // 更新产线状态

@@ -455,16 +455,18 @@ export default {
 
     // 查看相关工单
     viewWorkOrders() {
-      // 跳转到工单页面并传递设备ID
-      this.$router.push({
-        path: '/foreman/workorder',
-        query: { equipment_id: this.equipment.id }
+      // 使用导航辅助函数跳转到工单页面并传递设备ID
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, '/foreman/workorder', { equipment_id: this.equipment.id });
       });
     },
 
     // 返回上一页
     goBack() {
-      this.$router.push('/foreman/equipment');
+      // 使用导航辅助函数返回到设备页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, '/foreman/equipment');
+      });
     },
 
     // 获取传感器标签

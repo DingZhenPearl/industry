@@ -366,8 +366,10 @@ export default {
     },
 
     goBack() {
-      // 返回到监控中心页面
-      this.$router.push('/supervisor/monitor')
+      // 使用导航辅助函数返回到监控中心页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, '/supervisor/monitor');
+      });
     },
 
     // 根据产线 ID 获取产线名称

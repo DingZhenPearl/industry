@@ -1131,7 +1131,10 @@ export default {
       return colorMap[this.selectedParameter] || `rgba(65, 105, 225, ${alpha})`;
     },
     viewDeviceDetail(device) {
-      this.$router.push(`/supervisor/equipment-detail/${device.id}`);
+      // 使用导航辅助函数跳转到设备详情页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, `/supervisor/equipment-detail/${device.id}`);
+      });
     },
     assignMaintenance(device) {
       // 实现设备维护分配逻辑

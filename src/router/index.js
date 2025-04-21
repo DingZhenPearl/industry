@@ -164,26 +164,36 @@ router.beforeEach((to, from, next) => {
     return
   }
 
+  // 获取当前的uid参数，如果没有则使用本地存储中的uid
+  const currentUid = to.query.uid || userInfo.uid
+  const uidParam = currentUid ? { uid: currentUid } : {}
+
   // 新增厂长路由权限判断
   if (userInfo.role === 'supervisor' && !to.path.startsWith('/supervisor')) {
-    next('/supervisor/monitor')
+    next({ path: '/supervisor/monitor', query: uidParam })
     return
   }
 
   // 添加安全员路由判断
   if (userInfo.role === 'safety_officer' && !to.path.startsWith('/safety-officer')) {
-    next('/safety-officer/monitoring')
+    next({ path: '/safety-officer/monitoring', query: uidParam })
     return
   }
 
   // 保持原有的工长和工人的路由权限判断
   if (userInfo.role === 'foreman' && to.path.startsWith('/worker')) {
-    next('/foreman/workorder')
+    next({ path: '/foreman/workorder', query: uidParam })
     return
   }
 
   if (userInfo.role === 'member' && to.path.startsWith('/foreman')) {
-    next('/worker/workorders')
+    next({ path: '/worker/workorders', query: uidParam })
+    return
+  }
+
+  // 如果当前路由没有uid参数但用户有uid，添加uid参数
+  if (userInfo.uid && !to.query.uid) {
+    next({ path: to.path, query: { ...to.query, uid: userInfo.uid } })
     return
   }
 

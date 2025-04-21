@@ -428,8 +428,10 @@ export default {
     // 查看产线详情
     viewLineDetail(line) {
       console.log('查看产线详情:', line);
-      // 跳转到产线详情页面
-      this.$router.push(`/foreman/production-line-detail/${line.id}`);
+      // 使用导航辅助函数跳转到产线详情页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, `/foreman/production-line-detail/${line.id}`);
+      });
     },
 
     // 管理产线设备
@@ -443,8 +445,10 @@ export default {
     // 查看设备详情
     viewDeviceDetail(device) {
       console.log('查看设备详情:', device);
-      // 跳转到设备详情页面
-      this.$router.push(`/foreman/equipment-detail/${device.id}`);
+      // 使用导航辅助函数跳转到设备详情页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, `/foreman/equipment-detail/${device.id}`);
+      });
     },
 
     // 上报故障

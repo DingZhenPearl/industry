@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { runPythonScript } = require('../utils/pythonRunner');
+const { generateUid } = require('../utils/uidGenerator');
 
 // 登录路由
 router.post('/login', async (req, res) => {
@@ -22,13 +23,17 @@ router.post('/login', async (req, res) => {
     );
 
     if (result.authenticated) {
+      // 生成用户唯一标识符
+      const uid = generateUid(result.employee_id);
+
       // 设置会话
       req.session.user = {
         username: result.username,
         role: result.role,
         phone: result.phone,
         employee_id: result.employee_id,
-        group_id: result.group_id
+        group_id: result.group_id,
+        uid: uid
       };
 
       res.json({
@@ -67,10 +72,14 @@ router.post('/register', async (req, res) => {
 
     // 确保在注册成功后返回工号信息
     if (result.success && result.employee_id) {
+      // 生成用户唯一标识符
+      const uid = generateUid(result.employee_id);
+
       res.json({
         success: true,
         message: result.message,
-        employee_id: result.employee_id
+        employee_id: result.employee_id,
+        uid: uid
       });
     } else {
       res.json(result);

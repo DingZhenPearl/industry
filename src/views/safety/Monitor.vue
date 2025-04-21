@@ -468,8 +468,10 @@ export default {
         original: line.original
       });
 
-      // 跳转到产线详情页面
-      this.$router.push(`/safety-officer/production-line-detail/${line.id}`);
+      // 使用导航辅助函数跳转到产线详情页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, `/safety-officer/production-line-detail/${line.id}`);
+      });
     },
 
 
@@ -479,8 +481,10 @@ export default {
     // 查看设备详情
     viewDeviceDetail(device) {
       console.log('查看设备详情:', device);
-      // 跳转到设备详情页面
-      this.$router.push(`/safety-officer/equipment-detail/${device.id}`);
+      // 使用导航辅助函数跳转到设备详情页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, `/safety-officer/equipment-detail/${device.id}`);
+      });
     },
 
 
@@ -524,13 +528,12 @@ export default {
     createMaintenanceOrder(device) {
       console.log('创建维修工单:', device);
 
-      // 跳转到安全预警处理页面
-      this.$router.push({
-        path: '/safety-officer/warnings',
-        query: {
+      // 使用导航辅助函数跳转到安全预警处理页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, '/safety-officer/warnings', {
           device_id: device.id,
           type: 'maintenance'
-        }
+        });
       });
     },
 

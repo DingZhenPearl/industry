@@ -1,6 +1,6 @@
 const express = require('express');
 const path = require('path');
-const { setupMiddleware } = require('./middleware');
+const { setupMiddleware, uidMiddleware } = require('./middleware');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const workorderRoutes = require('./routes/workorders');
@@ -18,10 +18,12 @@ setupMiddleware(app);
 // 注册路由
 app.use('/api', authRoutes);
 app.use('/api', userRoutes);
-app.use('/api/workorders', workorderRoutes);
-app.use('/api/equipment', equipmentRoutes);
-app.use('/api/production_line', productionLineRoutes);
-app.use('/api/attendance', attendanceRoutes);
+
+// 应用uid中间件到需要验证的路由
+app.use('/api/workorders', uidMiddleware, workorderRoutes);
+app.use('/api/equipment', uidMiddleware, equipmentRoutes);
+app.use('/api/production_line', uidMiddleware, productionLineRoutes);
+app.use('/api/attendance', uidMiddleware, attendanceRoutes);
 
 // 打印所有注册的路由
 console.log('已注册的路由:');

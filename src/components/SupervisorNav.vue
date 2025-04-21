@@ -1,19 +1,19 @@
 <template>
   <nav class="bottom-nav">
-    <div class="nav-item" :class="{ active: $route.path === '/supervisor/monitor' }" @click="$router.push('/supervisor/monitor')">
+    <div class="nav-item" :class="{ active: $route.path === '/supervisor/monitor' }" @click="navigateTo('/supervisor/monitor')">
       <i class="nav-icon monitor-icon"></i>
       <span>监控中心</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/supervisor/team' }" @click="$router.push('/supervisor/team')">
+    <div class="nav-item" :class="{ active: $route.path === '/supervisor/team' }" @click="navigateTo('/supervisor/team')">
       <i class="nav-icon team-icon"></i>
       <span>团队管理</span>
     </div>
 
-    <div class="nav-item" :class="{ active: $route.path === '/supervisor/workorders' }" @click="$router.push('/supervisor/workorders')">
+    <div class="nav-item" :class="{ active: $route.path === '/supervisor/workorders' }" @click="navigateTo('/supervisor/workorders')">
       <i class="nav-icon workorder-icon"></i>
       <span>工单管理</span>
     </div>
-    <div class="nav-item" :class="{ active: $route.path === '/supervisor/profile' }" @click="$router.push('/supervisor/profile')">
+    <div class="nav-item" :class="{ active: $route.path === '/supervisor/profile' }" @click="navigateTo('/supervisor/profile')">
       <i class="nav-icon profile-icon"></i>
       <span>我的</span>
     </div>
@@ -22,7 +22,24 @@
 
 <script>
 export default {
-  name: 'SupervisorNav'
+  name: 'SupervisorNav',
+  methods: {
+    navigateTo(path) {
+      // 如果不是当前路径才进行跳转
+      if (this.$route.path !== path) {
+        // 获取当前的uid参数或从本地存储中获取
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+        const currentUid = this.$route.query.uid || userInfo.uid
+
+        // 构建带有uid参数的路由
+        if (currentUid) {
+          this.$router.push({ path, query: { uid: currentUid } })
+        } else {
+          this.$router.push(path)
+        }
+      }
+    }
+  }
 }
 </script>
 

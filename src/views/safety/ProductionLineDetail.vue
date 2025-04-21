@@ -584,15 +584,17 @@ export default {
 
     // 查看设备详情
     viewDeviceDetail(device) {
-      this.$router.push(`/safety-officer/equipment-detail/${device.id}`);
+      // 使用导航辅助函数跳转到设备详情页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, `/safety-officer/equipment-detail/${device.id}`);
+      });
     },
 
     // 查看产线所有设备
     viewDevices() {
-      // 跳转到设备页面，并传递产线ID作为查询参数
-      this.$router.push({
-        path: '/safety-officer/monitoring',
-        query: { tab: 'equipment', line: this.productionLine.id }
+      // 使用导航辅助函数跳转到设备页面，并传递产线ID作为查询参数
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, '/safety-officer/monitoring', { tab: 'equipment', line: this.productionLine.id });
       });
     },
 
@@ -600,8 +602,10 @@ export default {
     createSafetyAlert(device) {
       console.log('为设备创建安全预警:', device);
       alert(`已为设备 ${device.name} 创建安全预警`);
-      // 跳转回监控页面
-      this.$router.push('/safety-officer/monitoring');
+      // 使用导航辅助函数跳转回监控页面
+      import('@/utils/navigationHelper').then(({ navigateWithUid }) => {
+        navigateWithUid(this.$router, '/safety-officer/monitoring');
+      });
     }
   }
 }

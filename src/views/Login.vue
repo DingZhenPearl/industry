@@ -119,7 +119,7 @@ export default {
     const token = localStorage.getItem('token');
     if (token) {
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
-      this.redirectByRole(userInfo.role)
+      this.redirectByRole(userInfo.role, userInfo.uid)
     }
   },
   methods: {
@@ -179,16 +179,18 @@ export default {
           }
         } else {
           if (response.ok && data.success) {
-            // 确保保存完整的用户信息,包括group_id
-            localStorage.setItem('userInfo', JSON.stringify({
+            // 确保保存完整的用户信息,包括group_id和uid
+            const userInfo = {
               username: data.user.username,
               role: data.user.role,
               phone: data.user.phone,
               employee_id: data.user.employee_id,
-              group_id: data.user.group_id  // 确保保存组号
-            }));
+              group_id: data.user.group_id,  // 确保保存组号
+              uid: data.user.uid  // 保存用户唯一标识符
+            };
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
             localStorage.setItem('token', 'session-' + Date.now());
-            this.redirectByRole(data.user.role);
+            this.redirectByRole(data.user.role, data.user.uid);
           } else {
             this.error = data.error || '登录失败，请重试';
           }
@@ -200,19 +202,28 @@ export default {
         this.loading = false;
       }
     },
-    redirectByRole(role) {
+    redirectByRole(role, uid) {
+      // 获取uid，如果没有传入，尝试从本地存储中获取
+      if (!uid) {
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        uid = userInfo.uid;
+      }
+
+      // 构建带有uid参数的URL
+      const uidParam = uid ? `?uid=${uid}` : '';
+
       switch(role) {
         case 'supervisor':
-          this.$router.push('/supervisor/monitor');
+          this.$router.push(`/supervisor/monitor${uidParam}`);
           break;
         case 'foreman':
-          this.$router.push('/foreman/workorder');
+          this.$router.push(`/foreman/workorder${uidParam}`);
           break;
         case 'member':
-          this.$router.push('/worker/workorders');
+          this.$router.push(`/worker/workorders${uidParam}`);
           break;
         case 'safety_officer':
-          this.$router.push('/safety-officer/monitoring');
+          this.$router.push(`/safety-officer/monitoring${uidParam}`);
           break;
         default:
           this.$router.push('/login');
