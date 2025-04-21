@@ -176,7 +176,7 @@ export default {
         }
 
         console.log('开始获取产线数据,工长工号:', this.currentForeman.employee_id);
-        const response = await fetch(`/api/foreman/assigned-lines?employee_id=${this.currentForeman.employee_id}`, {
+        const response = await fetch(`/api/users/foreman/assigned-lines?employee_id=${this.currentForeman.employee_id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

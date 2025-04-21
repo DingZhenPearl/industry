@@ -1195,7 +1195,7 @@ export default {
         console.log(`获取工长 ${foremanId} 的产线数据`);
 
         // 从后端获取工长负责的产线
-        const response = await fetch(`/api/foreman/assigned-lines?employee_id=${foremanId}`, {
+        const response = await fetch(`/api/users/foreman/assigned-lines?employee_id=${foremanId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -1292,7 +1292,7 @@ export default {
         console.log(`获取班组 ${groupId} 的成员数据`);
 
         // 从后端获取班组成员
-        const response = await fetch(`/api/foreman/team-members?group_id=${groupId}`, {
+        const response = await fetch(`/api/users/foreman/team-members?group_id=${groupId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

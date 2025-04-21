@@ -651,7 +651,7 @@ export default {
 
         const foremanId = this.currentForeman.id;
         console.log('开始获取产线数据,工长工号:', foremanId);
-        const response = await fetch(`/api/foreman/assigned-lines?employee_id=${foremanId}`, {
+        const response = await fetch(`/api/users/foreman/assigned-lines?employee_id=${foremanId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -691,7 +691,7 @@ export default {
     async fetchEmployees() {
       try {
         console.log('开始获取员工数据,工长组号:', this.currentForeman.group_id);
-        const response = await fetch(`/api/foreman/team-members?group_id=${this.currentForeman.group_id}`, {
+        const response = await fetch(`/api/users/foreman/team-members?group_id=${this.currentForeman.group_id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -906,7 +906,7 @@ export default {
         }
 
         // 使用正确的API获取工长负责的产线
-        const linesResponse = await fetch(`/api/foreman/assigned-lines?employee_id=${foremanId}`, {
+        const linesResponse = await fetch(`/api/users/foreman/assigned-lines?employee_id=${foremanId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

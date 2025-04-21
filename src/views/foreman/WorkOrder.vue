@@ -510,7 +510,7 @@ export default {
         }
 
         console.log('开始获取工长产线信息,工长工号:', this.currentForeman.employee_id);
-        const response = await fetch(`/api/foreman/assigned-lines?employee_id=${this.currentForeman.employee_id}`, {
+        const response = await fetch(`/api/users/foreman/assigned-lines?employee_id=${this.currentForeman.employee_id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -556,7 +556,7 @@ export default {
         }
 
         console.log('开始获取团队成员数据,工长组号:', this.currentForeman.group_id);
-        const response = await fetch(`/api/foreman/team-members?group_id=${this.currentForeman.group_id}`, {
+        const response = await fetch(`/api/users/foreman/team-members?group_id=${this.currentForeman.group_id}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

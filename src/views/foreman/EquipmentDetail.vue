@@ -392,7 +392,7 @@ export default {
           return;
         }
 
-        const response = await fetch(`/api/foreman/team-members?group_id=${groupId}`, {
+        const response = await fetch(`/api/users/foreman/team-members?group_id=${groupId}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

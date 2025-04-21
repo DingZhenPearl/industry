@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>用户头像</title>
+    <g id="用户头像" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <circle id="背景" fill="#E3F2FD" cx="100" cy="100" r="100"></circle>
+        <g id="用户" transform="translate(50.000000, 40.000000)">
+            <circle id="头部" fill="#2196F3" cx="50" cy="30" r="30"></circle>
+            <path d="M0,120 C0,90 25,70 50,70 C75,70 100,90 100,120" id="身体" stroke="#2196F3" stroke-width="12" stroke-linecap="round"></path>
+        </g>
+    </g>
+</svg>

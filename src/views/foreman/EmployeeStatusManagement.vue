@@ -100,7 +100,7 @@ export default {
       this.loading = true;
 
       try {
-        const response = await fetch(`/api/foreman/team-members?group_id=${this.currentForeman.group_id}`, {
+        const response = await fetch(`/api/users/foreman/team-members?group_id=${this.currentForeman.group_id}`, {
           credentials: 'include' // 确保发送会话 cookie
         });
 
