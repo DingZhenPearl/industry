@@ -2,6 +2,7 @@
 
 ## 项目结构
 ```
+├── android/            # Android应用项目（使用Capacitor生成）
 ├── pyScripts/          # Python数据库操作脚本
 ├── server/             # Node.js后端服务器
 ├── src/                # Vue前端代码
@@ -11,6 +12,7 @@
 ├── package.json        # 项目配置和依赖
 ├── package-lock.json   # 依赖版本锁定文件
 ├── vue.config.js       # Vue CLI配置
+├── capacitor.config.js # Capacitor配置文件
 ├── babel.config.js     # Babel配置
 ├── jsconfig.json       # JavaScript项目配置
 └── .gitignore          # Git忽略文件列表
@@ -21,6 +23,8 @@
 - Python 3.12+
 - MySQL 5.7+
 - Conda (推荐使用Anaconda或Miniconda)
+- Android Studio 4.0+ (用于构建安卓应用)
+- JDK 11+ (用于安卓开发)
 
 ## 安装步骤
 
@@ -198,3 +202,56 @@ Conda环境配置文件，定义了Python环境及其依赖包。
 - **数据库连接错误**: 检查 MySQL 服务是否运行，并确认 `pyScripts` 中的数据库连接信息是否正确
 - **前端请求失败**: 确认后端服务器是否正常运行，检查浏览器控制台的网络请求错误
 - **Python脚本错误**: 查看服务器控制台输出的Python错误信息
+
+## 使用Capacitor构建安卓应用
+
+本项目使用Capacitor将Vue应用打包成安卓原生应用。
+
+### 1. 安装Capacitor依赖
+
+```bash
+npm install @capacitor/core @capacitor/cli @capacitor/android
+```
+
+### 2. 构建前端应用
+
+```bash
+npm run build
+```
+
+### 3. 同步到安卓项目
+
+```bash
+npx cap sync
+```
+
+### 4. 打开Android Studio
+
+```bash
+npx cap open android
+```
+
+### 5. 配置安卓项目
+
+在Android Studio中，您可能需要进行以下操作：
+
+1. 更新应用图标：替换 `android/app/src/main/res` 目录下的图标文件
+2. 修改应用名称：编辑 `android/app/src/main/res/values/strings.xml` 文件
+3. 配置网络安全：确保 `android/app/src/main/AndroidManifest.xml` 中已添加网络安全配置
+
+### 6. 构建安卓应用
+
+在Android Studio中，选择 `Build > Build Bundle(s) / APK(s) > Build APK(s)` 来构建 APK 文件。
+
+### 7. 安装到设备
+
+构建完成后，您可以将APK文件安装到安卓设备上进行测试。
+
+### 8. 注意事项
+
+- 在移动应用中，需要在 `src/config.js` 文件中配置正确的后端服务器地址
+- 确保移动设备和后端服务器在同一网络中，或者后端服务器可以从外部访问
+
+### 模拟器调试
+ 在网易模拟器的shell文件夹下运行CMD，输入以下命令
+ adb.exe connect 127.0.0.1:16384
