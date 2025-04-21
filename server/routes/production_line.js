@@ -7,7 +7,7 @@ const { authMiddleware } = require('../middleware');
 router.get('/list', authMiddleware, async (req, res) => {
   try {
     const result = await runPythonScript(
-      'pyScripts/production_line_manager.py',
+      'pyScripts/production_line_unified.py',
       ['list'],
       { debug: true }
     );
@@ -29,14 +29,14 @@ router.get('/with-status', authMiddleware, async (req, res) => {
     if (group_id) {
       // 如果有组号参数，使用按组号获取产线的脚本
       result = await runPythonScript(
-        'pyScripts/get_production_lines_by_group.py',
-        [group_id],
+        'pyScripts/production_line_unified.py',
+        ['list-by-group', '--group-id', group_id],
         { debug: true }
       );
     } else {
       // 如果没有组号参数，使用原来的脚本获取所有产线
       result = await runPythonScript(
-        'pyScripts/production_line_manager.py',
+        'pyScripts/production_line_unified.py',
         ['get-with-status'],
         { debug: true }
       );
@@ -53,8 +53,8 @@ router.get('/with-status', authMiddleware, async (req, res) => {
 router.get('/with-foremen', authMiddleware, async (req, res) => {
   try {
     const result = await runPythonScript(
-      'pyScripts/get_production_lines_with_foremen.py',
-      [],
+      'pyScripts/production_line_unified.py',
+      ['get-with-foremen'],
       { debug: true }
     );
 
@@ -78,7 +78,7 @@ router.post('/assign-foreman', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/production_line_manager.py',
+      'pyScripts/production_line_unified.py',
       ['assign-foreman', '--line-id', line_id, '--foreman-id', foreman_id],
       { debug: true }
     );
@@ -104,7 +104,7 @@ router.get('/status-history', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/production_line_manager.py',
+      'pyScripts/production_line_unified.py',
       ['get-status', '--line-id', line_id, '--limit', limit],
       { debug: true }
     );
@@ -129,7 +129,7 @@ router.get('/detail', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/production_line_manager.py',
+      'pyScripts/production_line_unified.py',
       ['get-detail', '--line-id', line_id],
       { debug: true }
     );
@@ -154,7 +154,7 @@ router.post('/add', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/production_line_manager.py',
+      'pyScripts/production_line_unified.py',
       ['add-line', '--data', JSON.stringify(lineData)],
       { debug: true }
     );
@@ -179,7 +179,7 @@ router.post('/update-status', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/production_line_manager.py',
+      'pyScripts/production_line_unified.py',
       ['update-status', '--line-id', line_id, '--data', JSON.stringify(status_data)],
       { debug: true }
     );
@@ -204,8 +204,8 @@ router.post('/update', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/update_production_line.py',
-      ['--line-id', line_id, '--data', JSON.stringify(line_data)],
+      'pyScripts/production_line_unified.py',
+      ['update-line', '--line-id', line_id, '--data', JSON.stringify(line_data)],
       { debug: true }
     );
 
@@ -231,8 +231,8 @@ router.delete('/delete/:line_id', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/delete_production_line.py',
-      ['--line-id', line_id],
+      'pyScripts/production_line_unified.py',
+      ['delete-line', '--line-id', line_id],
       { debug: true }
     );
 
@@ -249,7 +249,7 @@ router.post('/create-tables', authMiddleware, async (req, res) => {
 
   try {
     const result = await runPythonScript(
-      'pyScripts/production_line_manager.py',
+      'pyScripts/production_line_unified.py',
       ['create-tables'],
       { debug: true }
     );

@@ -44,7 +44,7 @@ router.get('/assigned-lines', authMiddleware, async (req, res) => {
   try {
     // 使用新的脚本获取产线信息
     const result = await runPythonScript(
-      'pyScripts/production_line_manager.py',
+      'pyScripts/production_line_unified.py',
       ['list-by-foreman', '--foreman-id', employee_id],
       { debug: true }
     );
