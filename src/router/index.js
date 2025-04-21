@@ -92,7 +92,7 @@ const supervisorRoutes = [
   {
     path: '/supervisor/profile',
     name: 'SupervisorProfile',
-    component: () => import('../views/supervisor/SystemSettings.vue')
+    component: () => import('../views/supervisor/Account.vue')
   }
 ]
 

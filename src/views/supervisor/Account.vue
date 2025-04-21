@@ -92,7 +92,7 @@
 import SupervisorNav from '@/components/SupervisorNav.vue'
 
 export default {
-  name: 'SupervisorProfile',
+  name: 'SupervisorAccount',
   components: {
     SupervisorNav
   },

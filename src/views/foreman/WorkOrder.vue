@@ -93,7 +93,7 @@
           </div>
 
           <!-- 工单列表内容 -->
-          <div class="workorder-item" v-for="(item, index) in filteredWorkorders" :key="index" v-else>
+          <div class="workorder-item" v-for="(item, index) in filteredWorkorders" :key="index">
             <div class="workorder-header">
               <span class="workorder-number">{{ item.number }}</span>
               <span class="workorder-status" :class="item.status">{{ item.statusText }}</span>
