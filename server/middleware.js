@@ -12,7 +12,7 @@ const { isValidUid } = require('./utils/uidGenerator');
 function setupMiddleware(app) {
   // CORS配置
   app.use(cors({
-    origin: 'http://localhost:5173', // Vue开发服务器地址
+    origin: '*', // 允许所有源访问
     credentials: true
   }));
 

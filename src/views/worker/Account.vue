@@ -147,7 +147,7 @@ export default {
         cancelButtonText: '取消'
       }).then(async ({ value: newPassword }) => {
         try {
-          const data = await fetch('http://localhost:3000/api/update-password', {
+          const data = await fetch('/api/update-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -204,7 +204,7 @@ export default {
     async handleLogout() {
       try {
         // 调用后端登出接口
-        await fetch('http://localhost:3000/api/logout', {
+        await fetch('/api/logout', {
           method: 'POST',
           credentials: 'include'
         });

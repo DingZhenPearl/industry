@@ -38,7 +38,8 @@ app.get('*', (_, res) => {
   res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
 });
 
-// 启动服务器
-app.listen(port, () => {
-  console.log(`服务器运行在 http://localhost:${port}`);
+// 启动服务器 - 监听所有网络接口
+app.listen(port, '0.0.0.0', () => {
+  console.log(`服务器运行在 http://0.0.0.0:${port}`);
+  console.log(`请使用本机实际IP地址访问服务器，以便安卓模拟器可以连接`);
 });
