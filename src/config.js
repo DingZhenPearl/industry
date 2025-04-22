@@ -12,10 +12,17 @@ const isEmulator = () => {
   // 检查用户代理中是否包含模拟器特征
   // 注意：这只是一个简单的检测方法，可能不是100%准确
   const userAgent = navigator.userAgent.toLowerCase();
-  return userAgent.includes('android sdk') ||
-         userAgent.includes('emulator') ||
-         userAgent.includes('sdk_gphone') ||
-         userAgent.includes('sdk built for');
+  console.log('当前用户代理:', userAgent);
+
+  // 在安卓模拟器中运行时，始终返回true，以便使用特殊的IP地址
+  // 在实际开发中，您可能需要根据实际情况调整这个值
+  return true; // 始终返回true，强制使用模拟器配置
+
+  // 原始检测逻辑
+  // return userAgent.includes('android sdk') ||
+  //        userAgent.includes('emulator') ||
+  //        userAgent.includes('sdk_gphone') ||
+  //        userAgent.includes('sdk built for');
 };
 
 // API基础URL
@@ -24,7 +31,7 @@ const getApiBaseUrl = () => {
   if (isMobileApp()) {
     // 这里需要替换为您的实际服务器地址
     // 使用局域网IP，确保可以从模拟器或真机访问
-    return 'http://192.168.1.100:3000';
+    return 'http://10.29.101.231:3000';
   }
 
   // 开发环境使用相对路径

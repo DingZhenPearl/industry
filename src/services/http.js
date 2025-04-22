@@ -33,34 +33,35 @@ export async function request(url, options = {}) {
   // 获取用户信息和token
   const token = localStorage.getItem('token');
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-  
+
   // 构建请求头
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers
   };
-  
+
   // 如果有token，添加到请求头
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  
+
   // 处理API请求URL
   if (url.includes('/api/')) {
     console.log('原始请求URL:', url);
-    
+
     // 在移动应用中，添加完整的API基础URL
     if (config.isMobileApp && !url.startsWith('http')) {
       // 在模拟器中使用特殊地址
       if (config.isEmulator) {
-        url = `http://10.0.2.2:3000${url}`;
-        console.log('模拟器环境使用特殊地址:', url);
+        // 使用您的实际IP地址
+        url = `http://10.29.101.231:3000${url}`;
+        console.log('模拟器环境使用实际IP地址:', url);
       } else {
         url = `${config.apiBaseUrl}${url}`;
         console.log('修改后的请求URL:', url);
       }
     }
-    
+
     // 如果用户有uid，添加uid参数
     if (userInfo.uid) {
       // 判断是GET请求还是POST请求
@@ -80,7 +81,7 @@ export async function request(url, options = {}) {
       }
     }
   }
-  
+
   // 根据环境选择使用Capacitor HTTP还是fetch
   if (isNative && CapacitorHttp) {
     console.log('使用Capacitor HTTP发送请求:', url);
@@ -91,16 +92,16 @@ export async function request(url, options = {}) {
         headers,
         method: options.method || 'GET'
       };
-      
+
       // 如果有请求体，添加到选项中
       if (options.body) {
         httpOptions.data = JSON.parse(options.body);
       }
-      
+
       // 发送请求
       const response = await CapacitorHttp.request(httpOptions);
       console.log('Capacitor HTTP响应:', response);
-      
+
       // 构建类似fetch的响应对象
       return {
         ok: response.status >= 200 && response.status < 300,
@@ -127,13 +128,13 @@ export async function request(url, options = {}) {
 // 导出便捷方法
 export const http = {
   get: (url, options = {}) => request(url, { ...options, method: 'GET' }),
-  post: (url, data, options = {}) => request(url, { 
-    ...options, 
+  post: (url, data, options = {}) => request(url, {
+    ...options,
     method: 'POST',
     body: JSON.stringify(data)
   }),
-  put: (url, data, options = {}) => request(url, { 
-    ...options, 
+  put: (url, data, options = {}) => request(url, {
+    ...options,
     method: 'PUT',
     body: JSON.stringify(data)
   }),

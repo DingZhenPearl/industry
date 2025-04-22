@@ -49,8 +49,8 @@ window.fetch = async function (...args) {
     if (config.isMobileApp && resource.indexOf('http') !== 0) {
       // 在模拟器中使用特殊地址
       if (config.isEmulator) {
-        resource = `http://10.0.2.2:3000${resource}`;
-        console.log('模拟器环境使用特殊地址:', resource);
+        resource = `http://10.29.101.231:3000${resource}`;
+        console.log('模拟器环境使用实际IP地址:', resource);
       } else {
         resource = `${config.apiBaseUrl}${resource}`;
         console.log('移动应用使用API地址:', resource);
