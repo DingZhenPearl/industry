@@ -281,9 +281,9 @@ export default {
     // 加载服务器配置
     loadServerConfig() {
       const serverConfig = config.getServerConfig();
-      this.serverForm.mode = serverConfig.useCloud ? 'cloud' : 'local';
-      this.serverForm.localIP = serverConfig.localIP;
-      this.serverForm.cloudServer = serverConfig.cloudServer;
+      this.serverForm.mode = serverConfig.mode;
+      this.serverForm.localIP = serverConfig.localUrl;
+      this.serverForm.cloudServer = serverConfig.cloudUrl;
     },
 
     // 保存服务器配置
@@ -300,8 +300,8 @@ export default {
       }
 
       // 更新配置
-      config.setLocalIP(this.serverForm.localIP);
-      config.setCloudServer(this.serverForm.cloudServer);
+      config.setLocalUrl(this.serverForm.localIP);
+      config.setCloudUrl(this.serverForm.cloudServer);
 
       // 切换模式
       if (this.serverForm.mode === 'cloud') {
