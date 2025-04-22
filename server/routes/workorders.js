@@ -54,9 +54,13 @@ router.post('/create-workorder', authMiddleware, async (req, res) => {
   }
 
   try {
+    // 从请求数据中移除uid字段，避免数据库错误
+    const { uid, ...cleanedData } = workorderData;
+    console.log('创建工单，已移除uid字段');
+
     const result = await runPythonScript(
       'pyScripts/workorder_manager.py',
-      ['add', '--data', JSON.stringify(workorderData)],
+      ['add', '--data', JSON.stringify(cleanedData)],
       { debug: true }
     );
 
@@ -79,9 +83,13 @@ router.post('/update-workorder', authMiddleware, async (req, res) => {
   }
 
   try {
+    // 从更新数据中移除uid字段，避免数据库错误
+    const { uid, ...cleanedUpdateData } = update_data;
+    console.log('更新工单，已移除uid字段');
+
     const result = await runPythonScript(
       'pyScripts/workorder_manager.py',
-      ['update', '--number', workorder_number, '--data', JSON.stringify(update_data)],
+      ['update', '--number', workorder_number, '--data', JSON.stringify(cleanedUpdateData)],
       { debug: true }
     );
 

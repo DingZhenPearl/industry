@@ -153,9 +153,13 @@ router.post('/add', authMiddleware, async (req, res) => {
   }
 
   try {
+    // 从产线数据中移除uid字段，避免数据库错误
+    const { uid, ...cleanedLineData } = lineData;
+    console.log('添加产线，已移除uid字段');
+
     const result = await runPythonScript(
       'pyScripts/production_line_unified.py',
-      ['add-line', '--data', JSON.stringify(lineData)],
+      ['add-line', '--data', JSON.stringify(cleanedLineData)],
       { debug: true }
     );
 
@@ -178,9 +182,13 @@ router.post('/update-status', authMiddleware, async (req, res) => {
   }
 
   try {
+    // 从状态数据中移除uid字段，避免数据库错误
+    const { uid, ...cleanedStatusData } = status_data;
+    console.log('更新产线状态，已移除uid字段');
+
     const result = await runPythonScript(
       'pyScripts/production_line_unified.py',
-      ['update-status', '--line-id', line_id, '--data', JSON.stringify(status_data)],
+      ['update-status', '--line-id', line_id, '--data', JSON.stringify(cleanedStatusData)],
       { debug: true }
     );
 
@@ -203,9 +211,13 @@ router.post('/update', authMiddleware, async (req, res) => {
   }
 
   try {
+    // 从产线数据中移除uid字段，避免数据库错误
+    const { uid, ...cleanedLineData } = line_data;
+    console.log('更新产线信息，已移除uid字段');
+
     const result = await runPythonScript(
       'pyScripts/production_line_unified.py',
-      ['update-line', '--line-id', line_id, '--data', JSON.stringify(line_data)],
+      ['update-line', '--line-id', line_id, '--data', JSON.stringify(cleanedLineData)],
       { debug: true }
     );
 

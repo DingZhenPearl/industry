@@ -131,9 +131,13 @@ router.post('/add', authMiddleware, async (req, res) => {
   }
 
   try {
+    // 从请求数据中移除uid字段，避免数据库错误
+    const { uid, ...cleanedData } = equipmentData;
+    console.log('添加设备，已移除uid字段');
+
     const result = await runPythonScript(
       'pyScripts/equipment_unified.py',
-      ['add-equipment', '--data', JSON.stringify(equipmentData)],
+      ['add-equipment', '--data', JSON.stringify(cleanedData)],
       { debug: true }
     );
 
@@ -146,7 +150,7 @@ router.post('/add', authMiddleware, async (req, res) => {
 
 // 更新设备状态
 router.post('/update-status', authMiddleware, async (req, res) => {
-  const { equipment_id, status_data } = req.body;
+  const { equipment_id, status_data, uid } = req.body;
 
   if (!equipment_id || !status_data) {
     return res.status(400).json({
@@ -156,9 +160,13 @@ router.post('/update-status', authMiddleware, async (req, res) => {
   }
 
   try {
+    // 从状态数据中移除uid字段，避免数据库错误
+    const { uid: statusUid, ...cleanedStatusData } = status_data;
+    console.log('更新设备状态，已移除uid字段');
+
     const result = await runPythonScript(
       'pyScripts/equipment_unified.py',
-      ['update-status', '--equipment-id', equipment_id, '--data', JSON.stringify(status_data)],
+      ['update-status', '--equipment-id', equipment_id, '--data', JSON.stringify(cleanedStatusData)],
       { debug: true }
     );
 
@@ -181,9 +189,13 @@ router.post('/update', authMiddleware, async (req, res) => {
   }
 
   try {
+    // 从设备数据中移除uid字段，避免数据库错误
+    const { uid, ...cleanedEquipmentData } = equipment_data;
+    console.log('更新设备信息，已移除uid字段');
+
     const result = await runPythonScript(
       'pyScripts/equipment_unified.py',
-      ['update-equipment', '--equipment-id', equipment_id, '--data', JSON.stringify(equipment_data)],
+      ['update-equipment', '--equipment-id', equipment_id, '--data', JSON.stringify(cleanedEquipmentData)],
       { debug: true }
     );
 
@@ -302,9 +314,13 @@ router.post('/sensor-projects/:equipment_id', authMiddleware, async (req, res) =
   }
 
   try {
+    // 从传感器项目数据中移除uid字段，避免数据库错误
+    const { uid, ...cleanedSensorProjects } = sensor_projects;
+    console.log('更新传感器项目列表，已移除uid字段');
+
     const result = await runPythonScript(
       'pyScripts/equipment_unified.py',
-      ['update-sensor-projects', '--equipment-id', equipment_id, '--data', JSON.stringify(sensor_projects)],
+      ['update-sensor-projects', '--equipment-id', equipment_id, '--data', JSON.stringify(cleanedSensorProjects)],
       { debug: true }
     );
 
