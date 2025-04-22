@@ -9,17 +9,17 @@
       <div class="status-cards">
         <div class="status-card running">
           <h3>运行产线</h3>
-          <div class="count">8</div>
+          <div class="count">{{ statusCards.running }}</div>
           <div class="status-detail">正常运行中</div>
         </div>
         <div class="status-card warning">
           <h3>预警设备</h3>
-          <div class="count">2</div>
+          <div class="count">{{ statusCards.warning }}</div>
           <div class="status-detail">需要维护</div>
         </div>
         <div class="status-card stopped">
           <h3>停机产线</h3>
-          <div class="count">1</div>
+          <div class="count">{{ statusCards.stopped }}</div>
           <div class="status-detail">故障处理中</div>
         </div>
       </div>
@@ -828,6 +828,12 @@ export default {
         equipments: null,
         timestamp: null
       },
+      // 状态卡片数据
+      statusCards: {
+        running: '未找到',
+        warning: '未找到',
+        stopped: '未找到'
+      },
       // 自动刷新相关
       autoRefresh: true,
       refreshInterval: null,
@@ -1067,14 +1073,10 @@ export default {
       const warningLines = this.productionLines.filter(line => line.status === 'warning').length;
       const stoppedLines = this.productionLines.filter(line => line.status === 'stopped').length;
 
-      // 更新DOM元素
-      const runningCard = document.querySelector('.status-card.running .count');
-      const warningCard = document.querySelector('.status-card.warning .count');
-      const stoppedCard = document.querySelector('.status-card.stopped .count');
-
-      if (runningCard) runningCard.textContent = runningLines;
-      if (warningCard) warningCard.textContent = warningLines;
-      if (stoppedCard) stoppedCard.textContent = stoppedLines;
+      // 更新状态卡片数据对象
+      this.statusCards.running = runningLines;
+      this.statusCards.warning = warningLines;
+      this.statusCards.stopped = stoppedLines;
     },
 
     editProductionLine(line) {
