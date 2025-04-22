@@ -93,7 +93,44 @@
           <button type="submit" class="login-btn">{{ isRegistering ? '注 册' : '登 录' }}</button>
 
           <div class="footer-note">
+            <div class="server-config">
+              <button @click="showServerConfig = true" class="server-config-btn">
+                <i class="el-icon-setting"></i> 服务器配置
+              </button>
+            </div>
           </div>
+
+          <!-- 服务器配置对话框 -->
+          <el-dialog
+            title="服务器配置"
+            :visible.sync="showServerConfig"
+            width="500px"
+            :close-on-click-modal="false"
+          >
+            <el-form :model="serverForm" label-width="120px">
+              <el-form-item label="服务器模式">
+                <el-radio-group v-model="serverForm.mode">
+                  <el-radio label="local">本地服务器</el-radio>
+                  <el-radio label="cloud">云服务器</el-radio>
+                </el-radio-group>
+              </el-form-item>
+
+              <el-form-item label="本地IP地址">
+                <el-input v-model="serverForm.localIP" placeholder="例如: http://192.168.1.100:3000"></el-input>
+                <div class="form-tip">用于移动设备访问本地服务器</div>
+              </el-form-item>
+
+              <el-form-item label="云服务器地址">
+                <el-input v-model="serverForm.cloudServer" placeholder="例如: http://your-cloud-server-ip:3000"></el-input>
+                <div class="form-tip">部署到云服务器时使用</div>
+              </el-form-item>
+            </el-form>
+
+            <span slot="footer" class="dialog-footer">
+              <el-button @click="showServerConfig = false">取消</el-button>
+              <el-button type="primary" @click="saveServerConfig">保存配置</el-button>
+            </span>
+          </el-dialog>
         </form>
       </div>
     </div>
@@ -101,6 +138,8 @@
 </template>
 
 <script>
+import config from '../config';
+
 export default {
   name: 'LoginPage',
   data() {
@@ -111,7 +150,13 @@ export default {
       role: '',
       error: '',
       loading: false,
-      isRegistering: false
+      isRegistering: false,
+      showServerConfig: false,
+      serverForm: {
+        mode: 'local',
+        localIP: '',
+        cloudServer: ''
+      }
     }
   },
   created() {
@@ -121,6 +166,9 @@ export default {
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
       this.redirectByRole(userInfo.role, userInfo.uid)
     }
+
+    // 加载服务器配置
+    this.loadServerConfig();
   },
   methods: {
     async handleLogin() {
@@ -227,6 +275,52 @@ export default {
           break;
         default:
           this.$router.push('/login');
+      }
+    },
+
+    // 加载服务器配置
+    loadServerConfig() {
+      const serverConfig = config.getServerConfig();
+      this.serverForm.mode = serverConfig.useCloud ? 'cloud' : 'local';
+      this.serverForm.localIP = serverConfig.localIP;
+      this.serverForm.cloudServer = serverConfig.cloudServer;
+    },
+
+    // 保存服务器配置
+    saveServerConfig() {
+      // 验证URL格式
+      if (this.serverForm.localIP && !this.isValidUrl(this.serverForm.localIP)) {
+        this.$message.error('本地IP地址格式不正确，应以http://或https://开头');
+        return;
+      }
+
+      if (this.serverForm.cloudServer && !this.isValidUrl(this.serverForm.cloudServer)) {
+        this.$message.error('云服务器地址格式不正确，应以http://或https://开头');
+        return;
+      }
+
+      // 更新配置
+      config.setLocalIP(this.serverForm.localIP);
+      config.setCloudServer(this.serverForm.cloudServer);
+
+      // 切换模式
+      if (this.serverForm.mode === 'cloud') {
+        config.useCloudServer();
+      } else {
+        config.useLocalServer();
+      }
+
+      this.$message.success('服务器配置已保存');
+      this.showServerConfig = false;
+    },
+
+    // 验证URL格式
+    isValidUrl(url) {
+      try {
+        new URL(url);
+        return true;
+      } catch (e) {
+        return false;
       }
     }
   }
@@ -497,6 +591,42 @@ export default {
   background-color: rgba(229, 57, 53, 0.1);
   border-radius: 6px;
   text-align: center;
+}
+
+.success-message {
+  color: #43a047;
+  font-size: 14px;
+  margin: 10px 0;
+  padding: 8px 12px;
+  background-color: rgba(67, 160, 71, 0.1);
+  border-radius: 6px;
+  text-align: center;
+}
+
+.server-config {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.server-config-btn {
+  background: transparent;
+  border: none;
+  color: #4b6cb7;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: all 0.3s;
+}
+
+.server-config-btn:hover {
+  background: rgba(75, 108, 183, 0.1);
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 5px;
 }
 
 .success-message {

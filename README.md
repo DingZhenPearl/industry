@@ -235,6 +235,43 @@ npx cap open android
 
 在Android Studio中，您可能需要进行以下操作：
 
+## 服务器配置
+
+本项目使用统一的服务器配置文件，方便在不同环境中部署。
+
+### 配置文件位置
+
+服务器配置文件位于 `src/config/server.js`。
+
+### 修改服务器地址
+
+如果需要部署到云服务器，请修改配置文件中的 `PROD_SERVER.cloud` 值：
+
+```javascript
+// 生产环境服务器地址
+const PROD_SERVER = {
+  // 云服务器地址，部署时修改这里
+  cloud: 'http://your-cloud-server-ip:3000'
+};
+```
+
+将 `'http://your-cloud-server-ip:3000'` 替换为您的实际云服务器地址。
+
+### 切换服务器模式
+
+在代码中，您可以使用以下方法切换服务器模式：
+
+```javascript
+// 切换到云服务器
+import config from './config';
+config.useCloudServer();
+
+// 切换回本地服务器
+config.useLocalServer();
+```
+
+我们还提供了一个组件 `ServerConfigSwitcher.vue`，可以在界面上切换服务器配置。
+
 1. 更新应用图标：替换 `android/app/src/main/res` 目录下的图标文件
 2. 修改应用名称：编辑 `android/app/src/main/res/values/strings.xml` 文件
 3. 配置网络安全：确保 `android/app/src/main/AndroidManifest.xml` 中已添加网络安全配置

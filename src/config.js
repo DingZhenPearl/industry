@@ -1,4 +1,5 @@
 // 应用配置文件
+import serverConfig from './config/server';
 
 // 判断是否在移动设备上运行
 const isMobileApp = () => {
@@ -7,39 +8,47 @@ const isMobileApp = () => {
          /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(navigator.userAgent.toLowerCase());
 };
 
-// 判断是否在模拟器中运行
-const isEmulator = () => {
-  // 检查用户代理中是否包含模拟器特征
-  // 注意：这只是一个简单的检测方法，可能不是100%准确
-  const userAgent = navigator.userAgent.toLowerCase();
-  console.log('当前用户代理:', userAgent);
 
-  // 在安卓模拟器中运行时，始终返回true，以便使用特殊的IP地址
-  // 在实际开发中，您可能需要根据实际情况调整这个值
-  return true; // 始终返回true，强制使用模拟器配置
 
-  // 原始检测逻辑
-  // return userAgent.includes('android sdk') ||
-  //        userAgent.includes('emulator') ||
-  //        userAgent.includes('sdk_gphone') ||
-  //        userAgent.includes('sdk built for');
+// 获取API基础URL
+const getApiBaseUrl = () => {
+  return serverConfig.getServerUrl({
+    isNative: isMobileApp()
+  });
 };
 
-// API基础URL
-const getApiBaseUrl = () => {
-  // 如果是移动应用，使用实际的服务器地址
-  if (isMobileApp()) {
-    // 这里需要替换为您的实际服务器地址
-    // 使用局域网IP，确保可以从模拟器或真机访问
-    return 'http://10.29.101.231:3000';
-  }
-
-  // 开发环境使用相对路径
-  return '';
+// 构建完整API URL
+const buildApiUrl = (path) => {
+  return serverConfig.buildApiUrl(path, {
+    isNative: isMobileApp()
+  });
 };
 
 export default {
   apiBaseUrl: getApiBaseUrl(),
   isMobileApp: isMobileApp(),
-  isEmulator: isEmulator()
+  buildApiUrl,
+
+  // 切换到云服务器
+  useCloudServer: serverConfig.useCloudServer,
+
+  // 切换到本地服务器
+  useLocalServer: serverConfig.useLocalServer,
+
+  // 获取当前服务器配置
+  getServerConfig: () => ({
+    useCloud: serverConfig.ENV.useCloud,
+    cloudServer: serverConfig.PROD_SERVER.cloud,
+    localIP: serverConfig.DEV_SERVER.localIP
+  }),
+
+  // 设置云服务器地址
+  setCloudServer: (url) => {
+    serverConfig.PROD_SERVER.cloud = url;
+  },
+
+  // 设置本地IP地址
+  setLocalIP: (url) => {
+    serverConfig.DEV_SERVER.localIP = url;
+  }
 };

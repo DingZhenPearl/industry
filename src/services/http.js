@@ -51,15 +51,9 @@ export async function request(url, options = {}) {
 
     // 在移动应用中，添加完整的API基础URL
     if (config.isMobileApp && !url.startsWith('http')) {
-      // 在模拟器中使用特殊地址
-      if (config.isEmulator) {
-        // 使用您的实际IP地址
-        url = `http://10.29.101.231:3000${url}`;
-        console.log('模拟器环境使用实际IP地址:', url);
-      } else {
-        url = `${config.apiBaseUrl}${url}`;
-        console.log('修改后的请求URL:', url);
-      }
+      // 使用统一的服务器配置构建URL
+      url = config.buildApiUrl(url);
+      console.log('使用统一配置构建的URL:', url);
     }
 
     // 如果用户有uid，添加uid参数

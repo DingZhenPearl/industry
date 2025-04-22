@@ -47,14 +47,9 @@ window.fetch = async function (...args) {
   if (resource.includes('/api/')) {
     // 在移动应用中，添加完整的API基础URL
     if (config.isMobileApp && resource.indexOf('http') !== 0) {
-      // 在模拟器中使用特殊地址
-      if (config.isEmulator) {
-        resource = `http://10.29.101.231:3000${resource}`;
-        console.log('模拟器环境使用实际IP地址:', resource);
-      } else {
-        resource = `${config.apiBaseUrl}${resource}`;
-        console.log('移动应用使用API地址:', resource);
-      }
+      // 使用统一的服务器配置构建完整URL
+      resource = config.buildApiUrl(resource);
+      console.log('使用统一配置构建的URL:', resource);
     }
 
     // 如果用户有uid，添加uid参数
