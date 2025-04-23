@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # MySQL数据库服务
+  mysql:
+    image: mysql:5.7
+    container_name: industry-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mwYgR7#*X2
+      MYSQL_DATABASE: industry_db
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - industry-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 应用服务
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: industry-app
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=mwYgR7#*X2
+      - DB_NAME=industry_db
+    networks:
+      - industry-network
+
+networks:
+  industry-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
