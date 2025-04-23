@@ -9,10 +9,19 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: mwYgR7#*X2
       MYSQL_DATABASE: industry_db
+      # 设置MySQL字符集
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    command: [
+      '--character-set-server=utf8mb4',
+      '--collation-server=utf8mb4_unicode_ci',
+      '--default-authentication-plugin=mysql_native_password'
+    ]
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
-      - "3306:3306"
+      - "3307:3306"
     networks:
       - industry-network
     healthcheck:

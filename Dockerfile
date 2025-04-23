@@ -20,7 +20,7 @@ RUN npm run build
 FROM node:14-alpine
 
 # 安装Python和MySQL客户端
-RUN apk add --no-cache python3 py3-pip mysql-client && \
+RUN apk add --no-cache python3 py3-pip mysql-client grep && \
     pip3 install mysql-connector-python
 
 # 设置工作目录
@@ -38,9 +38,14 @@ RUN npm install --only=production
 # 创建配置目录
 RUN mkdir -p /app/config
 
-# 复制启动脚本
-COPY docker-entrypoint.sh /app/
-RUN chmod +x /app/docker-entrypoint.sh
+# 复制脚本文件
+COPY docker-entrypoint.sh test-db-connection.sh check-db-status.sh /app/
+RUN chmod +x /app/docker-entrypoint.sh /app/test-db-connection.sh /app/check-db-status.sh
+
+# 确保脚本使用Unix行结束符
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /app/test-db-connection.sh
+RUN sed -i 's/\r$//' /app/check-db-status.sh
 
 # 暴露端口
 EXPOSE 3000
