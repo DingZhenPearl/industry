@@ -20,6 +20,8 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      # 如果存在导出的数据库文件，将其挂载到容器中
+      - ./full_db_dump.sql:/docker-entrypoint-initdb.d/full_db_dump.sql:ro
     ports:
       - "3307:3306"
     networks:
