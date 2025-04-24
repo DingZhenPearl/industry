@@ -8,7 +8,6 @@ set MYSQL_PASSWORD=mwYgR7#*X2
 set MYSQL_DATABASE=industry_db
 set EXPORT_FILE=full_db_dump.sql
 set MYSQL_CONTAINER=industry-mysql
-set DOCKER_MYSQL_PORT=3308
 
 echo ======================================================
 echo Step 1: Preparing Docker environment
@@ -87,14 +86,14 @@ echo Executing database import in container...
 
 REM Delete existing database if it exists
 echo Deleting existing database in container (if exists)...
-docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -P %DOCKER_MYSQL_PORT% -e "DROP DATABASE IF EXISTS %MYSQL_DATABASE%;"
+docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -e "DROP DATABASE IF EXISTS %MYSQL_DATABASE%;"
 
 if %ERRORLEVEL% NEQ 0 (
     echo Warning: Cannot delete existing database, will try direct import
 )
 
 REM Execute import
-docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -P %DOCKER_MYSQL_PORT% < %EXPORT_FILE%
+docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 < %EXPORT_FILE%
 
 if %ERRORLEVEL% NEQ 0 (
     echo Error: Database import failed
@@ -105,16 +104,16 @@ echo ======================================================
 echo Step 5: Verifying import results
 echo ======================================================
 echo Checking database tables...
-docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -P %DOCKER_MYSQL_PORT% -e "USE %MYSQL_DATABASE%; SHOW TABLES;"
+docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -e "USE %MYSQL_DATABASE%; SHOW TABLES;"
 
 echo Checking user data...
-docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -P %DOCKER_MYSQL_PORT% -e "USE %MYSQL_DATABASE%; SELECT COUNT(*) AS user_count FROM users;"
+docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -e "USE %MYSQL_DATABASE%; SELECT COUNT(*) AS user_count FROM users;"
 
 echo Checking production line data...
-docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -P %DOCKER_MYSQL_PORT% -e "USE %MYSQL_DATABASE%; SELECT COUNT(*) AS line_count FROM production_line;"
+docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -e "USE %MYSQL_DATABASE%; SELECT COUNT(*) AS line_count FROM production_line;"
 
 echo Checking equipment data...
-docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -P %DOCKER_MYSQL_PORT% -e "USE %MYSQL_DATABASE%; SELECT COUNT(*) AS equipment_count FROM equipment;"
+docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -e "USE %MYSQL_DATABASE%; SELECT COUNT(*) AS equipment_count FROM equipment;"
 
 echo ======================================================
 echo Step 6: Restarting application container

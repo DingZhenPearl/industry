@@ -15,18 +15,17 @@ services:
     command: [
       '--character-set-server=utf8mb4',
       '--collation-server=utf8mb4_0900_ai_ci',
-      '--default-authentication-plugin=mysql_native_password',
-      '--port=3308'
+      '--default-authentication-plugin=mysql_native_password'
     ]
     volumes:
       - mysql-data:/var/lib/mysql
       - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
     ports:
-      - "3307:3308"
+      - "3307:3306"
     networks:
       - industry-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-P", "3308", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,7 +48,6 @@ services:
       - DB_USER=root
       - DB_PASSWORD=mwYgR7#*X2
       - DB_NAME=industry_db
-      - DB_PORT=3308
     networks:
       - industry-network
 

@@ -56,7 +56,6 @@ ENV DB_HOST=mysql
 ENV DB_USER=root
 ENV DB_PASSWORD=mwYgR7#*X2
 ENV DB_NAME=industry_db
-ENV DB_PORT=3308
 
 # 启动应用
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
