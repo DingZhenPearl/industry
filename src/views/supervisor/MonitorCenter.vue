@@ -2810,4 +2810,206 @@ export default {
   font-size: 12px;
   cursor: pointer;
 }
+
+/* 移动端适配样式 */
+@media (max-width: 768px) {
+  .monitor-center {
+    padding-bottom: 80px;
+  }
+
+  .header {
+    padding: 15px 10px;
+  }
+
+  .content {
+    padding: 10px;
+  }
+
+  /* 状态卡片适配 */
+  .status-cards {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .status-card {
+    padding: 15px 10px;
+  }
+
+  /* 产线列表适配 */
+  .line-item {
+    padding: 15px 10px;
+  }
+
+  .line-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .status-control {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .status-buttons {
+    margin: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .status-btn {
+    flex: 1;
+    text-align: center;
+    padding: 8px 0;
+    font-size: 14px;
+  }
+
+  .line-details {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+
+  .line-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .action-btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+  }
+
+  /* 设备监控适配 */
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .refresh-control {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .last-update {
+    font-size: 12px;
+  }
+
+  .refresh-btn {
+    padding: 8px 12px;
+  }
+
+  .filter-bar {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .filter-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .config-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+  }
+
+  .equipment-stats {
+    flex-wrap: wrap;
+  }
+
+  .stat-box {
+    min-width: calc(50% - 8px);
+    flex: 0 0 calc(50% - 8px);
+  }
+
+  /* 表格适配 */
+  .equipment-table {
+    overflow-x: auto;
+    margin: 0 -10px;
+    padding: 0 10px;
+  }
+
+  .equipment-table table {
+    min-width: 800px;
+  }
+
+  .equipment-table th,
+  .equipment-table td {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  /* 模态框适配 */
+  .modal-content {
+    width: 95%;
+    max-height: 80vh;
+  }
+
+  .modal-header {
+    padding: 12px 15px;
+  }
+
+  .modal-body {
+    padding: 15px;
+  }
+
+  .form-group {
+    margin-bottom: 12px;
+  }
+
+  .form-input {
+    padding: 10px;
+    font-size: 16px;
+  }
+
+  .sensor-projects-container {
+    max-height: 300px;
+  }
+
+  .sensor-projects-group {
+    gap: 10px;
+  }
+
+  .sensor-project-item {
+    min-width: 0;
+    flex: 0 0 calc(50% - 5px);
+  }
+
+  /* 分页控件适配 */
+  .pagination-controls {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: 15px;
+  }
+
+  .pagination-btn {
+    width: 100%;
+    padding: 10px;
+  }
+
+  /* 安卓特定样式 */
+  .android-device .status-btn,
+  .android-device .refresh-btn,
+  .android-device .config-btn,
+  .android-device .action-btn,
+  .android-device .op-btn {
+    min-height: 48px;
+  }
+
+  .android-device .form-input {
+    min-height: 48px;
+  }
+}
 </style>

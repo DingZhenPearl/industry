@@ -10,28 +10,28 @@
       </div>
     </header>
 
-    <div class="content">
-      <!-- 使用设备详情组件 -->
-      <equipment-detail-component
-        :equipment="formattedEquipment"
-        :device-history="deviceHistory"
-        :loading="loading"
-        :error="error"
-        :auto-refresh-enabled="autoRefresh"
-        :refresh-rate="refreshRate"
-        :sensor-projects="sensorProjects"
-        @retry="fetchEquipmentDetail"
-        @refresh-data="fetchLatestDeviceData"
-        @fetch-history="fetchDeviceHistory"
-      >
-        <!-- 自定义操作按钮 -->
-        <template v-slot:actions>
-          <button class="action-btn" @click="assignMaintenance" v-if="formattedEquipment && formattedEquipment.status === 'warning'">安排维护</button>
-        </template>
-
-
-      </equipment-detail-component>
-    </div>
+    <pull-to-refresh @refresh="onPullRefresh" class="pull-refresh-container">
+      <div class="content">
+        <!-- 使用设备详情组件 -->
+        <equipment-detail-component
+          :equipment="formattedEquipment"
+          :device-history="deviceHistory"
+          :loading="loading"
+          :error="error"
+          :auto-refresh-enabled="autoRefresh"
+          :refresh-rate="refreshRate"
+          :sensor-projects="sensorProjects"
+          @retry="fetchEquipmentDetail"
+          @refresh-data="fetchLatestDeviceData"
+          @fetch-history="fetchDeviceHistory"
+        >
+          <!-- 自定义操作按钮 -->
+          <template v-slot:actions>
+            <button class="action-btn" @click="assignMaintenance" v-if="formattedEquipment && formattedEquipment.status === 'warning'">安排维护</button>
+          </template>
+        </equipment-detail-component>
+      </div>
+    </pull-to-refresh>
 
     <SupervisorNav />
   </div>
@@ -40,12 +40,14 @@
 <script>
 import SupervisorNav from '@/components/SupervisorNav.vue'
 import EquipmentDetailComponent from '@/components/EquipmentDetailComponent.vue'
+import PullToRefresh from '@/components/PullToRefresh.vue'
 
 export default {
   name: 'EquipmentDetail',
   components: {
     SupervisorNav,
-    EquipmentDetailComponent
+    EquipmentDetailComponent,
+    PullToRefresh
   },
   data() {
     return {
@@ -491,6 +493,27 @@ export default {
       } catch (error) {
         console.error('获取传感器项目列表出错:', error);
       }
+    },
+
+    // 处理下拉刷新事件
+    async onPullRefresh() {
+      console.log('下拉刷新触发');
+
+      try {
+        // 重新获取设备详情
+        await this.fetchEquipmentDetail(this.equipment.id);
+
+        // 重新获取设备历史数据
+        await this.fetchDeviceHistory();
+
+        // 显示刷新成功提示
+        this.$nextTick(() => {
+          // 如果有需要，可以在这里添加刷新成功的提示
+          console.log('下拉刷新完成');
+        });
+      } catch (error) {
+        console.error('下拉刷新出错:', error);
+      }
     }
   }
 }
@@ -539,6 +562,33 @@ export default {
 
 .back-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
+}
+
+.pull-refresh-container {
+  min-height: calc(100vh - 60px - 60px); /* 减去头部和底部导航的高度 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 安卓特定样式 */
+.android-device .back-btn {
+  min-height: 48px;
+  padding: 12px 16px;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .header-content {
+    padding: 0 10px;
+  }
+
+  .back-btn {
+    padding: 10px;
+  }
+
+  .content {
+    padding: 10px;
+  }
 }
 
 .back-icon {

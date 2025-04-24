@@ -19,10 +19,15 @@
 }
 
 /* 移动端触摸优化 */
-button, 
+button,
 .nav-item,
-.el-button {
+.el-button,
+.status-btn,
+.auto-refresh-btn,
+.parameter-select,
+.limit-select {
   min-height: 44px; /* 确保触摸目标足够大 */
+  min-width: 44px; /* 确保触摸目标足够宽 */
 }
 
 /* 移动端字体大小调整 */
@@ -31,7 +36,9 @@ body {
 }
 
 /* 移动端表单元素优化 */
-input, select, textarea {
+input,
+select,
+textarea {
   font-size: 16px; /* 防止iOS自动缩放 */
 }
 
@@ -42,23 +49,92 @@ input, select, textarea {
 
 /* 适配不同屏幕尺寸 */
 @media (max-width: 768px) {
+  /* Element UI 组件适配 */
   .el-dialog {
     width: 90% !important;
     margin-top: 10vh !important;
   }
-  
+
   .el-message-box {
     width: 90% !important;
   }
-  
+
   .el-table {
     width: 100% !important;
     overflow-x: auto;
   }
+
+  .el-form-item {
+    margin-bottom: 15px !important;
+  }
+
+  .el-form-item__label {
+    padding: 0 0 8px !important;
+    line-height: 1.2 !important;
+    float: none !important;
+    display: block !important;
+    text-align: left !important;
+  }
+
+  .el-form-item__content {
+    margin-left: 0 !important;
+    line-height: 1.2 !important;
+  }
+
+  /* 通用布局适配 */
+  .info-row {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .parameter-list {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .action-group {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .chart-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .chart-controls {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  /* 表格适配 */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* 设备状态控制适配 */
+  .status-control {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .status-buttons {
+    margin-left: 0 !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  /* 卡片布局适配 */
+  .workorder-cards {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* 修复iOS滚动问题 */
-html, body {
+html,
+body {
   overflow: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -66,4 +142,39 @@ html, body {
 /* 修复Android点击高亮 */
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* 安卓特定样式 */
+.android-device {
+  /* 安卓设备特定样式可以在这里添加 */
+  font-family: Roboto, sans-serif;
+}
+
+/* 增强触摸反馈 */
+button:active,
+.el-button:active,
+.status-btn:active,
+.auto-refresh-btn:active {
+  opacity: 0.7;
+  transform: scale(0.98);
+}
+
+/* 改进滚动体验 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }

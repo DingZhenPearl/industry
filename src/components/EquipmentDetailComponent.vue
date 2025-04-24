@@ -774,6 +774,14 @@ export default {
 
 .parameter-item {
   text-align: center;
+  padding: 10px;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  transition: transform 0.2s ease;
+}
+
+.parameter-item:active {
+  transform: scale(0.98);
 }
 
 .parameter-item .label {
@@ -821,20 +829,24 @@ export default {
 }
 
 .parameter-select, .limit-select {
-  padding: 6px 10px;
+  padding: 8px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
+  background-color: #fff;
 }
 
 .auto-refresh-btn {
-  padding: 6px 10px;
+  padding: 8px 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 14px;
   background-color: #f5f5f5;
   color: #333;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .auto-refresh-btn.active {
@@ -846,5 +858,86 @@ export default {
 .chart-container {
   width: 100%;
   height: 300px;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .device-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .device-header h3 {
+    margin: 0;
+  }
+
+  .status-control {
+    width: 100%;
+  }
+
+  .status-tag {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  .status-buttons {
+    margin-top: 10px;
+  }
+
+  .status-btn {
+    flex: 1;
+    padding: 8px 0;
+    font-size: 14px;
+  }
+
+  .info-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .parameter-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .parameter-item {
+    padding: 12px 8px;
+  }
+
+  .parameter-item .label {
+    font-size: 14px;
+  }
+
+  .parameter-item .value {
+    font-size: 20px;
+  }
+
+  .action-group {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .chart-controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .parameter-select, .limit-select {
+    flex: 1;
+  }
+
+  .auto-refresh-btn {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .chart-container {
+    height: 250px;
+  }
 }
 </style>

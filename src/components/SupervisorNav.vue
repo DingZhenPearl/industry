@@ -54,13 +54,27 @@ export default {
   background-color: #f8f8f8;
   padding: 8px 0;
   border-top: 1px solid #e0e0e0;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+  z-index: 100;
+  /* 安全区域适配 */
+  padding-bottom: calc(8px + var(--safe-area-inset-bottom));
 }
 
 .nav-item {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   font-size: 12px;
+  padding: 8px 0;
+  flex: 1;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.nav-item:active {
+  opacity: 0.7;
+  transform: scale(0.95);
 }
 
 .nav-icon {
@@ -69,6 +83,7 @@ export default {
   margin-bottom: 4px;
   background-color: #666;
   border-radius: 50%;
+  transition: all 0.3s ease;
 }
 
 .nav-item.active {
@@ -77,5 +92,31 @@ export default {
 
 .nav-item.active .nav-icon {
   background-color: #2196F3;
+}
+
+/* 安卓特定样式 */
+.android-device .bottom-nav {
+  padding-bottom: calc(12px + var(--safe-area-inset-bottom));
+}
+
+.android-device .nav-item {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.android-device .nav-icon {
+  width: 28px;
+  height: 28px;
+}
+
+/* 添加触摸反馈效果 */
+@media (max-width: 768px) {
+  .nav-item {
+    min-height: 56px;
+  }
+
+  .nav-item span {
+    margin-top: 4px;
+  }
 }
 </style>

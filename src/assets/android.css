@@ -1,0 +1,221 @@
+/* 安卓特定样式 */
+
+/* 安卓设备字体 */
+.android-device {
+  font-family: Roboto, 'Noto Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 安卓涟漪效果 */
+.android-ripple-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* 安卓按钮样式 */
+.android-device button,
+.android-device .el-button {
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* 安卓输入框样式 */
+.android-device input,
+.android-device textarea,
+.android-device .el-input__inner {
+  border-radius: 0;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom-width: 1px;
+  padding: 12px 0;
+  background-color: transparent;
+}
+
+.android-device .el-input__inner:focus {
+  border-bottom-color: #2196F3;
+  box-shadow: 0 1px 0 0 #2196F3;
+}
+
+/* 安卓卡片样式 */
+.android-device .el-card {
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 安卓对话框样式 */
+.android-device .el-dialog {
+  border-radius: 4px;
+  box-shadow: 0 11px 15px -7px rgba(0,0,0,0.2), 0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12);
+}
+
+.android-device .el-dialog__header {
+  padding: 16px 24px;
+}
+
+.android-device .el-dialog__body {
+  padding: 20px 24px;
+}
+
+.android-device .el-dialog__footer {
+  padding: 8px 24px 16px;
+}
+
+/* 安卓开关样式 */
+.android-device .el-switch__core {
+  height: 20px;
+  border-radius: 10px;
+}
+
+.android-device .el-switch__core:after {
+  width: 18px;
+  height: 18px;
+  top: 1px;
+  left: 1px;
+  border-radius: 50%;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.android-device .el-switch.is-checked .el-switch__core:after {
+  margin-left: 15px;
+}
+
+/* 安卓单选框样式 */
+.android-device .el-radio__inner {
+  width: 20px;
+  height: 20px;
+}
+
+.android-device .el-radio__inner::after {
+  width: 10px;
+  height: 10px;
+}
+
+/* 安卓复选框样式 */
+.android-device .el-checkbox__inner {
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+}
+
+.android-device .el-checkbox__inner::after {
+  height: 9px;
+  left: 6px;
+  top: 2px;
+}
+
+/* 安卓下拉菜单样式 */
+.android-device .el-select-dropdown {
+  border-radius: 4px;
+  box-shadow: 0 5px 5px -3px rgba(0,0,0,0.2), 0 8px 10px 1px rgba(0,0,0,0.14), 0 3px 14px 2px rgba(0,0,0,0.12);
+}
+
+/* 安卓标签页样式 */
+.android-device .el-tabs__item {
+  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* 安卓表格样式 */
+.android-device .el-table th {
+  background-color: #f5f5f5;
+  font-weight: 500;
+}
+
+/* 安卓分页样式 */
+.android-device .el-pagination button {
+  min-width: 36px;
+  height: 36px;
+}
+
+.android-device .el-pagination .el-pager li {
+  min-width: 36px;
+  height: 36px;
+  line-height: 36px;
+}
+
+/* 安卓消息提示样式 */
+.android-device .el-message {
+  border-radius: 4px;
+  box-shadow: 0 3px 5px -1px rgba(0,0,0,0.2), 0 6px 10px 0 rgba(0,0,0,0.14), 0 1px 18px 0 rgba(0,0,0,0.12);
+}
+
+/* 安卓加载样式 */
+.android-device .el-loading-mask {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* 安卓日期选择器样式 */
+.android-device .el-date-picker {
+  border-radius: 4px;
+  box-shadow: 0 5px 5px -3px rgba(0,0,0,0.2), 0 8px 10px 1px rgba(0,0,0,0.14), 0 3px 14px 2px rgba(0,0,0,0.12);
+}
+
+/* 安卓滑块样式 */
+.android-device .el-slider__runway {
+  height: 2px;
+  margin: 16px 0;
+}
+
+.android-device .el-slider__bar {
+  height: 2px;
+}
+
+.android-device .el-slider__button {
+  width: 16px;
+  height: 16px;
+}
+
+/* 安卓进度条样式 */
+.android-device .el-progress-bar__outer {
+  height: 4px;
+  border-radius: 2px;
+}
+
+.android-device .el-progress-bar__inner {
+  border-radius: 2px;
+}
+
+/* 安卓步骤条样式 */
+.android-device .el-step__head.is-process {
+  color: #2196F3;
+  border-color: #2196F3;
+}
+
+.android-device .el-step__title.is-process {
+  font-weight: 500;
+  color: #2196F3;
+}
+
+/* 安卓颜色选择器样式 */
+.android-device .el-color-picker__trigger {
+  border-radius: 4px;
+}
+
+/* 安卓上传样式 */
+.android-device .el-upload {
+  border-radius: 4px;
+}
+
+/* 安卓评分样式 */
+.android-device .el-rate__icon {
+  font-size: 24px;
+}
+
+/* 安卓徽章样式 */
+.android-device .el-badge__content {
+  border-radius: 10px;
+  padding: 0 6px;
+  height: 20px;
+  line-height: 20px;
+}

@@ -4,11 +4,14 @@ import router from './router'
 import ElementUI from 'element-ui';
 import 'element-ui/lib/theme-chalk/index.css';
 import './assets/mobile.css'; // 导入移动端样式
+import './assets/android.css'; // 导入安卓特定样式
 import config from './config'; // 导入配置文件
 import { Capacitor } from '@capacitor/core'; // 导入Capacitor
 import { request } from './services/http'; // 导入HTTP服务模块
+import AndroidAdapter from './plugins/AndroidAdapter'; // 导入安卓适配插件
 
 Vue.use(ElementUI);
+Vue.use(AndroidAdapter); // 使用安卓适配插件
 
 Vue.config.productionTip = false
 
