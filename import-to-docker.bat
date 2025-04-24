@@ -4,6 +4,7 @@ echo 正在将本地数据库导入到 Docker 容器...
 REM 设置参数
 set MYSQL_CONTAINER=industry-mysql
 set IMPORT_FILE=local_db_dump.sql
+set MYSQL_PORT=3308
 
 REM 检查导出文件是否存在
 if not exist %IMPORT_FILE% (
@@ -31,7 +32,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 REM 在容器中执行导入
 echo 在容器中执行数据库导入...
-docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 < %IMPORT_FILE%
+docker exec -i %MYSQL_CONTAINER% mysql -uroot -pmwYgR7#*X2 -P %MYSQL_PORT% < %IMPORT_FILE%
 
 if %ERRORLEVEL% NEQ 0 (
     echo 错误: 数据库导入失败

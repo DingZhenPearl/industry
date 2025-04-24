@@ -7,7 +7,7 @@ sleep 10
 
 # 使用测试脚本测试数据库连接
 echo "测试数据库连接..."
-/app/test-db-connection.sh $DB_HOST $DB_USER $DB_PASSWORD $DB_NAME
+/app/test-db-connection.sh $DB_HOST $DB_USER $DB_PASSWORD $DB_NAME 3308
 echo "MySQL服务已就绪!"
 
 # 等待初始化脚本执行完成
@@ -23,10 +23,10 @@ find /app/pyScripts -name "*.py" -type f -exec sed -i "s/database='industry_db'/
 
 # 运行详细的数据库状态检查
 echo "运行详细的数据库状态检查..."
-/app/check-db-status.sh $DB_HOST $DB_USER $DB_PASSWORD $DB_NAME
+/app/check-db-status.sh $DB_HOST $DB_USER $DB_PASSWORD $DB_NAME 3308
 
 # 检查是否需要初始化测试数据
-USER_COUNT=$(mysql -h $DB_HOST -u $DB_USER -p$DB_PASSWORD -N -e "SELECT COUNT(*) FROM $DB_NAME.users;" 2>/dev/null || echo "0")
+USER_COUNT=$(mysql -h $DB_HOST -P 3308 -u $DB_USER -p$DB_PASSWORD -N -e "SELECT COUNT(*) FROM $DB_NAME.users;" 2>/dev/null || echo "0")
 
 if [ "$USER_COUNT" -lt "4" ]; then
   echo "用户数据不足，可能需要手动初始化测试数据"

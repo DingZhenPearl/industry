@@ -8,6 +8,7 @@ $DockerMySqlPassword = "mwYgR7#*X2"
 $DbName = "industry_db"
 $BackupFile = "industry_db_backup.sql"
 $ContainerName = "industry-mysql"
+$DockerMySqlPort = "3308"  # Docker容器内MySQL的端口
 
 # 检查 Docker 是否安装
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
@@ -77,11 +78,11 @@ docker cp $BackupFile "${ContainerName}:/tmp/"
 Write-Host "在 Docker 容器中导入数据..." -ForegroundColor Green
 
 # 在容器中执行 SQL 文件
-Get-Content $BackupFile | docker exec -i $ContainerName mysql -u$DockerMySqlUser -p"$DockerMySqlPassword"
+Get-Content $BackupFile | docker exec -i $ContainerName mysql -u$DockerMySqlUser -p"$DockerMySqlPassword" -P $DockerMySqlPort
 
 # 检查导入结果
 Write-Host "验证数据导入..." -ForegroundColor Green
-docker exec -i $ContainerName mysql -u$DockerMySqlUser -p"$DockerMySqlPassword" -e "USE $DbName; SHOW TABLES;"
+docker exec -i $ContainerName mysql -u$DockerMySqlUser -p"$DockerMySqlPassword" -P $DockerMySqlPort -e "USE $DbName; SHOW TABLES;"
 
 Write-Host "数据库复制完成！" -ForegroundColor Green
 Write-Host "重启应用容器以应用更改: docker-compose restart app" -ForegroundColor Yellow
