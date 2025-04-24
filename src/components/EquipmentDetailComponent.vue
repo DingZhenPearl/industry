@@ -704,6 +704,12 @@ export default {
   color: #f44336;
 }
 
+.status-tag.error {
+  background: #ffebee;
+  color: #d32f2f;
+  font-weight: bold;
+}
+
 .status-tag.normal {
   background: #e8f5e9;
   color: #4CAF50;

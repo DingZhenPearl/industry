@@ -123,11 +123,47 @@ def update_equipment_status(equipment_id, status_data):
         cursor.execute(query, values)
         connection.commit()
 
+        # 根据故障概率自动更新设备状态
+        if 'fault_probability' in status_data and status_data['fault_probability'] > 0.7:
+            # 当故障概率大于70%时，自动将设备状态设置为停机
+            update_equipment_main_status(equipment_id, '停机')
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 设备 {equipment_id} 故障概率超过70%，自动设置为停机状态")
+
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 设备 {equipment_id} 状态更新成功")
         return True
 
     except Error as e:
         print(f"更新设备状态时出错: {e}")
+        return False
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+# =============================================
+# 更新设备主状态
+# =============================================
+def update_equipment_main_status(equipment_id, status):
+    """更新设备主状态（equipment表中的status字段）"""
+    connection = None
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+
+        query = """
+            UPDATE equipment
+            SET status = %s
+            WHERE id = %s
+        """
+
+        cursor.execute(query, (status, equipment_id))
+        connection.commit()
+
+        print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] 设备 {equipment_id} 主状态更新为 {status}")
+        return True
+
+    except Error as e:
+        print(f"更新设备主状态时出错: {e}")
         return False
     finally:
         if connection and connection.is_connected():

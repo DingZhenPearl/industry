@@ -246,8 +246,12 @@ export default {
             description: deviceData.description || '暂无详细信息',
             runtime: deviceData.runtime_hours || 0, // 从 API 返回的数据中获取运行时间
             status: deviceData.status === '故障' ? 'error' :
+                   deviceData.status === '停机' ? 'stopped' :
+                   deviceData.fault_probability > 0.7 ? 'error' :
                    deviceData.fault_probability > 0.3 ? 'warning' : 'normal',
             statusText: deviceData.status === '故障' ? '故障' :
+                       deviceData.status === '停机' ? '已停机' :
+                       deviceData.fault_probability > 0.7 ? '危险' :
                        deviceData.fault_probability > 0.3 ? '预警' : '正常'
           };
 
@@ -440,8 +444,12 @@ export default {
 
           // 更新设备状态
           this.equipment.status = latestData.status === '故障' ? 'error' :
+                                 latestData.status === '停机' ? 'stopped' :
+                                 latestData.fault_probability > 0.7 ? 'error' :
                                  latestData.fault_probability > 0.3 ? 'warning' : 'normal';
           this.equipment.statusText = latestData.status === '故障' ? '故障' :
+                                     latestData.status === '停机' ? '已停机' :
+                                     latestData.fault_probability > 0.7 ? '危险' :
                                      latestData.fault_probability > 0.3 ? '预警' : '正常';
         }
       } catch (error) {

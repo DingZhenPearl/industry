@@ -191,13 +191,22 @@ export default {
               } else if (device.status === '预警') {
                 status = 'warning';
                 dbStatus = '预警';
+              } else if (device.fault_probability > 0.7) {
+                status = 'error';
+                dbStatus = '正常';
+              } else if (device.fault_probability > 0.3) {
+                status = 'warning';
+                dbStatus = '正常';
               } else if (device.status === '正常') {
                 dbStatus = '正常';
               }
 
               // 获取设备状态文本
               let statusText = '运行中';
-              if (status === 'warning') statusText = '预警';
+              if (device.fault_probability > 0.7) statusText = '危险';
+              else if (device.fault_probability > 0.3) statusText = '预警';
+              else if (status === 'warning') statusText = '预警';
+              else if (status === 'error') statusText = '危险';
               else if (status === 'stopped') {
                 if (dbStatus === '故障') statusText = '故障';
                 else if (dbStatus === '维修中') statusText = '维修中';
@@ -339,6 +348,12 @@ export default {
               } else if (latestData.status === '维修中') {
                 status = 'stopped';
                 dbStatus = '维修中';
+              } else if (latestData.fault_probability > 0.7) {
+                status = 'error';
+                dbStatus = '正常';
+              } else if (latestData.fault_probability > 0.3) {
+                status = 'warning';
+                dbStatus = '正常';
               }
 
               this.currentDevice.status = status;
@@ -348,7 +363,9 @@ export default {
               if (latestData.status === '故障') statusText = '故障';
               else if (latestData.status === '预警') statusText = '预警';
               else if (latestData.status === '停机') statusText = '已停机';
-              else if (latestData.status === '维修中') statusText = '维修中';
+              else if (latestData.status === '维修中') statusText = '维修中'
+              else if (latestData.fault_probability > 0.7) statusText = '危险';
+              else if (latestData.fault_probability > 0.3) statusText = '预警';
 
               this.currentDevice.statusText = statusText;
             }
